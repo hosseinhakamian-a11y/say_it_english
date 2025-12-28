@@ -30,13 +30,16 @@ export function Navbar() {
     <nav className="bg-background border-b border-border sticky top-0 z-50 shadow-sm backdrop-blur-sm bg-background/90">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
-          
+
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground font-bold text-xl shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-              F
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground font-bold text-2xl shadow-xl shadow-primary/20 group-hover:rotate-6 transition-all duration-300">
+              S
             </div>
-            <span className="font-bold text-xl text-primary hidden sm:block">زبان‌آموز</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-xl text-foreground tracking-tight">Say It English</span>
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest -mt-1">American English Tutor</span>
+            </div>
           </Link>
 
           {/* Desktop Nav */}
@@ -45,11 +48,10 @@ export function Navbar() {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  isActive(item.path)
-                    ? "bg-white text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive(item.path)
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
               >
                 {item.label}
               </Link>
@@ -113,11 +115,10 @@ export function Navbar() {
                 key={item.path}
                 href={item.path}
                 onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 rounded-xl text-base font-medium transition-colors ${
-                  isActive(item.path)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
+                className={`block px-4 py-3 rounded-xl text-base font-medium transition-colors ${isActive(item.path)
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted"
+                  }`}
               >
                 {item.label}
               </Link>

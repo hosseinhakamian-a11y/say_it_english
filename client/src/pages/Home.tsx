@@ -6,14 +6,14 @@ import { motion } from "framer-motion";
 export default function Home() {
   return (
     <div className="space-y-20 pb-20">
-      
+
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-12 md:pt-24 pb-32">
         <div className="absolute inset-0 z-0 bg-gradient-to-br from-primary/5 via-accent/20 to-transparent" />
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        
+
         <div className="container mx-auto px-4 relative z-10 text-center">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -27,7 +27,7 @@ export default function Home() {
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
               با متدهای جدید آموزشی، پادکست‌های جذاب و کلاس‌های تعاملی، مسیر یادگیری خود را هموار کنید.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/placement">
                 <Button size="lg" className="text-lg px-8 h-14 rounded-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all">
@@ -79,7 +79,7 @@ export default function Home() {
             }
           ].map((feature, idx) => (
             <Link key={idx} href={feature.href}>
-              <motion.div 
+              <motion.div
                 whileHover={{ y: -5 }}
                 className="bg-card p-8 rounded-3xl border border-border/50 shadow-sm hover:shadow-xl transition-all cursor-pointer h-full"
               >
@@ -105,24 +105,23 @@ export default function Home() {
               </p>
               <ul className="space-y-3">
                 {[
-                  "کارشناسی ارشد آموزش زبان انگلیسی",
-                  "مدرک بین‌المللی CELTA",
-                  "بیش از ۱۰۰۰ دانش‌آموز موفق"
+                  "مدرک بین‌المللی TESOL",
+                  "مدرک تخصصی آیلتس (IELTS)",
+                  "بیش از ۱۰ سال سابقه تدریس تخصصی"
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-secondary" />
-                    <span className="font-medium">{item}</span>
+                    <span className="font-medium text-foreground/80">{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
-            {/* Unsplash image: Portrait of a friendly teacher/professional */}
-            {/* <!-- teacher portrait friendly professional smiling --> */}
-            <div className="w-full md:w-1/3 aspect-[3/4] rounded-3xl overflow-hidden shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
-              <img 
-                src="https://images.unsplash.com/photo-1544717305-2782549b5136?w=800&q=80" 
-                alt="Teacher Portrait" 
-                className="w-full h-full object-cover"
+            {/* Professional Teacher Portrait */}
+            <div className="w-full md:w-5/12 aspect-[4/5] rounded-[2rem] overflow-hidden shadow-2xl transition-all duration-500 hover:scale-[1.02]">
+              <img
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&q=80"
+                alt="Teacher Portrait"
+                className="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-700"
               />
             </div>
           </div>
