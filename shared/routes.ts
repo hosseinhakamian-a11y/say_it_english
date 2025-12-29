@@ -56,6 +56,16 @@ export const api = {
         200: z.array(z.any()), // Refine if possible
       },
     },
+    create: {
+      method: 'POST' as const,
+      path: '/api/content',
+      input: insertContentSchema,
+      responses: {
+        201: z.any(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
   },
   bookings: {
     create: {

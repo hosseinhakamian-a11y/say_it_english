@@ -16,6 +16,15 @@ export async function registerRoutes(
     res.json(content);
   });
 
+  app.post(api.content.create.path, async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const content = await storage.createContent(req.body);
+    res.status(201).json(content);
+  });
+
   app.get(api.bookings.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     // @ts-ignore

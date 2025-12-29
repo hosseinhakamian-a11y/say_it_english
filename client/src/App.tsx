@@ -14,7 +14,24 @@ import AuthPage from "@/pages/Auth";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
 
+import { useLocation } from "wouter";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminContent from "@/pages/admin/content";
+import { ProtectedRoute } from "@/lib/protected-route";
+
 function Router() {
+  const [location] = useLocation();
+  const isAdminRoute = location.startsWith("/admin");
+
+  if (isAdminRoute) {
+    return (
+      <Switch>
+        <ProtectedRoute path="/admin" component={AdminDashboard} shouldCheckAdmin={true} />
+        <ProtectedRoute path="/admin/content" component={AdminContent} shouldCheckAdmin={true} />
+      </Switch>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen font-sans">
       <Navbar />

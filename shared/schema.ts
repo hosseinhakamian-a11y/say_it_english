@@ -15,9 +15,11 @@ export const content = pgTable("content", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  type: text("type").notNull(), // 'podcast', 'article'
+  type: text("type").notNull(), // 'podcast', 'article', 'video'
   level: text("level").notNull(), // 'beginner', 'intermediate', 'advanced'
-  contentUrl: text("content_url").notNull(),
+  contentUrl: text("content_url"), // Optional now, used for audio/articles
+  videoId: text("video_id"), // For Bunny/Aparat/YouTube ID
+  videoProvider: text("video_provider"), // 'bunny', 'aparat', 'youtube', 'custom'
   isPremium: boolean("is_premium").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
