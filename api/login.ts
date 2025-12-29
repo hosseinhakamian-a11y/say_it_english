@@ -5,8 +5,10 @@ import { eq } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
 import { scrypt, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
+import jwt from 'jsonwebtoken';
 
 const scryptAsync = promisify(scrypt);
+const JWT_SECRET = process.env.SESSION_SECRET || 'sayitenglish-secret-2025';
 
 const users = pgTable("users", {
     id: serial("id").primaryKey(),
@@ -51,12 +53,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await pool.end();
 
-        // Return user without password
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
         res.status(200).json({
             id: user.id,
             username: user.username,
             role: user.role,
-            createdAt: user.createdAt
+            token
         });
     } catch (error: any) {
         console.error('Login error:', error);

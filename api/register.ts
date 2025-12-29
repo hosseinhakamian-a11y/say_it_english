@@ -5,8 +5,10 @@ import { eq } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
 import { scrypt, randomBytes } from 'crypto';
 import { promisify } from 'util';
+import jwt from 'jsonwebtoken';
 
 const scryptAsync = promisify(scrypt);
+const JWT_SECRET = process.env.SESSION_SECRET || 'sayitenglish-secret-2025';
 
 const users = pgTable("users", {
     id: serial("id").primaryKey(),
@@ -41,14 +43,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
         }
 
-        // Check if user exists
         const [existing] = await db.select().from(users).where(eq(users.username, username));
         if (existing) {
             await pool.end();
             return res.status(400).json({ error: 'کاربر با این نام وجود دارد' });
         }
 
-        // Create user
         const hashedPassword = await hashPassword(password);
         const [newUser] = await db.insert(users).values({
             username,
@@ -57,15 +57,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await pool.end();
 
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: newUser.id, username: newUser.username, role: newUser.role },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
         res.status(200).json({
-            message: 'ثبت نام موفق!',
-            user: { id: newUser.id, username: newUser.username }
+            id: newUser.id,
+            username: newUser.username,
+            role: newUser.role,
+            token
         });
     } catch (error: any) {
         console.error('Register error:', error);
-        res.status(500).json({
-            error: 'خطا در ثبت نام',
-            details: error.message
-        });
+        res.status(500).json({ error: 'خطا در ثبت نام', details: error.message });
     }
 }

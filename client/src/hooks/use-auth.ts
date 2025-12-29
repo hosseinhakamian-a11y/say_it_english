@@ -1,17 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@shared/routes";
 import { type InsertUser } from "@shared/schema";
 import { useLocation } from "wouter";
+
+const AUTH_TOKEN_KEY = "auth_token";
+
+function getToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function setToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+function removeToken(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
 
 export function useAuth() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
   const { data: user, isLoading } = useQuery({
-    queryKey: [api.auth.me.path],
+    queryKey: ["/api/user"],
     queryFn: async () => {
-      const res = await fetch(api.auth.me.path);
-      if (res.status === 401) return null;
+      const token = getToken();
+      if (!token) return null;
+
+      const res = await fetch("/api/user", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        removeToken();
+        return null;
+      }
       if (!res.ok) throw new Error("Failed to fetch user");
       return await res.json();
     },
@@ -19,7 +40,7 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
-      const res = await fetch(api.auth.login.path, {
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
@@ -27,34 +48,39 @@ export function useAuth() {
       if (!res.ok) throw new Error("نام کاربری یا رمز عبور اشتباه است");
       return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.auth.me.path] });
+    onSuccess: (data) => {
+      setToken(data.token);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setLocation("/");
     },
   });
 
   const registerMutation = useMutation({
     mutationFn: async (data: InsertUser) => {
-      const res = await fetch(api.auth.register.path, {
+      const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("ثبت نام با خطا مواجه شد");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "ثبت نام با خطا مواجه شد");
+      }
       return await res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.auth.me.path] });
+    onSuccess: (data) => {
+      setToken(data.token);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setLocation("/");
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch(api.auth.logout.path, { method: "POST" });
+      removeToken();
     },
     onSuccess: () => {
-      queryClient.setQueryData([api.auth.me.path], null);
+      queryClient.setQueryData(["/api/user"], null);
       setLocation("/auth");
     },
   });
