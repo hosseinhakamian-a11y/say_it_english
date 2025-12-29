@@ -1,0 +1,12 @@
+# Robots.txt for Say It English
+# https://sayitenglish.netlify.app
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://sayitenglish.netlify.app/sitemap.xml
+
+# Disallow admin routes from indexing
+Disallow: /admin
+Disallow: /admin/*
