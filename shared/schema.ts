@@ -66,6 +66,15 @@ export const payments = pgTable("payments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Purchased Content Access
+export const purchases = pgTable("purchases", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  contentId: integer("content_id").notNull(),
+  paymentId: integer("payment_id"), // Reference to the approved payment
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const session = pgTable("session", {
   sid: text("sid").primaryKey(),
   sess: jsonb("sess").notNull(),
@@ -79,6 +88,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true,
 export const insertClassSchema = createInsertSchema(classes).omit({ id: true, createdAt: true });
 export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id: true, createdAt: true, status: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, status: true, notes: true });
+export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -93,4 +103,6 @@ export type Enrollment = typeof enrollments.$inferSelect;
 export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Purchase = typeof purchases.$inferSelect;
+export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
 

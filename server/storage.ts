@@ -1,9 +1,9 @@
-import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment, Payment, InsertPayment, users, content, bookings, classes, enrollments, payments } from "@shared/schema";
+import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment, Payment, InsertPayment, Purchase, InsertPurchase, users, content, bookings, classes, enrollments, payments, purchases } from "@shared/schema";
 import session from "express-session";
 import MemoryStoreFactory from "memorystore";
 import connectPgSimple from "connect-pg-simple";
 import { db, pool } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const MemoryStore = MemoryStoreFactory(session);
 const PostgresSessionStore = connectPgSimple(session);
@@ -27,6 +27,9 @@ export interface IStorage {
   createPayment(payment: InsertPayment): Promise<Payment>;
   getPayments(): Promise<Payment[]>;
   updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined>;
+  createPurchase(purchase: InsertPurchase): Promise<Purchase>;
+  getUserPurchases(userId: number): Promise<Purchase[]>;
+  hasUserPurchased(userId: number, contentId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -117,6 +120,21 @@ export class DatabaseStorage implements IStorage {
   async updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined> {
     const [updated] = await db.update(payments).set({ status, notes }).where(eq(payments.id, id)).returning();
     return updated;
+  }
+
+  async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
+    const [newPurchase] = await db.insert(purchases).values(purchase).returning();
+    return newPurchase;
+  }
+
+  async getUserPurchases(userId: number): Promise<Purchase[]> {
+    return await db.select().from(purchases).where(eq(purchases.userId, userId));
+  }
+
+  async hasUserPurchased(userId: number, contentId: number): Promise<boolean> {
+    const result = await db.select().from(purchases)
+      .where(and(eq(purchases.userId, userId), eq(purchases.contentId, contentId)));
+    return result.length > 0;
   }
 }
 
@@ -245,6 +263,23 @@ export class MemStorage implements IStorage {
     if (notes) payment.notes = notes;
     this.paymentsMap.set(id, payment);
     return payment;
+  }
+
+  private purchasesMap: Map<number, Purchase> = new Map();
+
+  async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
+    const id = this.currentId++;
+    const newPurchase: Purchase = { ...purchase, id, paymentId: purchase.paymentId ?? null, createdAt: new Date() };
+    this.purchasesMap.set(id, newPurchase);
+    return newPurchase;
+  }
+
+  async getUserPurchases(userId: number): Promise<Purchase[]> {
+    return Array.from(this.purchasesMap.values()).filter(p => p.userId === userId);
+  }
+
+  async hasUserPurchased(userId: number, contentId: number): Promise<boolean> {
+    return Array.from(this.purchasesMap.values()).some(p => p.userId === userId && p.contentId === contentId);
   }
 }
 

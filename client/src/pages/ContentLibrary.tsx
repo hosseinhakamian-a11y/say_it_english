@@ -45,6 +45,21 @@ export default function ContentLibrary() {
     },
   });
 
+  // Fetch user's purchases to check which premium content they own
+  const { data: purchases } = useQuery<{ contentId: number }[]>({
+    queryKey: ["/api/purchases"],
+    queryFn: async () => {
+      const res = await fetch("/api/purchases");
+      if (!res.ok) return [];
+      return await res.json();
+    },
+    enabled: !!user, // Only fetch if user is logged in
+  });
+
+  const hasUserPurchased = (contentId: number) => {
+    return purchases?.some(p => p.contentId === contentId) || false;
+  };
+
   const filteredContent = filter === "all"
     ? contentList
     : contentList?.filter(c => c.level === filter);
@@ -138,7 +153,7 @@ export default function ContentLibrary() {
               </CardContent>
 
               <CardFooter className="p-6 pt-0 flex-col gap-2">
-                {item.isPremium && item.price ? (
+                {item.isPremium && item.price && !hasUserPurchased(item.id) ? (
                   <>
                     <p className="text-center text-amber-700 font-bold text-lg">
                       {new Intl.NumberFormat("fa-IR").format(item.price)} تومان
@@ -149,6 +164,16 @@ export default function ContentLibrary() {
                     >
                       <Lock className="ml-2 h-4 w-4" />
                       خرید دوره
+                    </Button>
+                  </>
+                ) : hasUserPurchased(item.id) ? (
+                  <>
+                    <p className="text-center text-green-600 font-medium text-sm">✅ شما این دوره را خریداری کرده‌اید</p>
+                    <Button
+                      className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all"
+                      onClick={() => setSelectedContent(item)}
+                    >
+                      مشاهده دوره
                     </Button>
                   </>
                 ) : (

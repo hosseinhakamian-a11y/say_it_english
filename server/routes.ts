@@ -119,7 +119,25 @@ export async function registerRoutes(
     const { status, notes } = req.body;
     const payment = await storage.updatePaymentStatus(parseInt(req.params.id), status, notes);
     if (!payment) return res.status(404).send("Payment not found");
+
+    // If approved, automatically grant access to the user
+    if (status === "approved") {
+      await storage.createPurchase({
+        userId: payment.userId,
+        contentId: payment.contentId,
+        paymentId: payment.id,
+      });
+    }
+
     res.json(payment);
+  });
+
+  // Get current user's purchases
+  app.get("/api/purchases", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    // @ts-ignore
+    const purchases = await storage.getUserPurchases(req.user!.id);
+    res.json(purchases);
   });
 
   return httpServer;
