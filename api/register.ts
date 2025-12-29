@@ -12,7 +12,6 @@ const users = pgTable("users", {
     id: serial("id").primaryKey(),
     username: text("username").notNull().unique(),
     password: text("password").notNull(),
-    email: text("email"),
     role: text("role").default("user"),
     createdAt: timestamp("created_at").defaultNow(),
 });
