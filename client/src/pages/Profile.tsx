@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useBookings } from "@/hooks/use-bookings";
-import { Loader2, Calendar, BookOpen, User as UserIcon, LogOut } from "lucide-react";
+import { Loader2, Calendar, BookOpen, User as UserIcon, LogOut, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function Profile() {
@@ -27,7 +27,7 @@ export default function Profile() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        
+
         {/* Sidebar Info */}
         <div className="md:col-span-4 lg:col-span-3">
           <Card className="rounded-[2rem] border-0 shadow-lg text-center overflow-hidden">
@@ -43,13 +43,23 @@ export default function Profile() {
             <CardContent className="pt-0 pb-8 px-6">
               <h2 className="text-xl font-bold mb-1">{user.username}</h2>
               <p className="text-muted-foreground mb-6 text-sm">{user.role === 'admin' ? 'مدرس' : 'دانش‌آموز'}</p>
-              
+
               <div className="bg-muted/50 rounded-xl p-4 mb-6">
                 <p className="text-xs text-muted-foreground uppercase mb-1">سطح زبان</p>
                 <p className="font-bold text-lg text-primary">
                   {user.level || "تعیین سطح نشده"}
                 </p>
               </div>
+
+              {user.role === 'admin' && (
+                <Button
+                  className="w-full rounded-xl mb-3 bg-gradient-to-l from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                  onClick={() => setLocation("/admin")}
+                >
+                  <Settings className="w-4 h-4 ml-2" />
+                  داشبورد ادمین
+                </Button>
+              )}
 
               <Button variant="outline" className="w-full rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => logout()}>
                 <LogOut className="w-4 h-4 ml-2" />
@@ -61,7 +71,7 @@ export default function Profile() {
 
         {/* Main Content */}
         <div className="md:col-span-8 lg:col-span-9 space-y-8">
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="rounded-2xl border border-border/50 shadow-sm p-6 flex items-center gap-4">
               <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
@@ -72,7 +82,7 @@ export default function Profile() {
                 <p className="text-2xl font-bold">{bookings?.length || 0}</p>
               </div>
             </Card>
-            
+
             <Card className="rounded-2xl border border-border/50 shadow-sm p-6 flex items-center gap-4">
               <div className="p-3 bg-green-100 text-green-600 rounded-xl">
                 <BookOpen className="w-6 h-6" />
@@ -112,10 +122,9 @@ export default function Profile() {
                           <p className="text-sm text-muted-foreground">{new Date(booking.date).toLocaleDateString('fa-IR')}</p>
                         </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        booking.status === 'confirmed' ? 'bg-green-100 text-green-700' : 
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
                         booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                      }`}>
+                        }`}>
                         {booking.status === 'confirmed' ? 'تایید شده' : booking.status === 'pending' ? 'در انتظار' : 'لغو شده'}
                       </span>
                     </div>
