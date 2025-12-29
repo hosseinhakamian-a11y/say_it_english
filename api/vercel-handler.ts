@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from "express";
 import session from "express-session";
-import passport from "passport";
 import { setupAuth } from "../server/auth";
 import { registerRoutes } from "../server/routes";
 import { storage } from "../server/storage";
@@ -20,7 +19,7 @@ app.use(session({
     cookie: {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        maxAge: 24 * 60 * 60 * 1000,
     },
 }));
 
