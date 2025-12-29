@@ -1,7 +1,4 @@
-
-import { Router } from "express";
-
-export const youtubeRouter = Router();
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Videos data - Edit this array to add/remove videos
 // To add a new video: Copy a video block and change the videoId from the YouTube URL
@@ -48,22 +45,13 @@ const VIDEOS = [
     }
 ];
 
-let cachedVideos: any[] | null = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
-
-youtubeRouter.get("/videos", async (req, res) => {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const apiKey = process.env.YOUTUBE_API_KEY;
 
         // If API key exists, try to fetch from YouTube
         if (apiKey) {
             const channelId = process.env.YOUTUBE_CHANNEL_ID;
-
-            // Check cache
-            if (cachedVideos && (Date.now() - lastFetchTime < CACHE_DURATION)) {
-                return res.json(cachedVideos);
-            }
 
             try {
                 const channelResponse = await fetch(
@@ -81,9 +69,7 @@ youtubeRouter.get("/videos", async (req, res) => {
 
                         if (videosResponse.ok) {
                             const videosData = await videosResponse.json();
-                            cachedVideos = videosData.items;
-                            lastFetchTime = Date.now();
-                            return res.json(cachedVideos);
+                            return res.status(200).json(videosData.items);
                         }
                     }
                 }
@@ -93,10 +79,10 @@ youtubeRouter.get("/videos", async (req, res) => {
         }
 
         // Return hardcoded videos
-        res.json(VIDEOS);
+        res.status(200).json(VIDEOS);
 
     } catch (error) {
         console.error("Error fetching videos:", error);
-        res.json(VIDEOS);
+        res.status(200).json(VIDEOS);
     }
-});
+}
