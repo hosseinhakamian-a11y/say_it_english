@@ -1,8 +1,12 @@
-import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment } from "@shared/schema";
+import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment, users, content, bookings, classes, enrollments } from "@shared/schema";
 import session from "express-session";
 import MemoryStoreFactory from "memorystore";
+import connectPgSimple from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq } from "drizzle-orm";
 
 const MemoryStore = MemoryStoreFactory(session);
+const PostgresSessionStore = connectPgSimple(session);
 
 export interface IStorage {
   sessionStore: session.Store;
@@ -16,6 +20,64 @@ export interface IStorage {
   getClasses(): Promise<Class[]>;
   createClass(cls: InsertClass): Promise<Class>;
   enrollUser(enrollment: InsertEnrollment): Promise<Enrollment>;
+}
+
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
+    });
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async getContent(): Promise<Content[]> {
+    return await db.select().from(content);
+  }
+
+  async createContent(insertContent: InsertContent): Promise<Content> {
+    const [item] = await db.insert(content).values(insertContent).returning();
+    return item;
+  }
+
+  async getBookings(userId: number): Promise<Booking[]> {
+    return await db.select().from(bookings).where(eq(bookings.userId, userId));
+  }
+
+  async createBooking(insertBooking: InsertBooking): Promise<Booking> {
+    const [booking] = await db.insert(bookings).values(insertBooking).returning();
+    return booking;
+  }
+
+  async getClasses(): Promise<Class[]> {
+    return await db.select().from(classes);
+  }
+
+  async createClass(insertClass: InsertClass): Promise<Class> {
+    const [cls] = await db.insert(classes).values(insertClass).returning();
+    return cls;
+  }
+
+  async enrollUser(insertEnrollment: InsertEnrollment): Promise<Enrollment> {
+    const [enrollment] = await db.insert(enrollments).values(insertEnrollment).returning();
+    return enrollment;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -99,4 +161,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = process.env.DATABASE_URL ? new DatabaseStorage() : new MemStorage();

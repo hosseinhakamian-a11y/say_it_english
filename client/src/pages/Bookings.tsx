@@ -14,7 +14,7 @@ export default function Bookings() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const createBooking = useCreateBooking();
-  
+
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [type, setType] = useState<"consultation" | "private_class">("consultation");
   const [notes, setNotes] = useState("");
@@ -34,11 +34,11 @@ export default function Bookings() {
 
   const handleSubmit = () => {
     if (!date) return;
-    
+
     createBooking.mutate({
       userId: user.id,
       type,
-      date: date.toISOString(), // In real app, combine date + time slot
+      date: date, // Pass Date object directly
       notes,
     }, {
       onSuccess: () => setIsSuccess(true)
@@ -135,7 +135,7 @@ export default function Bookings() {
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {['10:00', '11:30', '14:00', '16:00', '18:00', '19:30'].map((time) => (
-                      <button 
+                      <button
                         key={time}
                         className="flex items-center justify-center gap-2 p-3 rounded-xl border border-muted hover:border-primary hover:bg-primary/5 transition-all text-sm font-medium focus:bg-primary focus:text-white focus:border-primary group"
                       >
@@ -151,16 +151,16 @@ export default function Bookings() {
                     <span className="w-1 h-5 bg-secondary rounded-full block"></span>
                     توضیحات اضافی (اختیاری)
                   </label>
-                  <Textarea 
-                    placeholder="اگر موضوع خاصی مد نظر دارید بنویسید..." 
+                  <Textarea
+                    placeholder="اگر موضوع خاصی مد نظر دارید بنویسید..."
                     className="min-h-[120px] rounded-xl border-2 border-muted focus:border-primary resize-none p-4"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
 
-                <Button 
-                  onClick={handleSubmit} 
+                <Button
+                  onClick={handleSubmit}
                   disabled={!date || createBooking.isPending}
                   className="w-full h-14 text-lg rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all mt-4"
                 >

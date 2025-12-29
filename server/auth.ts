@@ -21,6 +21,8 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+import { Express, Request, Response, NextFunction } from "express";
+
 export function setupAuth(app: Express) {
   const sessionSettings = {
     secret: process.env.SESSION_SECRET || "secret",
@@ -51,7 +53,7 @@ export function setupAuth(app: Express) {
     done(null, user);
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  app.post("/api/register", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
@@ -73,18 +75,18 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
+  app.post("/api/login", passport.authenticate("local"), (req: Request, res: Response) => {
     res.status(200).json(req.user);
   });
 
-  app.post("/api/logout", (req, res, next) => {
+  app.post("/api/logout", (req: Request, res: Response, next: NextFunction) => {
     req.logout((err) => {
       if (err) return next(err);
       res.sendStatus(200);
     });
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", (req: Request, res: Response) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });

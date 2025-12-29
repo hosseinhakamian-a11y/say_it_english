@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type InsertBooking } from "@shared/routes";
+import { api } from "@shared/routes";
+import { type InsertBooking } from "@shared/schema";
 
 export function useBookings() {
   return useQuery({

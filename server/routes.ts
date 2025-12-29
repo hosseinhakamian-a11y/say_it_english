@@ -39,36 +39,9 @@ export async function registerRoutes(
     res.json(classes);
   });
 
-  // Seed data
-  const existingContent = await storage.getContent();
-  if (existingContent.length === 0) {
-    await storage.createContent({
-      title: "Introduction to Persian",
-      type: "podcast",
-      level: "beginner",
-      contentUrl: "https://example.com/podcast1.mp3",
-      description: "Basic greetings and numbers",
-    });
-    await storage.createContent({
-      title: "Advanced Grammar",
-      type: "article",
-      level: "advanced",
-      contentUrl: "https://example.com/article1",
-      description: "Subjunctive mood in depth",
-    });
-  }
 
-  const existingClasses = await storage.getClasses();
-  if (existingClasses.length === 0) {
-    await storage.createClass({
-      title: "Beginner Group A",
-      level: "beginner",
-      capacity: 10,
-      price: 500000,
-      schedule: "Mon/Wed 18:00",
-      description: "Start from scratch",
-    });
-  }
+  // Seeding logic moved to script/seed.ts
+
 
   return httpServer;
 }
