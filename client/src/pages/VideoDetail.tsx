@@ -16,7 +16,7 @@ export default function VideoDetailPage() {
     // In a real app with many videos, we'd have a specific endpoint for single video details
     // For now/mock mode, we fetch the list and find the item
     const { data: videos, isLoading } = useQuery<any[]>({
-        queryKey: ["/api/youtube/videos"],
+        queryKey: ["/api/youtube"],
     });
 
     const video = videos?.find((v: any) =>

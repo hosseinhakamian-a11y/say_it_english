@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 export default function VideosPage() {
     // Fetch videos from our internal API
     const { data: videos, isLoading, error } = useQuery<any[]>({
-        queryKey: ["/api/youtube/videos"],
+        queryKey: ["/api/youtube"],
         // Default to mock data if API fails to prevent empty page during setup
         retry: 1
     });
