@@ -22,6 +22,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContent from "@/pages/admin/content";
 import AdminUsers from "@/pages/admin/users";
 import AdminPayments from "@/pages/admin/payments";
+import AdminSlots from "@/pages/admin/slots";
 import PaymentPage from "@/pages/Payment";
 import { ProtectedRoute } from "@/lib/protected-route";
 
@@ -36,6 +37,7 @@ function Router() {
         <ProtectedRoute path="/admin/content" component={AdminContent} shouldCheckAdmin={true} />
         <ProtectedRoute path="/admin/users" component={AdminUsers} shouldCheckAdmin={true} />
         <ProtectedRoute path="/admin/payments" component={AdminPayments} shouldCheckAdmin={true} />
+        <ProtectedRoute path="/admin/slots" component={AdminSlots} shouldCheckAdmin={true} />
       </Switch>
     );
   }

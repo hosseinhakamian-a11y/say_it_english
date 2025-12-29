@@ -25,13 +25,24 @@ export const content = pgTable("content", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Available time slots for booking (set by admin/teacher)
+export const timeSlots = pgTable("time_slots", {
+  id: serial("id").primaryKey(),
+  date: timestamp("date").notNull(), // The date and time of the slot
+  duration: integer("duration").default(30), // Duration in minutes (default 30)
+  isBooked: boolean("is_booked").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
+  timeSlotId: integer("time_slot_id"), // Reference to time_slots
   type: text("type").notNull(), // 'consultation', 'private_class'
   date: timestamp("date").notNull(),
   status: text("status").default("pending"), // 'pending', 'confirmed', 'cancelled'
   notes: text("notes"),
+  phone: text("phone"), // User's phone for SMS reminder
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -98,6 +109,7 @@ export const posts = pgTable("posts", {
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertContentSchema = createInsertSchema(content).omit({ id: true, createdAt: true });
+export const insertTimeSlotSchema = createInsertSchema(timeSlots).omit({ id: true, createdAt: true, isBooked: true });
 export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, createdAt: true, status: true });
 export const insertClassSchema = createInsertSchema(classes).omit({ id: true, createdAt: true });
 export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id: true, createdAt: true, status: true });
@@ -109,6 +121,8 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Content = typeof content.$inferSelect;
 export type InsertContent = z.infer<typeof insertContentSchema>;
+export type TimeSlot = typeof timeSlots.$inferSelect;
+export type InsertTimeSlot = z.infer<typeof insertTimeSlotSchema>;
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type Class = typeof classes.$inferSelect;
@@ -119,4 +133,3 @@ export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Purchase = typeof purchases.$inferSelect;
 export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
-

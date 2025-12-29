@@ -1,49 +1,81 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useCreateBooking } from "@/hooks/use-bookings";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { faIR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { format } from "date-fns-jalali"; // Note: In real app use date-fns-jalali for Persian calendar
-import { Loader2, Calendar as CalendarIcon, Clock, CheckCircle2 } from "lucide-react";
-import { useLocation } from "wouter";
+import { Calendar, Clock, CheckCircle2, Loader2, Phone } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
+
+interface TimeSlot {
+  id: number;
+  date: string;
+  duration: number;
+  isBooked: boolean;
+}
 
 export default function Bookings() {
-  const { user } = useAuth();
-  const [, setLocation] = useLocation();
-  const createBooking = useCreateBooking();
-
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [type, setType] = useState<"consultation" | "private_class">("consultation");
+  const { toast } = useToast();
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
 
-  if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <div className="max-w-md mx-auto bg-card border border-border rounded-3xl p-10 shadow-xl">
-          <h2 className="text-2xl font-bold mb-4">ورود الزامی است</h2>
-          <p className="text-muted-foreground mb-8">برای رزرو وقت مشاوره یا کلاس، لطفاً ابتدا وارد حساب کاربری خود شوید.</p>
-          <Button onClick={() => setLocation("/auth")} className="w-full rounded-xl">ورود / ثبت نام</Button>
-        </div>
-      </div>
-    );
-  }
+  // Fetch available slots
+  const { data: slots, isLoading } = useQuery<TimeSlot[]>({
+    queryKey: ["/api/slots"],
+  });
 
-  const handleSubmit = () => {
-    if (!date) return;
+  // Book mutation
+  const bookMutation = useMutation({
+    mutationFn: async (data: { timeSlotId: number; phone: string; notes: string }) => {
+      const res = await fetch("/api/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Booking failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setIsSuccess(true);
+      toast({ title: "✅ رزرو با موفقیت انجام شد!" });
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || "خطا در رزرو", variant: "destructive" });
+    },
+  });
 
-    createBooking.mutate({
-      userId: user.id,
-      type,
-      date: date, // Pass Date object directly
+  const handleBook = () => {
+    if (!selectedSlot) {
+      toast({ title: "لطفاً یک زمان انتخاب کنید", variant: "destructive" });
+      return;
+    }
+    if (!phone || phone.length < 10) {
+      toast({ title: "لطفاً شماره تماس معتبر وارد کنید", variant: "destructive" });
+      return;
+    }
+    bookMutation.mutate({
+      timeSlotId: selectedSlot.id,
+      phone,
       notes,
-    }, {
-      onSuccess: () => setIsSuccess(true)
     });
   };
+
+  // Group slots by date
+  const slotsByDate = slots?.reduce((acc, slot) => {
+    const dateKey = format(new Date(slot.date), "yyyy-MM-dd");
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(slot);
+    return acc;
+  }, {} as Record<string, TimeSlot[]>) || {};
 
   if (isSuccess) {
     return (
@@ -54,126 +86,158 @@ export default function Bookings() {
           </div>
           <h2 className="text-3xl font-bold text-primary mb-4">رزرو با موفقیت انجام شد!</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            درخواست شما ثبت شد. به زودی برای هماهنگی نهایی با شما تماس خواهیم گرفت.
+            درخواست شما ثبت شد. استاد به زودی با شما تماس خواهد گرفت.
           </p>
-          <div className="flex gap-4 justify-center">
-            <Button onClick={() => setLocation("/profile")} variant="outline" className="rounded-xl bg-white border-primary/20 text-primary hover:bg-white hover:border-primary">
-              مشاهده رزروها
-            </Button>
-            <Button onClick={() => setIsSuccess(false)} className="rounded-xl shadow-lg shadow-primary/20">
-              رزرو جدید
-            </Button>
-          </div>
+          <Button onClick={() => { setIsSuccess(false); setSelectedSlot(null); }} className="rounded-xl">
+            رزرو جدید
+          </Button>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">رزرو وقت</h1>
-        <p className="text-muted-foreground mb-10">زمان مناسب برای مشاوره یا کلاس خصوصی خود را انتخاب کنید.</p>
+    <div className="min-h-screen bg-background pb-20">
+      {/* Header */}
+      <div className="bg-primary/5 py-12 md:py-16">
+        <div className="container mx-auto px-4 text-center">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="inline-block p-4 bg-background rounded-2xl shadow-lg mb-4"
+          >
+            <Calendar className="w-8 h-8 text-primary" />
+          </motion.div>
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">رزرو کلاس خصوصی</h1>
+          <p className="text-muted-foreground">یکی از زمان‌های خالی را برای کلاس ۳۰ دقیقه‌ای انتخاب کنید</p>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Calendar Section */}
-          <div className="lg:col-span-5">
-            <Card className="rounded-[2rem] border-0 shadow-xl overflow-hidden h-full">
-              <CardContent className="p-0">
-                <div className="bg-primary p-6 text-primary-foreground">
-                  <div className="flex items-center gap-3 mb-2 opacity-80">
-                    <CalendarIcon className="w-5 h-5" />
-                    <span className="font-medium">انتخاب تاریخ</span>
+      <div className="container mx-auto px-4 -mt-6 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+
+          {/* Slots List */}
+          <div className="lg:col-span-2">
+            <Card className="rounded-2xl border-border/50">
+              <CardContent className="p-6">
+                <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  زمان‌های موجود
+                </h2>
+
+                {isLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
-                  <h3 className="text-2xl font-bold">
-                    {date ? date.toLocaleDateString('fa-IR') : 'تاریخی انتخاب نشده'}
-                  </h3>
-                </div>
-                <div className="p-6 flex justify-center bg-white">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    className="rounded-md border-0 w-full"
-                    classNames={{
-                      head_cell: "text-muted-foreground font-normal text-sm pt-4 pb-2 w-10",
-                      cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-primary/5 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                      day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-muted rounded-full transition-colors",
-                      day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground shadow-lg shadow-primary/30",
-                      day_today: "bg-accent text-accent-foreground",
-                    }}
-                  />
-                </div>
+                ) : Object.keys(slotsByDate).length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>در حال حاضر زمان خالی موجود نیست</p>
+                    <p className="text-sm mt-2">لطفاً بعداً مراجعه کنید</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(slotsByDate)
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([dateKey, dateSlots]) => (
+                        <div key={dateKey}>
+                          <h3 className="font-bold mb-3 text-sm text-muted-foreground">
+                            {format(new Date(dateKey), "EEEE d MMMM yyyy", { locale: faIR })}
+                          </h3>
+                          <div className="flex flex-wrap gap-3">
+                            {dateSlots
+                              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                              .map((slot) => (
+                                <button
+                                  key={slot.id}
+                                  onClick={() => setSelectedSlot(slot)}
+                                  className={`px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-2 ${selectedSlot?.id === slot.id
+                                      ? "border-primary bg-primary text-white"
+                                      : "border-border hover:border-primary hover:bg-primary/5"
+                                    }`}
+                                >
+                                  <Clock className="h-4 w-4" />
+                                  <span className="font-medium">
+                                    {format(new Date(slot.date), "HH:mm")}
+                                  </span>
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Form Section */}
-          <div className="lg:col-span-7">
-            <Card className="rounded-[2rem] border border-border/50 shadow-sm h-full">
-              <CardContent className="p-8 space-y-8">
-                <div className="space-y-4">
-                  <label className="text-sm font-bold flex items-center gap-2">
-                    <span className="w-1 h-5 bg-secondary rounded-full block"></span>
-                    نوع کلاس
-                  </label>
-                  <Select value={type} onValueChange={(val: any) => setType(val)}>
-                    <SelectTrigger className="w-full h-14 rounded-xl border-2 border-muted bg-transparent focus:border-primary focus:ring-0 text-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="consultation">مشاوره تعیین سطح (۳۰ دقیقه)</SelectItem>
-                      <SelectItem value="private_class">کلاس خصوصی (۶۰ دقیقه)</SelectItem>
-                    </SelectContent>
-                  </Select>
+          {/* Booking Form */}
+          <div className="lg:col-span-1">
+            <Card className="rounded-2xl border-border/50 sticky top-24">
+              <CardContent className="p-6 space-y-6">
+                <div>
+                  <h2 className="font-bold text-lg mb-2">تکمیل رزرو</h2>
+                  {selectedSlot && (
+                    <div className="bg-primary/10 rounded-xl p-4 text-center">
+                      <p className="text-sm text-muted-foreground mb-1">زمان انتخابی:</p>
+                      <p className="font-bold text-primary">
+                        {format(new Date(selectedSlot.date), "EEEE d MMMM", { locale: faIR })}
+                      </p>
+                      <p className="font-bold text-primary text-lg">
+                        ساعت {format(new Date(selectedSlot.date), "HH:mm")}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-sm font-bold flex items-center gap-2">
-                    <span className="w-1 h-5 bg-secondary rounded-full block"></span>
-                    ساعت‌های پیشنهادی
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {['10:00', '11:30', '14:00', '16:00', '18:00', '19:30'].map((time) => (
-                      <button
-                        key={time}
-                        className="flex items-center justify-center gap-2 p-3 rounded-xl border border-muted hover:border-primary hover:bg-primary/5 transition-all text-sm font-medium focus:bg-primary focus:text-white focus:border-primary group"
-                      >
-                        <Clock className="w-4 h-4 group-focus:text-white text-muted-foreground" />
-                        {time}
-                      </button>
-                    ))}
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    شماره تماس
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="09123456789"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="text-left dir-ltr"
+                  />
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-sm font-bold flex items-center gap-2">
-                    <span className="w-1 h-5 bg-secondary rounded-full block"></span>
-                    توضیحات اضافی (اختیاری)
-                  </label>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">توضیحات (اختیاری)</Label>
                   <Textarea
-                    placeholder="اگر موضوع خاصی مد نظر دارید بنویسید..."
-                    className="min-h-[120px] rounded-xl border-2 border-muted focus:border-primary resize-none p-4"
+                    id="notes"
+                    placeholder="موضوع خاصی که می‌خواهید کار کنید..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
                   />
                 </div>
 
                 <Button
-                  onClick={handleSubmit}
-                  disabled={!date || createBooking.isPending}
-                  className="w-full h-14 text-lg rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all mt-4"
+                  onClick={handleBook}
+                  disabled={!selectedSlot || bookMutation.isPending}
+                  className="w-full h-12 text-lg rounded-xl shadow-lg shadow-primary/20"
                 >
-                  {createBooking.isPending ? (
+                  {bookMutation.isPending ? (
                     <>
-                      <Loader2 className="ml-2 h-5 w-5 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin ml-2" />
                       در حال ثبت...
                     </>
-                  ) : "تایید و ثبت نهایی"}
+                  ) : (
+                    "تایید و رزرو"
+                  )}
                 </Button>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  هر جلسه ۳۰ دقیقه است. پس از رزرو، استاد با شما تماس خواهد گرفت.
+                </p>
               </CardContent>
             </Card>
           </div>
+
         </div>
       </div>
     </div>
