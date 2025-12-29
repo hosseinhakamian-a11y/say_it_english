@@ -94,4 +94,23 @@ export const api = {
       },
     },
   },
+  users: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/users',
+      responses: {
+        200: z.array(z.any()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    updateRole: {
+      method: 'PATCH' as const,
+      path: '/api/users/:id/role',
+      input: z.object({ role: z.enum(['student', 'admin']) }),
+      responses: {
+        200: z.any(),
+        401: errorSchemas.unauthorized,
+      },
+    },
+  },
 };

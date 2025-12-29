@@ -20,6 +20,8 @@ export interface IStorage {
   getClasses(): Promise<Class[]>;
   createClass(cls: InsertClass): Promise<Class>;
   enrollUser(enrollment: InsertEnrollment): Promise<Enrollment>;
+  getAllUsers(): Promise<User[]>;
+  updateUserRole(id: number, role: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -77,6 +79,15 @@ export class DatabaseStorage implements IStorage {
   async enrollUser(insertEnrollment: InsertEnrollment): Promise<Enrollment> {
     const [enrollment] = await db.insert(enrollments).values(insertEnrollment).returning();
     return enrollment;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async updateUserRole(id: number, role: string): Promise<User | undefined> {
+    const [user] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
+    return user;
   }
 }
 
@@ -158,6 +169,19 @@ export class MemStorage implements IStorage {
     const enrollment: Enrollment = { ...insertEnrollment, id, createdAt: new Date(), status: "enrolled" };
     this.enrollments.set(id, enrollment);
     return enrollment;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async updateUserRole(id: number, role: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (user) {
+      user.role = role;
+      this.users.set(id, user);
+    }
+    return user;
   }
 }
 

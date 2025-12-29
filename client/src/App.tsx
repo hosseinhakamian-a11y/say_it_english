@@ -17,6 +17,7 @@ import NotFound from "@/pages/not-found";
 import { useLocation } from "wouter";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContent from "@/pages/admin/content";
+import AdminUsers from "@/pages/admin/users";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
@@ -28,6 +29,7 @@ function Router() {
       <Switch>
         <ProtectedRoute path="/admin" component={AdminDashboard} shouldCheckAdmin={true} />
         <ProtectedRoute path="/admin/content" component={AdminContent} shouldCheckAdmin={true} />
+        <ProtectedRoute path="/admin/users" component={AdminUsers} shouldCheckAdmin={true} />
       </Switch>
     );
   }

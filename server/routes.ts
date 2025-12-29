@@ -51,6 +51,29 @@ export async function registerRoutes(
 
   // Seeding logic moved to script/seed.ts
 
+  // User Management (Admin Only)
+  app.get(api.users.list.path, async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const users = await storage.getAllUsers();
+    // Exclude passwords from the response
+    const safeUsers = users.map(({ password, ...rest }) => rest);
+    res.json(safeUsers);
+  });
+
+  app.patch("/api/users/:id/role", async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const { role } = req.body;
+    const user = await storage.updateUserRole(parseInt(req.params.id), role);
+    if (!user) return res.status(404).send("User not found");
+    const { password, ...safeUser } = user;
+    res.json(safeUser);
+  });
 
   return httpServer;
 }
