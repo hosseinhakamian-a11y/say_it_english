@@ -51,6 +51,12 @@ export const enrollments = pgTable("enrollments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const session = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertContentSchema = createInsertSchema(content).omit({ id: true, createdAt: true });
