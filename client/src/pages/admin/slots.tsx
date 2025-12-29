@@ -68,7 +68,8 @@ export default function AdminSlotsPage() {
             toast({ title: "لطفاً تاریخ و ساعت را انتخاب کنید", variant: "destructive" });
             return;
         }
-        const dateTime = `${selectedDate}T${selectedTime}:00`;
+        // Add Tehran timezone offset (+03:30) to preserve local time
+        const dateTime = `${selectedDate}T${selectedTime}:00+03:30`;
         addSlotMutation.mutate({ date: dateTime });
     };
 
