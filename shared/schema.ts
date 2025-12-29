@@ -21,6 +21,7 @@ export const content = pgTable("content", {
   videoId: text("video_id"), // For Bunny/Aparat/YouTube ID
   videoProvider: text("video_provider"), // 'bunny', 'aparat', 'youtube', 'custom'
   isPremium: boolean("is_premium").default(false),
+  price: integer("price").default(0), // Price in Toman (0 = free)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -53,6 +54,18 @@ export const enrollments = pgTable("enrollments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Manual Payment Requests (Card-to-Card)
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  contentId: integer("content_id").notNull(), // Which content they're buying
+  amount: integer("amount").notNull(), // Amount in Toman
+  trackingCode: text("tracking_code").notNull(), // Bank transfer tracking code
+  status: text("status").default("pending"), // 'pending', 'approved', 'rejected'
+  notes: text("notes"), // Admin notes
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const session = pgTable("session", {
   sid: text("sid").primaryKey(),
   sess: jsonb("sess").notNull(),
@@ -65,6 +78,7 @@ export const insertContentSchema = createInsertSchema(content).omit({ id: true, 
 export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, createdAt: true, status: true });
 export const insertClassSchema = createInsertSchema(classes).omit({ id: true, createdAt: true });
 export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id: true, createdAt: true, status: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, status: true, notes: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -77,3 +91,6 @@ export type Class = typeof classes.$inferSelect;
 export type InsertClass = z.infer<typeof insertClassSchema>;
 export type Enrollment = typeof enrollments.$inferSelect;
 export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+

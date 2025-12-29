@@ -6,8 +6,7 @@ import {
     BookOpen,
     Users,
     LogOut,
-    Video,
-    Settings
+    CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +18,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         { name: "داشبورد", href: "/admin", icon: LayoutDashboard },
         { name: "مدیریت محتوا", href: "/admin/content", icon: BookOpen },
         { name: "مدیریت کاربران", href: "/admin/users", icon: Users },
+        { name: "مدیریت پرداخت‌ها", href: "/admin/payments", icon: CreditCard },
     ];
 
     return (
@@ -36,8 +36,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                         return (
                             <Link key={item.name} href={item.href}>
                                 <a className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                                     }`}>
                                     <item.icon className="h-5 w-5" />
                                     {item.name}

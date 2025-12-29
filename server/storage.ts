@@ -1,4 +1,4 @@
-import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment, users, content, bookings, classes, enrollments } from "@shared/schema";
+import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment, Payment, InsertPayment, users, content, bookings, classes, enrollments, payments } from "@shared/schema";
 import session from "express-session";
 import MemoryStoreFactory from "memorystore";
 import connectPgSimple from "connect-pg-simple";
@@ -24,6 +24,9 @@ export interface IStorage {
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   deleteContent(id: number): Promise<boolean>;
   updateContent(id: number, data: Partial<InsertContent>): Promise<Content | undefined>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPayments(): Promise<Payment[]>;
+  updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -99,6 +102,20 @@ export class DatabaseStorage implements IStorage {
 
   async updateContent(id: number, data: Partial<InsertContent>): Promise<Content | undefined> {
     const [updated] = await db.update(content).set(data).where(eq(content.id, id)).returning();
+    return updated;
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [newPayment] = await db.insert(payments).values(payment).returning();
+    return newPayment;
+  }
+
+  async getPayments(): Promise<Payment[]> {
+    return await db.select().from(payments);
+  }
+
+  async updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined> {
+    const [updated] = await db.update(payments).set({ status, notes }).where(eq(payments.id, id)).returning();
     return updated;
   }
 }
@@ -206,6 +223,28 @@ export class MemStorage implements IStorage {
     const updated = { ...existing, ...data };
     this.content.set(id, updated as Content);
     return updated as Content;
+  }
+
+  private paymentsMap: Map<number, Payment> = new Map();
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const id = this.currentId++;
+    const newPayment: Payment = { ...payment, id, status: "pending", notes: null, createdAt: new Date() };
+    this.paymentsMap.set(id, newPayment);
+    return newPayment;
+  }
+
+  async getPayments(): Promise<Payment[]> {
+    return Array.from(this.paymentsMap.values());
+  }
+
+  async updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined> {
+    const payment = this.paymentsMap.get(id);
+    if (!payment) return undefined;
+    payment.status = status;
+    if (notes) payment.notes = notes;
+    this.paymentsMap.set(id, payment);
+    return payment;
   }
 }
 

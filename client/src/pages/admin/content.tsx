@@ -35,6 +35,7 @@ interface Content {
     videoId: string | null;
     videoProvider: string | null;
     isPremium: boolean;
+    price: number | null;
 }
 
 export default function AdminContent() {
@@ -63,6 +64,7 @@ export default function AdminContent() {
             videoId: "",
             contentUrl: "",
             isPremium: false,
+            price: 0,
         },
     });
 
@@ -135,6 +137,7 @@ export default function AdminContent() {
             videoId: content.videoId || "",
             videoProvider: content.videoProvider || "aparat",
             isPremium: content.isPremium,
+            price: content.price || 0,
         });
     }
 
@@ -208,6 +211,25 @@ export default function AdminContent() {
                                     </FormItem>
                                 )} />
                             </div>
+
+                            {/* Price field - show when VIP is selected */}
+                            {form.watch("isPremium") && (
+                                <FormField control={form.control} name="price" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>قیمت (تومان)</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                placeholder="مثلاً: 500000"
+                                                {...field}
+                                                value={field.value || 0}
+                                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            )}
 
                             <div className="p-4 bg-gray-50 rounded-lg border space-y-4">
                                 <h3 className="font-medium text-gray-700">تنظیمات ویدیو</h3>

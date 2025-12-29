@@ -18,6 +18,8 @@ import { useLocation } from "wouter";
 import AdminDashboard from "@/pages/admin/dashboard";
 import AdminContent from "@/pages/admin/content";
 import AdminUsers from "@/pages/admin/users";
+import AdminPayments from "@/pages/admin/payments";
+import PaymentPage from "@/pages/Payment";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
@@ -30,6 +32,7 @@ function Router() {
         <ProtectedRoute path="/admin" component={AdminDashboard} shouldCheckAdmin={true} />
         <ProtectedRoute path="/admin/content" component={AdminContent} shouldCheckAdmin={true} />
         <ProtectedRoute path="/admin/users" component={AdminUsers} shouldCheckAdmin={true} />
+        <ProtectedRoute path="/admin/payments" component={AdminPayments} shouldCheckAdmin={true} />
       </Switch>
     );
   }
@@ -46,6 +49,7 @@ function Router() {
           <Route path="/classes" component={Classes} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/profile" component={Profile} />
+          <Route path="/payment/:id" component={PaymentPage} />
           <Route component={NotFound} />
         </Switch>
       </main>

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlayCircle, FileText, Lock, Video, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { VideoPlayer } from "@/components/VideoPlayer";
@@ -25,11 +26,13 @@ interface Content {
   videoId: string | null;
   videoProvider: string | null;
   isPremium: boolean;
+  price: number | null;
   createdAt: string;
 }
 
 export default function ContentLibrary() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [filter, setFilter] = useState("all");
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
 
@@ -114,8 +117,8 @@ export default function ContentLibrary() {
               <CardHeader className="p-6 pb-2">
                 <div className="flex items-center gap-2 mb-3">
                   <div className={`p-2 rounded-lg ${item.type === 'video' ? 'bg-red-100 text-red-600' :
-                      item.type === 'podcast' ? 'bg-purple-100 text-purple-600' :
-                        'bg-blue-100 text-blue-600'
+                    item.type === 'podcast' ? 'bg-purple-100 text-purple-600' :
+                      'bg-blue-100 text-blue-600'
                     }`}>
                     {getTypeIcon(item.type)}
                   </div>
@@ -134,13 +137,28 @@ export default function ContentLibrary() {
                 </p>
               </CardContent>
 
-              <CardFooter className="p-6 pt-0">
-                <Button
-                  className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all"
-                  onClick={() => setSelectedContent(item)}
-                >
-                  {item.type === 'video' ? 'مشاهده ویدیو' : item.type === 'podcast' ? 'گوش دادن' : 'خواندن مطلب'}
-                </Button>
+              <CardFooter className="p-6 pt-0 flex-col gap-2">
+                {item.isPremium && item.price ? (
+                  <>
+                    <p className="text-center text-amber-700 font-bold text-lg">
+                      {new Intl.NumberFormat("fa-IR").format(item.price)} تومان
+                    </p>
+                    <Button
+                      className="w-full rounded-xl py-6 bg-amber-500 hover:bg-amber-600 shadow-lg"
+                      onClick={() => navigate(`/payment/${item.id}`)}
+                    >
+                      <Lock className="ml-2 h-4 w-4" />
+                      خرید دوره
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all"
+                    onClick={() => setSelectedContent(item)}
+                  >
+                    {item.type === 'video' ? 'مشاهده ویدیو' : item.type === 'podcast' ? 'گوش دادن' : 'خواندن مطلب'}
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))}

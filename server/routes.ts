@@ -94,5 +94,33 @@ export async function registerRoutes(
     res.json(safeUser);
   });
 
+  // Payment endpoints
+  app.post("/api/payments", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    // @ts-ignore
+    const payment = await storage.createPayment({ ...req.body, userId: req.user!.id });
+    res.status(201).json(payment);
+  });
+
+  app.get("/api/payments", async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const payments = await storage.getPayments();
+    res.json(payments);
+  });
+
+  app.patch("/api/payments/:id/status", async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const { status, notes } = req.body;
+    const payment = await storage.updatePaymentStatus(parseInt(req.params.id), status, notes);
+    if (!payment) return res.status(404).send("Payment not found");
+    res.json(payment);
+  });
+
   return httpServer;
 }
