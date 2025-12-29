@@ -22,6 +22,7 @@ export function Navbar() {
     { label: "محتوای آموزشی", path: "/content" },
     { label: "رزرو وقت", path: "/bookings" },
     { label: "کلاس‌های گروهی", path: "/classes" },
+    { label: "وبلاگ", path: "/blog" },
   ];
 
   const isActive = (path: string) => location === path;

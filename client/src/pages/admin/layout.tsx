@@ -6,7 +6,9 @@ import {
     BookOpen,
     Users,
     LogOut,
-    CreditCard
+    CreditCard,
+    User,
+    FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -47,7 +49,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     })}
                 </nav>
 
-                <div className="p-4 border-t">
+                <div className="p-4 border-t space-y-2">
+                    <Link href="/profile">
+                        <a className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 text-sm font-medium">
+                            <User className="h-5 w-5" />
+                            بازگشت به پروفایل
+                        </a>
+                    </Link>
                     <Button
                         variant="ghost"
                         className="w-full flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"

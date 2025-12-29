@@ -13,6 +13,7 @@ import Classes from "@/pages/Classes";
 import AuthPage from "@/pages/Auth";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
+import Blog from "@/pages/Blog";
 
 import { useLocation } from "wouter";
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -50,6 +51,7 @@ function Router() {
           <Route path="/auth" component={AuthPage} />
           <Route path="/profile" component={Profile} />
           <Route path="/payment/:id" component={PaymentPage} />
+          <Route path="/blog" component={Blog} />
           <Route component={NotFound} />
         </Switch>
       </main>
