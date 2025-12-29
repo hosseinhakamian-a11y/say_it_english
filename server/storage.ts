@@ -182,7 +182,17 @@ export class MemStorage implements IStorage {
 
   async createContent(insertContent: InsertContent): Promise<Content> {
     const id = this.currentId++;
-    const item: Content = { ...insertContent, id, createdAt: new Date(), isPremium: insertContent.isPremium ?? false, description: insertContent.description ?? null };
+    const item: Content = {
+      ...insertContent,
+      id,
+      createdAt: new Date(),
+      isPremium: insertContent.isPremium ?? false,
+      description: insertContent.description ?? null,
+      contentUrl: insertContent.contentUrl ?? null,
+      videoId: insertContent.videoId ?? null,
+      videoProvider: insertContent.videoProvider ?? null,
+      price: insertContent.price ?? null,
+    };
     this.content.set(id, item);
     return item;
   }
