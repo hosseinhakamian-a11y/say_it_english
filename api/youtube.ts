@@ -1,55 +1,67 @@
 
 import { Router } from "express";
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
 
 export const youtubeRouter = Router();
 
-// Function to load videos from JSON file
-function loadVideosFromFile(): any[] | null {
-    try {
-        const filePath = join(process.cwd(), "data", "videos.json");
-        if (existsSync(filePath)) {
-            const data = readFileSync(filePath, "utf-8");
-            return JSON.parse(data);
-        }
-    } catch (error) {
-        console.log("Could not load videos.json, using fallback");
-    }
-    return null;
-}
-
-// Fallback mock data
-const FALLBACK_VIDEOS = [
+// Videos data - Edit this array to add/remove videos
+// To add a new video: Copy a video block and change the videoId from the YouTube URL
+// YouTube URL format: https://www.youtube.com/watch?v=VIDEO_ID
+const VIDEOS = [
     {
-        id: "demo-1",
+        id: "0jblRoyR-Jk",
         snippet: {
-            title: "ویدیوی نمونه - به زودی ویدیوهای واقعی اضافه می‌شوند",
-            description: "این یک ویدیوی نمونه است. برای اضافه کردن ویدیوهای واقعی، فایل data/videos.json را ویرایش کنید.",
+            title: "ویدیوی آموزشی Say It English - قسمت ۱",
+            description: "آموزش زبان انگلیسی با متد Say It English",
             thumbnails: {
-                medium: { url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60" },
-                high: { url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60" },
+                medium: { url: "https://img.youtube.com/vi/0jblRoyR-Jk/mqdefault.jpg" },
+                high: { url: "https://img.youtube.com/vi/0jblRoyR-Jk/hqdefault.jpg" }
             },
-            publishedAt: "2024-12-01T10:00:00Z",
-            resourceId: { videoId: "demo-1" }
+            publishedAt: "2024-12-15T10:00:00Z",
+            resourceId: { videoId: "0jblRoyR-Jk" }
+        }
+    },
+    {
+        id: "k5l3x6GCEu8",
+        snippet: {
+            title: "ویدیوی آموزشی Say It English - قسمت ۲",
+            description: "آموزش زبان انگلیسی با متد Say It English",
+            thumbnails: {
+                medium: { url: "https://img.youtube.com/vi/k5l3x6GCEu8/mqdefault.jpg" },
+                high: { url: "https://img.youtube.com/vi/k5l3x6GCEu8/hqdefault.jpg" }
+            },
+            publishedAt: "2024-12-10T10:00:00Z",
+            resourceId: { videoId: "k5l3x6GCEu8" }
+        }
+    },
+    {
+        id: "8ckMphCip8c",
+        snippet: {
+            title: "ویدیوی آموزشی Say It English - قسمت ۳",
+            description: "آموزش زبان انگلیسی با متد Say It English",
+            thumbnails: {
+                medium: { url: "https://img.youtube.com/vi/8ckMphCip8c/mqdefault.jpg" },
+                high: { url: "https://img.youtube.com/vi/8ckMphCip8c/hqdefault.jpg" }
+            },
+            publishedAt: "2024-12-05T10:00:00Z",
+            resourceId: { videoId: "8ckMphCip8c" }
         }
     }
 ];
 
 let cachedVideos: any[] | null = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 1000 * 60 * 5; // 5 minutes cache for file reads
+const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
 youtubeRouter.get("/videos", async (req, res) => {
     try {
         const apiKey = process.env.YOUTUBE_API_KEY;
 
-        // Priority 1: If API key exists, fetch from YouTube
+        // If API key exists, try to fetch from YouTube
         if (apiKey) {
             const channelId = process.env.YOUTUBE_CHANNEL_ID;
 
             // Check cache
-            if (cachedVideos && (Date.now() - lastFetchTime < CACHE_DURATION * 12)) { // 1 hour for API
+            if (cachedVideos && (Date.now() - lastFetchTime < CACHE_DURATION)) {
                 return res.json(cachedVideos);
             }
 
@@ -76,28 +88,15 @@ youtubeRouter.get("/videos", async (req, res) => {
                     }
                 }
             } catch (apiError) {
-                console.log("YouTube API error, falling back to file");
+                console.log("YouTube API error, using hardcoded videos");
             }
         }
 
-        // Priority 2: Load from videos.json file
-        // Check cache first
-        if (cachedVideos && (Date.now() - lastFetchTime < CACHE_DURATION)) {
-            return res.json(cachedVideos);
-        }
-
-        const fileVideos = loadVideosFromFile();
-        if (fileVideos && fileVideos.length > 0) {
-            cachedVideos = fileVideos;
-            lastFetchTime = Date.now();
-            return res.json(fileVideos);
-        }
-
-        // Priority 3: Fallback to demo data
-        res.json(FALLBACK_VIDEOS);
+        // Return hardcoded videos
+        res.json(VIDEOS);
 
     } catch (error) {
         console.error("Error fetching videos:", error);
-        res.json(FALLBACK_VIDEOS);
+        res.json(VIDEOS);
     }
 });
