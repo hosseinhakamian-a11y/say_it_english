@@ -8,7 +8,8 @@ import {
     LogOut,
     CreditCard,
     User,
-    FileText
+    FileText,
+    Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -18,6 +19,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
     const navigation = [
         { name: "داشبورد", href: "/admin", icon: LayoutDashboard },
+        { name: "مدیریت زمان‌ها", href: "/admin/slots", icon: Clock },
         { name: "مدیریت محتوا", href: "/admin/content", icon: BookOpen },
         { name: "مدیریت کاربران", href: "/admin/users", icon: Users },
         { name: "مدیریت پرداخت‌ها", href: "/admin/payments", icon: CreditCard },
