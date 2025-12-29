@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { api } from "@shared/routes";
+import { youtubeRouter } from "../api/youtube";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -10,6 +11,8 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  app.use("/api/youtube", youtubeRouter);
 
   app.get(api.content.list.path, async (req, res) => {
     const content = await storage.getContent();

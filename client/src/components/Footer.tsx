@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, Youtube } from "lucide-react";
 
 export function Footer() {
   return (
@@ -21,6 +21,9 @@ export function Footer() {
               ارتقای مهارت‌های زبانی شما با متدولوژی‌های نوین آموزشی و تمرکز بر لهجه آمریکایی. ما مسیر یادگیری را برای شما هدفمند و جذاب می‌کنیم.
             </p>
             <div className="flex gap-4">
+              <a href="https://www.youtube.com/@say.it.english" target="_blank" rel="noopener noreferrer" className="p-2 bg-white border border-border rounded-full hover:border-red-500 hover:text-red-500 transition-colors">
+                <Youtube className="h-5 w-5" />
+              </a>
               <a href="#" className="p-2 bg-white border border-border rounded-full hover:border-primary hover:text-primary transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
@@ -39,6 +42,7 @@ export function Footer() {
               {[
                 { label: "خانه", path: "/" },
                 { label: "تعیین سطح", path: "/placement" },
+                { label: "ویدیوهای آموزشی", path: "/videos" },
                 { label: "پادکست‌ها", path: "/content" },
                 { label: "رزرو وقت", path: "/bookings" },
               ].map((item) => (

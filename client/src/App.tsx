@@ -13,6 +13,8 @@ import Classes from "@/pages/Classes";
 import AuthPage from "@/pages/Auth";
 import Profile from "@/pages/Profile";
 import NotFound from "@/pages/not-found";
+import VideosPage from "@/pages/Videos";
+import VideoDetailPage from "@/pages/VideoDetail";
 import Blog from "@/pages/Blog";
 
 import { useLocation } from "wouter";
@@ -50,6 +52,8 @@ function Router() {
           <Route path="/classes" component={Classes} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/profile" component={Profile} />
+          <Route path="/videos" component={VideosPage} />
+          <Route path="/videos/:videoId" component={VideoDetailPage} />
           <Route path="/payment/:id" component={PaymentPage} />
           <Route path="/blog" component={Blog} />
           <Route component={NotFound} />
