@@ -25,6 +25,25 @@ export async function registerRoutes(
     res.status(201).json(content);
   });
 
+  app.patch("/api/content/:id", async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const updated = await storage.updateContent(parseInt(req.params.id), req.body);
+    if (!updated) return res.status(404).send("Content not found");
+    res.json(updated);
+  });
+
+  app.delete("/api/content/:id", async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    await storage.deleteContent(parseInt(req.params.id));
+    res.json({ success: true });
+  });
+
   app.get(api.bookings.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     // @ts-ignore

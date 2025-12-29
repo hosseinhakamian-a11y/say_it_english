@@ -22,6 +22,8 @@ export interface IStorage {
   enrollUser(enrollment: InsertEnrollment): Promise<Enrollment>;
   getAllUsers(): Promise<User[]>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  deleteContent(id: number): Promise<boolean>;
+  updateContent(id: number, data: Partial<InsertContent>): Promise<Content | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -88,6 +90,16 @@ export class DatabaseStorage implements IStorage {
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
     const [user] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
     return user;
+  }
+
+  async deleteContent(id: number): Promise<boolean> {
+    const result = await db.delete(content).where(eq(content.id, id));
+    return true;
+  }
+
+  async updateContent(id: number, data: Partial<InsertContent>): Promise<Content | undefined> {
+    const [updated] = await db.update(content).set(data).where(eq(content.id, id)).returning();
+    return updated;
   }
 }
 
@@ -182,6 +194,18 @@ export class MemStorage implements IStorage {
       this.users.set(id, user);
     }
     return user;
+  }
+
+  async deleteContent(id: number): Promise<boolean> {
+    return this.content.delete(id);
+  }
+
+  async updateContent(id: number, data: Partial<InsertContent>): Promise<Content | undefined> {
+    const existing = this.content.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...data };
+    this.content.set(id, updated as Content);
+    return updated as Content;
   }
 }
 
