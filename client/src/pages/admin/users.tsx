@@ -21,9 +21,12 @@ export default function AdminUsers() {
     const queryClient = useQueryClient();
 
     const { data: users, isLoading } = useQuery<User[]>({
-        queryKey: [api.users.list.path],
+        queryKey: ["/api/users"],
         queryFn: async () => {
-            const res = await fetch(api.users.list.path);
+            const token = localStorage.getItem("auth_token");
+            const res = await fetch("/api/users", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             if (!res.ok) throw new Error("Failed to fetch users");
             return await res.json();
         },
@@ -31,9 +34,13 @@ export default function AdminUsers() {
 
     const updateRoleMutation = useMutation({
         mutationFn: async ({ id, role }: { id: number; role: string }) => {
+            const token = localStorage.getItem("auth_token");
             const res = await fetch(`/api/users/${id}/role`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({ role }),
             });
             if (!res.ok) throw new Error("Failed to update role");
@@ -41,7 +48,7 @@ export default function AdminUsers() {
         },
         onSuccess: () => {
             toast({ title: "نقش کاربر با موفقیت تغییر کرد ✅" });
-            queryClient.invalidateQueries({ queryKey: [api.users.list.path] });
+            queryClient.invalidateQueries({ queryKey: ["/api/users"] });
         },
         onError: () => {
             toast({ title: "خطا در تغییر نقش ❌", variant: "destructive" });
