@@ -6,6 +6,7 @@ const SMS_IR_TEMPLATE_ID = parseInt(process.env.SMS_IR_TEMPLATE_ID || "100000");
 
 export async function sendOTP(mobile: string, code: string) {
     try {
+        console.log(`Sending SMS to ${mobile} using template ${SMS_IR_TEMPLATE_ID} with code ${code}`);
         const response = await axios.post(
             "https://api.sms.ir/v1/send/verify",
             {

@@ -133,6 +133,8 @@ export function setupAuth(app: Express) {
   );
 
   // OTP Routes
+  const ADMIN_PHONES = ["09222453571", "09123104254"];
+
   app.post("/api/auth/otp/request", async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).send("Phone number is required");
@@ -148,9 +150,15 @@ export function setupAuth(app: Express) {
           phone,
           otp,
           otpExpires,
+          role: ADMIN_PHONES.includes(phone) ? "admin" : "student",
         });
       } else {
-        await storage.updateUser(user.id, { otp, otpExpires });
+        // If user exists, also update role if they are in the admin list
+        if (ADMIN_PHONES.includes(phone) && user.role !== "admin") {
+          await storage.updateUser(user.id, { role: "admin", otp, otpExpires });
+        } else {
+          await storage.updateUser(user.id, { otp, otpExpires });
+        }
       }
 
       await sendOTP(phone, otp);
