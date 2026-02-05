@@ -12,7 +12,10 @@ export interface IStorage {
   sessionStore: session.Store;
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByPhone(phone: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, data: Partial<User>): Promise<User | undefined>;
   getContent(): Promise<Content[]>;
   createContent(content: InsertContent): Promise<Content>;
   getBookings(userId: number): Promise<Booking[]>;
@@ -52,8 +55,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.phone, phone));
+    return user;
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUser(id: number, data: Partial<User>): Promise<User | undefined> {
+    const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user;
   }
 
@@ -169,11 +187,42 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.phone === phone,
+    );
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.googleId === googleId,
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
-    const user: User = { ...insertUser, id, createdAt: new Date(), role: insertUser.role ?? "student", level: insertUser.level ?? "beginner" };
+    const user: User = {
+      ...insertUser,
+      id,
+      createdAt: new Date(),
+      role: insertUser.role ?? "student",
+      level: insertUser.level ?? "beginner",
+      phone: insertUser.phone ?? null,
+      googleId: insertUser.googleId ?? null,
+      otp: insertUser.otp ?? null,
+      otpExpires: insertUser.otpExpires ?? null,
+      password: insertUser.password ?? null
+    };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: number, data: Partial<User>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    const updated = { ...user, ...data };
+    this.users.set(id, updated);
+    return updated;
   }
 
   async getContent(): Promise<Content[]> {
@@ -205,7 +254,15 @@ export class MemStorage implements IStorage {
 
   async createBooking(insertBooking: InsertBooking): Promise<Booking> {
     const id = this.currentId++;
-    const booking: Booking = { ...insertBooking, id, createdAt: new Date(), status: "pending", notes: insertBooking.notes ?? null };
+    const booking: Booking = {
+      ...insertBooking,
+      id,
+      createdAt: new Date(),
+      status: "pending",
+      notes: insertBooking.notes ?? null,
+      phone: insertBooking.phone ?? null,
+      timeSlotId: insertBooking.timeSlotId ?? null
+    };
     this.bookings.set(id, booking);
     return booking;
   }
@@ -257,7 +314,16 @@ export class MemStorage implements IStorage {
 
   async createPayment(payment: InsertPayment): Promise<Payment> {
     const id = this.currentId++;
-    const newPayment: Payment = { ...payment, id, status: "pending", notes: null, createdAt: new Date() };
+    const newPayment: Payment = {
+      ...payment,
+      id,
+      status: "pending",
+      notes: null,
+      createdAt: new Date(),
+      paymentMethod: payment.paymentMethod ?? "card",
+      trackingCode: payment.trackingCode ?? null,
+      transactionHash: payment.transactionHash ?? null
+    };
     this.paymentsMap.set(id, newPayment);
     return newPayment;
   }

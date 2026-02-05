@@ -5,7 +5,11 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  password: text("password"),
+  phone: text("phone").unique(),
+  googleId: text("google_id").unique(),
+  otp: text("otp"),
+  otpExpires: timestamp("otp_expires"),
   role: text("role").default("student"), // 'admin' (teacher) or 'student'
   level: text("level").default("beginner"), // beginner, intermediate, advanced
   createdAt: timestamp("created_at").defaultNow(),
@@ -70,8 +74,10 @@ export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   contentId: integer("content_id").notNull(), // Which content they're buying
-  amount: integer("amount").notNull(), // Amount in Toman
-  trackingCode: text("tracking_code").notNull(), // Bank transfer tracking code
+  amount: integer("amount").notNull(), // Amount in Toman or equivalent
+  paymentMethod: text("payment_method").default("card"), // 'card' or 'crypto'
+  trackingCode: text("tracking_code"), // Bank transfer tracking code (for card)
+  transactionHash: text("transaction_hash"), // For crypto payments
   status: text("status").default("pending"), // 'pending', 'approved', 'rejected'
   notes: text("notes"), // Admin notes
   createdAt: timestamp("created_at").defaultNow(),

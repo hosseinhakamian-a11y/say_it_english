@@ -4,7 +4,9 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User } from "@shared/schema";
+import { User, InsertUser } from "@shared/schema";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { sendOTP } from "./sms";
 
 const scryptAsync = promisify(scrypt);
 
@@ -39,13 +41,42 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       const user = await storage.getUserByUsername(username);
-      if (!user || !(await comparePasswords(password, user.password))) {
+      if (!user || !user.password || !(await comparePasswords(password, user.password))) {
         return done(null, false);
       } else {
         return done(null, user);
       }
     }),
   );
+
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: "/api/auth/google/callback",
+        },
+        async (_accessToken: string, _refreshToken: string, profile: any, done: (err: any, user?: any) => void) => {
+          try {
+            let user = await storage.getUserByGoogleId(profile.id);
+            if (!user) {
+              const email = profile.emails?.[0]?.value || "";
+              user = await storage.createUser({
+                username: email || `google_${profile.id}`,
+                googleId: profile.id,
+                role: "student",
+                level: "beginner",
+              });
+            }
+            return done(null, user);
+          } catch (err) {
+            return done(err as Error);
+          }
+        }
+      )
+    );
+  }
 
   passport.serializeUser((user, done) => done(null, (user as User).id));
   passport.deserializeUser(async (id, done) => {
@@ -89,5 +120,73 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req: Request, res: Response) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
+  });
+
+  // Google Auth Routes
+  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+  app.get(
+    "/api/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/login" }),
+    (req, res) => {
+      res.redirect("/");
+    }
+  );
+
+  // OTP Routes
+  app.post("/api/auth/otp/request", async (req, res) => {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).send("Phone number is required");
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    try {
+      let user = await storage.getUserByPhone(phone);
+      if (!user) {
+        user = await storage.createUser({
+          username: `user_${phone}`,
+          phone,
+          otp,
+          otpExpires,
+        });
+      } else {
+        await storage.updateUser(user.id, { otp, otpExpires });
+      }
+
+      await sendOTP(phone, otp);
+      res.json({ message: "OTP sent successfully" });
+    } catch (err) {
+      console.error("OTP Request Error:", err);
+      res.status(500).send("Failed to send OTP");
+    }
+  });
+
+  app.post("/api/auth/otp/verify", async (req, res, next) => {
+    const { phone, otp } = req.body;
+    const user = await storage.getUserByPhone(phone);
+
+    if (!user || user.otp !== otp || !user.otpExpires || user.otpExpires < new Date()) {
+      return res.status(400).send("Invalid or expired OTP");
+    }
+
+    // Clear OTP after verification
+    await storage.updateUser(user.id, { otp: null, otpExpires: null });
+
+    req.login(user, (err) => {
+      if (err) return next(err);
+      res.json(user);
+    });
+  });
+
+  // Set Password Route
+  app.post("/api/user/password", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { password } = req.body;
+    if (!password) return res.status(400).send("Password is required");
+
+    const hashedPassword = await hashPassword(password);
+    // @ts-ignore
+    await storage.updateUser(req.user.id, { password: hashedPassword });
+    res.json({ message: "Password updated successfully" });
   });
 }
