@@ -1,36 +1,29 @@
 import axios from "axios";
 
-const SMS_IR_API_KEY = process.env.SMS_IR_API_KEY || "faDqItuwBouRfBb1uY80UOHfA3mMQG9MEyZKqfdjNefotGra";
-
-const SMS_IR_TEMPLATE_ID = parseInt(process.env.SMS_IR_TEMPLATE_ID || "100000");
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 export async function sendOTP(mobile: string, code: string) {
     try {
-        console.log(`Sending SMS to ${mobile} using template ${SMS_IR_TEMPLATE_ID} with code ${code}`);
+        console.log(`Calling Supabase Edge Function to send SMS to ${mobile}`);
         const response = await axios.post(
-            "https://api.sms.ir/v1/send/verify",
+            `${SUPABASE_URL}/functions/v1/send-otp`,
             {
-                mobile: mobile,
-                templateId: SMS_IR_TEMPLATE_ID,
-                parameters: [
-                    {
-                        name: "CODE",
-                        value: code,
-                    },
-                ],
+                phone: mobile,
+                code: code,
             },
             {
                 headers: {
-                    "x-api-key": SMS_IR_API_KEY,
-                    "Accept": "application/json",
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                    "apikey": SUPABASE_ANON_KEY,
                 },
             }
         );
 
         return response.data;
     } catch (error: any) {
-        console.error("SMS.ir Error:", error.response?.data || error.message);
-        throw new Error("Failed to send SMS");
+        console.error("Supabase Edge Function Error:", error.response?.data || error.message);
+        throw new Error("Failed to send SMS via Edge Function");
     }
 }
