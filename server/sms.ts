@@ -14,32 +14,57 @@ export async function sendOTP(mobile: string, code: string) {
     if (cleanPhone.startsWith("98")) cleanPhone = cleanPhone.substring(2);
     if (!cleanPhone.startsWith("0")) cleanPhone = "0" + cleanPhone;
 
+    // First attempt: Direct call to SMS.ir
     try {
-        console.log(`[SMS DEBUG] Request payload:`, { phone: cleanPhone, code });
-        const response = await axios.post(
-            `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/send-otp`,
+        console.log(`[SMS] Attempting direct call to SMS.ir for ${cleanPhone}...`);
+        const directResponse = await axios.post(
+            "https://api.sms.ir/v1/send/verify",
             {
-                phone: cleanPhone,
-                code: code,
+                mobile: cleanPhone,
+                templateId: parseInt(process.env.SMS_IR_TEMPLATE_ID || "0"),
+                parameters: [{ name: "CODE", value: code }]
             },
             {
                 headers: {
+                    "x-api-key": process.env.SMS_IR_API_KEY,
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY.trim()}`,
-                    "apikey": SUPABASE_ANON_KEY.trim(),
                 },
+                timeout: 5000 // 5 seconds timeout for direct call
             }
         );
 
-        console.log("[SMS DEBUG] Supabase Response Data:", response.data);
-        return { 
-            success: true, 
-            data: response.data,
-            debug: { url: SUPABASE_URL, phone: cleanPhone }
-        };
-    } catch (error: any) {
-        const detail = error.response?.data || error.message;
-        console.error("[SMS DEBUG] Error:", detail);
-        throw new Error(`SMS Error: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
+        if (directResponse.data.status === 1) {
+            console.log("[SMS] Direct call successful!");
+            return { success: true, method: "direct", data: directResponse.data };
+        }
+        throw new Error(`SMS.ir returned status ${directResponse.data.status}: ${directResponse.data.message}`);
+    } catch (directError: any) {
+        console.warn(`[SMS] Direct call failed, falling back to Supabase. Error: ${directError.message}`);
+
+        // Second attempt: Fallback to Supabase Edge Function
+        try {
+            console.log(`[SMS] Attempting fallback via Supabase Edge Function...`);
+            const supabaseResponse = await axios.post(
+                `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/send-otp`,
+                {
+                    phone: cleanPhone,
+                    code: code,
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY.trim()}`,
+                        "apikey": SUPABASE_ANON_KEY.trim(),
+                    },
+                }
+            );
+
+            console.log("[SMS] Supabase fallback successful!");
+            return { success: true, method: "supabase", data: supabaseResponse.data };
+        } catch (supabaseError: any) {
+            const detail = supabaseError.response?.data || supabaseError.message;
+            console.error("[SMS] Both methods failed. Supabase Error:", detail);
+            throw new Error(`SMS Error (Both methods failed): ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
+        }
     }
 }
