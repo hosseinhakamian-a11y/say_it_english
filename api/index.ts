@@ -1,46 +1,34 @@
-import serverless from "serverless-http";
-import express from "express";
-import { registerRoutes } from "../server/routes";
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const REQUIRED_VARS = ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SMS_IR_API_KEY'];
-const app = express();
-
-app.use(express.json());
-
-// Add a simple ping for status checking
-app.get("/api/ping", (_req, res) => {
-  res.json({ 
-    status: "ok", 
-    time: new Date().toISOString(),
-    env_keys: REQUIRED_VARS.filter(v => !!process.env[v]),
-    node_version: process.version
-  });
-});
-
-let routesPromise: Promise<any> | null = null;
-
-export default async (req: any, res: any) => {
-  // Check config before anything else
-  const missing = REQUIRED_VARS.filter(v => !process.env[v]);
-  if (missing.length > 0) {
-    return res.status(500).json({
-      error: "Configuration Missing",
-      message: `Required vars missing: ${missing.join(', ')}`
-    });
-  }
-
-  try {
-    if (!routesPromise) {
-      routesPromise = registerRoutes(null as any, app);
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // 1. Simple response for PING
+    if (req.url?.includes('ping')) {
+        return res.status(200).json({ 
+            status: "alive", 
+            env: {
+                hasDb: !!process.env.DATABASE_URL,
+                hasSms: !!process.env.SMS_IR_API_KEY
+            }
+        });
     }
-    await routesPromise;
-    return await serverless(app)(req, res);
-  } catch (err: any) {
-    console.error("CRITICAL RUNTIME ERROR:", err);
-    res.status(500).json({ 
-      error: "Runtime Crash", 
-      message: err.message,
-      detail: "Check Vercel Logs for stack trace"
-    });
-  }
-};
+
+    try {
+        // 2. Lazy load dependencies to catch errors
+        const serverless = (await import("serverless-http")).default;
+        const express = (await import("express")).default;
+        const { registerRoutes } = await import("../server/routes");
+
+        const app = express();
+        app.use(express.json());
+        await registerRoutes(null as any, app);
+        
+        const vercelHandler = serverless(app);
+        return await vercelHandler(req, res);
+    } catch (err: any) {
+        return res.status(500).json({
+            error: "Deferred Startup Failed",
+            message: err.message,
+            stack: err.stack
+        });
+    }
+}
