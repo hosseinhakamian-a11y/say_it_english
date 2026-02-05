@@ -1,8 +1,8 @@
-import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment, Payment, InsertPayment, Purchase, InsertPurchase, users, content, bookings, classes, enrollments, payments, purchases } from "@shared/schema";
+import { User, InsertUser, Content, InsertContent, Booking, InsertBooking, Class, InsertClass, Enrollment, InsertEnrollment, Payment, InsertPayment, Purchase, InsertPurchase, users, content, bookings, classes, enrollments, payments, purchases } from "../shared/schema.js";
 import session from "express-session";
 import MemoryStoreFactory from "memorystore";
 import connectPgSimple from "connect-pg-simple";
-import { db, pool } from "./db";
+import { db, pool } from "./db.js";
 import { eq, and } from "drizzle-orm";
 
 const MemoryStore = MemoryStoreFactory(session);

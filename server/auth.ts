@@ -3,10 +3,10 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage";
-import { User, InsertUser } from "@shared/schema";
+import { storage } from "./storage.js";
+import { User, InsertUser } from "../shared/schema.js";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { sendOTP } from "./sms";
+import { sendOTP } from "./sms.js";
 
 const scryptAsync = promisify(scrypt);
 
