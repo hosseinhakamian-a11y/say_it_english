@@ -10,7 +10,19 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Register all routes (this will call setupAuth which configures sessions/passport)
-registerRoutes(null as any, app);
+// Register all routes
+const routesPromise = registerRoutes(null as any, app);
 
-export default serverless(app);
+export default async (req: any, res: any) => {
+  try {
+    await routesPromise;
+    return await serverless(app)(req, res);
+  } catch (err: any) {
+    console.error("Vercel Bridge Error:", err);
+    res.status(500).json({ 
+      message: "Internal Bridge Error", 
+      error: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined
+    });
+  }
+};
