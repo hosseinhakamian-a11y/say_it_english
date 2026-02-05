@@ -31,9 +31,11 @@ serve(async (req) => {
     })
 
     const result = await response.json()
+    console.log("SMS.ir response:", result)
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+      status: response.status,
     })
 
   } catch (error) {
