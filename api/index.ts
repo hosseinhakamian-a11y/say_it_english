@@ -5,6 +5,15 @@ import { registerRoutes } from "../server/routes";
 const app = express();
 app.use(express.json());
 
+// Add a simple ping for status checking
+app.get("/api/ping", (_req, res) => {
+  res.json({ 
+    status: "ok", 
+    time: new Date().toISOString(),
+    env_keys: REQUIRED_VARS.filter(v => !!process.env[v])
+  });
+});
+
 // Diagnostic log for Vercel
 console.log("Vercel Bridge initializing...");
 
