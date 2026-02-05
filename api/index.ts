@@ -1,8 +1,16 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import serverless from "serverless-http";
+import express from "express";
+import { registerRoutes } from "../server/routes";
+import session from "express-session";
+import passport from "passport";
+import { storage } from "../server/storage";
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
-    res.status(200).json({
-        message: "Say It English API",
-        endpoints: ["/api/register", "/api/login", "/api/logout", "/api/user", "/api/content"]
-    });
-}
+const app = express();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// Register all routes (this will call setupAuth which configures sessions/passport)
+registerRoutes(null as any, app);
+
+export default serverless(app);
