@@ -70,15 +70,18 @@ export default function AuthPage() {
         body: JSON.stringify(data),
       });
       const result = await res.json();
-      console.log("OTP Request Success Response:", result);
+      console.log("DEBUG: OTP Server Response:", result);
 
-      if (!res.ok) throw new Error(result.message || JSON.stringify(result));
+      if (!res.ok) {
+        throw new Error(result.message || JSON.stringify(result));
+      }
+
       setPhone(data.phone);
       setOtpStep("verify");
-      toast({ title: "کد تایید ارسال شد 📩" });
+      toast({ title: "وضعیت سیستم پیامک در کنسول چاپ شد" });
     } catch (err: any) {
-      console.error("OTP Request Failed:", err);
-      toast({ title: "خطا در ارسال کد", description: err.message, variant: "destructive" });
+      console.error("DEBUG: OTP Global Error:", err);
+      toast({ title: "خطای سیستمی", description: err.message, variant: "destructive" });
     } finally {
       setIsSendingOtp(false);
     }

@@ -15,7 +15,7 @@ export async function sendOTP(mobile: string, code: string) {
     if (!cleanPhone.startsWith("0")) cleanPhone = "0" + cleanPhone;
 
     try {
-        console.log(`Calling Supabase Edge Function for ${cleanPhone} at: ${SUPABASE_URL}/functions/v1/send-otp`);
+        console.log(`[SMS DEBUG] Request payload:`, { phone: cleanPhone, code });
         const response = await axios.post(
             `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/send-otp`,
             {
@@ -25,17 +25,21 @@ export async function sendOTP(mobile: string, code: string) {
             {
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                    "apikey": SUPABASE_ANON_KEY,
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY.trim()}`,
+                    "apikey": SUPABASE_ANON_KEY.trim(),
                 },
             }
         );
 
-        console.log("Supabase Edge Function Raw Response:", response.data);
-        return response.data;
+        console.log("[SMS DEBUG] Supabase Response Data:", response.data);
+        return { 
+            success: true, 
+            data: response.data,
+            debug: { url: SUPABASE_URL, phone: cleanPhone }
+        };
     } catch (error: any) {
-        const detail = error.response?.data?.message || JSON.stringify(error.response?.data) || error.message;
-        console.error("Supabase Edge Function Error Details:", detail);
-        throw new Error(`SMS Error: ${detail}`);
+        const detail = error.response?.data || error.message;
+        console.error("[SMS DEBUG] Error:", detail);
+        throw new Error(`SMS Error: ${typeof detail === 'object' ? JSON.stringify(detail) : detail}`);
     }
 }
