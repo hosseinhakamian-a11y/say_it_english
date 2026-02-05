@@ -21,12 +21,10 @@ if (!process.env.DATABASE_URL) {
 }
 
 if (!process.env.DATABASE_URL) {
-  console.error("CRITICAL: DATABASE_URL is still missing after check!");
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  console.error("CRITICAL: DATABASE_URL is missing!");
+  // We won't throw here anymore to allow the diagnostic bridge to catch and report it
 } else {
-  console.log("DATABASE_URL is set (starts with: " + process.env.DATABASE_URL.substring(0, 15) + "...)");
+  console.log("DATABASE_URL is found");
 }
 
 export const pool = new Pool({

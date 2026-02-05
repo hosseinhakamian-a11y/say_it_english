@@ -7,15 +7,20 @@ app.use(express.json());
 
 // Diagnostic log for Vercel
 console.log("Vercel Bridge initializing...");
-console.log("Environment check:", {
-  hasDbUrl: !!process.env.DATABASE_URL,
-  hasSmsKey: !!process.env.SMS_IR_API_KEY,
-  nodeEnv: process.env.NODE_ENV
-});
+
+const REQUIRED_VARS = ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SMS_IR_API_KEY'];
 
 let routesPromise: Promise<any> | null = null;
 
 export default async (req: any, res: any) => {
+  const missing = REQUIRED_VARS.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    return res.status(500).json({
+      error: "Configuration Missing",
+      message: `The following environment variables are missing in Vercel: ${missing.join(', ')}`,
+      tip: "Go to Vercel Dashboard > Settings > Environment Variables and add them."
+    });
+  }
   try {
     if (!routesPromise) {
       console.log("Starting route registration...");
