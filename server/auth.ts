@@ -99,15 +99,28 @@ export function setupAuth(app: Express) {
 
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(201).json(user);
+        req.session.save((err) => {
+          if (err) return next(err);
+          res.status(201).json(user);
+        });
       });
     } catch (err) {
       next(err);
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req: Request, res: Response) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any) => {
+      if (err) return next(err);
+      if (!user) return res.status(401).send("Invalid username or password");
+      req.login(user, (err) => {
+        if (err) return next(err);
+        req.session.save((err) => {
+          if (err) return next(err);
+          res.status(200).json(user);
+        });
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req: Request, res: Response, next: NextFunction) => {
@@ -182,7 +195,10 @@ export function setupAuth(app: Express) {
 
     req.login(user, (err) => {
       if (err) return next(err);
-      res.json(user);
+      req.session.save((err) => {
+        if (err) return next(err);
+        res.json(user);
+      });
     });
   });
 
