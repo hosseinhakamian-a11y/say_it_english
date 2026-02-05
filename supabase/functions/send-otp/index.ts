@@ -13,6 +13,7 @@ serve(async (req) => {
 
   try {
     const { phone, code } = await req.json()
+    console.log(`Attempting to send OTP to ${phone}`)
 
     const apiKey = Deno.env.get('SMS_IR_API_KEY')
     const templateId = Deno.env.get('SMS_IR_TEMPLATE_ID')
@@ -31,17 +32,21 @@ serve(async (req) => {
     })
 
     const result = await response.json()
-    console.log("SMS.ir response:", result)
+    console.log("SMS.ir full response:", JSON.stringify(result))
+
+    // در sms.ir اگر وضعیت 1 نباشد یعنی خطایی رخ داده است
+    const isSuccessful = result.status === 1;
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: response.status,
+      status: isSuccessful ? 200 : 400,
     })
 
   } catch (error) {
+    console.error("Edge Function Error:", error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 500,
     })
   }
 })

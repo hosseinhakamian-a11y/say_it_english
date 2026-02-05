@@ -9,12 +9,17 @@ export async function sendOTP(mobile: string, code: string) {
         throw new Error("Server configuration error: Missing Supabase credentials");
     }
 
+    // Standardize phone number for SMS.ir (e.g., 0912...)
+    let cleanPhone = mobile.replace(/\D/g, ""); // فقط اعداد
+    if (cleanPhone.startsWith("98")) cleanPhone = cleanPhone.substring(2);
+    if (!cleanPhone.startsWith("0")) cleanPhone = "0" + cleanPhone;
+
     try {
-        console.log(`Calling Supabase Edge Function at: ${SUPABASE_URL}/functions/v1/send-otp`);
+        console.log(`Calling Supabase Edge Function for ${cleanPhone} at: ${SUPABASE_URL}/functions/v1/send-otp`);
         const response = await axios.post(
             `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/send-otp`,
             {
-                phone: mobile,
+                phone: cleanPhone,
                 code: code,
             },
             {
