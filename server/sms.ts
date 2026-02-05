@@ -1,5 +1,7 @@
 import axios from "axios";
 
+// SMS.ir and Supabase integration
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 

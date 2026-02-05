@@ -1,33 +1,34 @@
-import serverless from "serverless-http";
 import express from "express";
-import { registerRoutes } from "../server/routes.js";
+import serverless from "serverless-http";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Simple Ping
-app.get("/api/ping", (_req, res) => {
-  res.json({ status: "alive", message: "Vercel Bridge is operational" });
-});
-
-// Initialization flag
-let initialized = false;
+let serverlessHandler: any = null;
 
 export default async (req: any, res: any) => {
   try {
-    if (!initialized) {
+    if (!serverlessHandler) {
+      console.log("Initializing serverless app...");
+      const { registerRoutes } = await import("../server/routes.js");
       await registerRoutes(null as any, app);
-      initialized = true;
+      serverlessHandler = serverless(app);
     }
-    const handler = serverless(app);
-    return await handler(req, res);
+    
+    // Quick handle for ping
+    if (req.url.includes("/api/ping")) {
+      return res.json({ status: "alive", message: "Server is ready" });
+    }
+
+    return await serverlessHandler(req, res);
   } catch (err: any) {
-    console.error("Vercel Bridge Failure:", err);
+    console.error("VERCEL STARTUP ERROR:", err);
     res.status(500).json({
-      error: "Bridge Failure",
+      error: "Startup Failed",
       message: err.message,
-      stack: err.stack
+      stack: err.stack,
+      hint: "Check if all local imports in the error stack have .js extensions"
     });
   }
 };

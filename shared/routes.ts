@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertUserSchema, insertContentSchema, insertBookingSchema, insertClassSchema, insertEnrollmentSchema } from './schema';
+import { insertUserSchema, insertContentSchema, insertBookingSchema, insertClassSchema, insertEnrollmentSchema } from './schema.js';
 
 export const errorSchemas = {
   validation: z.object({
