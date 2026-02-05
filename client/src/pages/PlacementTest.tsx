@@ -251,9 +251,9 @@ export default function PlacementTest() {
             >
               <Card className="rounded-2xl shadow-lg border-0 overflow-hidden">
                 <div className="h-2 bg-muted w-full">
-                  <div 
-                    className="h-full bg-primary transition-all duration-500" 
-                    style={{ width: `${((currentQuestion + 1) / currentSection.questions.length) * 100}%` }} 
+                  <div
+                    className="h-full bg-primary transition-all duration-500"
+                    style={{ width: `${((currentQuestion + 1) / currentSection.questions.length) * 100}%` }}
                   />
                 </div>
                 <CardContent className="p-8 md:p-12">
@@ -266,21 +266,21 @@ export default function PlacementTest() {
                     </h3>
                   </div>
 
-                  <RadioGroup 
-                    onValueChange={handleAnswer} 
+                  <RadioGroup
+                    onValueChange={handleAnswer}
                     value={answers[currentSection.id as SectionKey]?.[currentQuestion] || ""}
                     className="space-y-3"
                   >
                     {currentQ.options.map((option) => (
-                      <div key={option} className="flex items-center space-x-3" style={{ direction: "rtl" }}>
-                        <RadioGroupItem 
-                          value={option} 
+                      <div key={option} className="flex items-center gap-3" style={{ direction: "ltr" }}>
+                        <RadioGroupItem
+                          value={option}
                           id={`option-${option}-${currentQuestion}`}
-                          className="peer" 
+                          className="peer"
                         />
                         <Label
                           htmlFor={`option-${option}-${currentQuestion}`}
-                          className="flex-1 p-4 rounded-lg border-2 border-muted cursor-pointer hover:border-primary/50 hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all font-medium text-right"
+                          className="flex-1 p-4 rounded-lg border-2 border-muted cursor-pointer hover:border-primary/50 hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all font-medium text-left"
                         >
                           {option}
                         </Label>
@@ -289,7 +289,7 @@ export default function PlacementTest() {
                   </RadioGroup>
 
                   <div className="mt-10 flex justify-between items-center">
-                    <Button 
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
@@ -306,8 +306,8 @@ export default function PlacementTest() {
                       <ChevronLeft className="ml-2 h-4 w-4" />
                       قبلی
                     </Button>
-                    <Button 
-                      onClick={handleNext} 
+                    <Button
+                      onClick={handleNext}
                       disabled={!answers[currentSection.id as SectionKey]?.[currentQuestion]}
                       size="lg"
                       className="rounded-lg px-8"
@@ -387,9 +387,9 @@ export default function PlacementTest() {
             </Card>
 
             <div className="flex gap-4 justify-center">
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="rounded-lg"
                 onClick={() => {
                   setSectionIndex(0);
@@ -400,8 +400,8 @@ export default function PlacementTest() {
               >
                 آزمون دوباره
               </Button>
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="rounded-lg"
                 onClick={() => setLocation("/content")}
               >
