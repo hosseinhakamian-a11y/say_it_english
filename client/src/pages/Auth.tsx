@@ -69,7 +69,10 @@ export default function AuthPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await res.text());
+      const result = await res.json();
+      console.log("OTP Request Success Response:", result);
+
+      if (!res.ok) throw new Error(result.message || JSON.stringify(result));
       setPhone(data.phone);
       setOtpStep("verify");
       toast({ title: "کد تایید ارسال شد 📩" });
