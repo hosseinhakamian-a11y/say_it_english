@@ -176,9 +176,9 @@ export function setupAuth(app: Express) {
 
       await sendOTP(phone, otp);
       res.json({ message: "OTP sent successfully" });
-    } catch (err) {
+    } catch (err: any) {
       console.error("OTP Request Error:", err);
-      res.status(500).send("Failed to send OTP");
+      res.status(500).send(err.message || "Failed to send OTP");
     }
   });
 

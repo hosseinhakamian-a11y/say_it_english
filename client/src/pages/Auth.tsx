@@ -74,6 +74,7 @@ export default function AuthPage() {
       setOtpStep("verify");
       toast({ title: "کد تایید ارسال شد 📩" });
     } catch (err: any) {
+      console.error("OTP Request Failed:", err);
       toast({ title: "خطا در ارسال کد", description: err.message, variant: "destructive" });
     } finally {
       setIsSendingOtp(false);

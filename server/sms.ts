@@ -34,7 +34,8 @@ export async function sendOTP(mobile: string, code: string) {
         console.log("Supabase Edge Function Raw Response:", response.data);
         return response.data;
     } catch (error: any) {
-        console.error("Supabase Edge Function Error Details:", error.response?.data || error.message);
-        throw new Error("Failed to send SMS via Edge Function");
+        const detail = error.response?.data?.message || JSON.stringify(error.response?.data) || error.message;
+        console.error("Supabase Edge Function Error Details:", detail);
+        throw new Error(`SMS Error: ${detail}`);
     }
 }
