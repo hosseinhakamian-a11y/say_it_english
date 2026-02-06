@@ -1,16 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import pg from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
 
 // ============ DATABASE SETUP ============
 const { Pool } = pg;
-let db: any = null;
 let pool: any = null;
 
-function getDb() {
-  if (!db) {
+function getPool() {
+  if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error("DATABASE_URL not configured");
@@ -19,9 +16,8 @@ function getDb() {
       connectionString,
       ssl: { rejectUnauthorized: false }
     });
-    db = drizzle(pool);
   }
-  return db;
+  return pool;
 }
 
 // ============ SMS SENDING LOGIC ============
@@ -38,7 +34,6 @@ async function sendSMS(phone: string, code: string) {
   console.log("[SMS] Sending to:", cleanPhone, "Code:", code);
 
   try {
-    console.log("[SMS] Attempting direct SMS.ir call...");
     const response = await axios.post(
       "https://api.sms.ir/v1/send/verify",
       {
@@ -64,7 +59,7 @@ async function sendSMS(phone: string, code: string) {
     
     if (SUPABASE_URL && SUPABASE_ANON_KEY) {
       try {
-        const supabaseResponse = await axios.post(
+        await axios.post(
           `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/send-otp`,
           { phone: cleanPhone, code },
           {
@@ -84,9 +79,6 @@ async function sendSMS(phone: string, code: string) {
     throw smsError;
   }
 }
-
-// ============ OTP Storage (in-memory for now, will use DB later) ============
-const otpStore: Map<string, { otp: string, expires: number }> = new Map();
 
 function cleanPhone(phone: string): string {
   let clean = phone.replace(/\D/g, "");
@@ -113,14 +105,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (url.includes('/api/ping')) {
     return res.status(200).json({
       status: "alive",
-      version: "8.0.0-full",
-      timestamp: new Date().toISOString(),
-      env: {
-        hasDb: !!process.env.DATABASE_URL,
-        hasSmsKey: !!process.env.SMS_IR_API_KEY,
-        hasTemplateId: !!process.env.SMS_IR_TEMPLATE_ID,
-        hasSupabase: !!process.env.SUPABASE_URL
-      }
+      version: "9.0.0-db-otp",
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -136,15 +122,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const normalized = cleanPhone(phone);
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // Store OTP with 5-minute expiry
-      otpStore.set(normalized, { 
-        otp, 
-        expires: Date.now() + 5 * 60 * 1000 
-      });
+      const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
 
-      console.log("[OTP] Generated for", normalized, ":", otp);
+      console.log("[OTP Request] Phone:", normalized, "OTP:", otp);
 
+      const db = getPool();
+
+      // Check if user exists
+      const existingUsers = await db.query(
+        'SELECT * FROM users WHERE phone = $1',
+        [normalized]
+      );
+
+      if (existingUsers.rows.length > 0) {
+        // Update existing user with new OTP
+        await db.query(
+          'UPDATE users SET otp = $1, otp_expires = $2 WHERE phone = $3',
+          [otp, otpExpires, normalized]
+        );
+        console.log("[OTP Request] Updated OTP for existing user");
+      } else {
+        // Create new user with OTP
+        await db.query(
+          'INSERT INTO users (phone, otp, otp_expires, role, created_at) VALUES ($1, $2, $3, $4, NOW())',
+          [normalized, otp, otpExpires, 'user']
+        );
+        console.log("[OTP Request] Created new user with OTP");
+      }
+
+      // Send SMS
       await sendSMS(phone, otp);
 
       return res.status(200).json({ message: "OTP sent successfully" });
@@ -167,68 +173,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const normalized = cleanPhone(phone);
-      const stored = otpStore.get(normalized);
+      console.log("[OTP Verify] Phone:", normalized, "Code:", code);
 
-      console.log("[OTP Verify] Phone:", normalized, "Code:", code, "Stored:", stored);
+      const db = getPool();
 
-      if (!stored) {
-        return res.status(400).json({ error: "OTP not found or expired. Please request a new one." });
+      // Get user with OTP
+      const result = await db.query(
+        'SELECT * FROM users WHERE phone = $1',
+        [normalized]
+      );
+
+      if (result.rows.length === 0) {
+        console.log("[OTP Verify] User not found");
+        return res.status(400).json({ error: "User not found. Please request OTP first." });
       }
 
-      if (Date.now() > stored.expires) {
-        otpStore.delete(normalized);
+      const user = result.rows[0];
+      console.log("[OTP Verify] User found:", { 
+        id: user.id, 
+        storedOtp: user.otp, 
+        expires: user.otp_expires,
+        providedCode: code
+      });
+
+      if (!user.otp) {
+        return res.status(400).json({ error: "No OTP found. Please request a new one." });
+      }
+
+      if (new Date() > new Date(user.otp_expires)) {
         return res.status(400).json({ error: "OTP expired. Please request a new one." });
       }
 
-      if (stored.otp !== code) {
+      if (user.otp !== code) {
         return res.status(400).json({ error: "Invalid OTP code" });
       }
 
       // OTP is valid - clear it
-      otpStore.delete(normalized);
+      await db.query(
+        'UPDATE users SET otp = NULL, otp_expires = NULL WHERE phone = $1',
+        [normalized]
+      );
 
-      // Try to get/create user from database
-      try {
-        const database = getDb();
-        
-        // Check if user exists
-        const existingUsers = await pool.query(
-          'SELECT * FROM users WHERE phone = $1',
-          [normalized]
-        );
+      console.log("[OTP Verify] Success for user:", user.id);
 
-        let user;
-        if (existingUsers.rows.length > 0) {
-          user = existingUsers.rows[0];
-        } else {
-          // Create new user
-          const result = await pool.query(
-            'INSERT INTO users (phone, role, created_at) VALUES ($1, $2, NOW()) RETURNING *',
-            [normalized, 'user']
-          );
-          user = result.rows[0];
+      return res.status(200).json({ 
+        message: "OTP verified successfully",
+        user: {
+          id: user.id,
+          phone: user.phone,
+          role: user.role,
+          name: user.name || null
         }
-
-        console.log("[OTP Verify] User:", user);
-
-        return res.status(200).json({ 
-          message: "OTP verified successfully",
-          user: {
-            id: user.id,
-            phone: user.phone,
-            role: user.role,
-            name: user.name || null
-          }
-        });
-
-      } catch (dbError: any) {
-        console.error("[OTP Verify] DB Error:", dbError);
-        // Return success even without DB (user will need to try again)
-        return res.status(200).json({ 
-          message: "OTP verified successfully",
-          warning: "User profile could not be loaded"
-        });
-      }
+      });
 
     } catch (err: any) {
       console.error("[OTP Verify] Error:", err);
@@ -238,19 +234,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ---- Get current user ----
   if (url.includes('/api/user') && method === 'GET') {
-    // For now, return null (no session implemented yet)
     return res.status(200).json(null);
   }
 
   // ---- Default response ----
   return res.status(404).json({
     error: "Endpoint not found",
-    requestedPath: url,
-    availableEndpoints: [
-      "GET /api/ping",
-      "POST /api/auth/otp/request",
-      "POST /api/auth/otp/verify",
-      "GET /api/user"
-    ]
+    requestedPath: url
   });
 }
