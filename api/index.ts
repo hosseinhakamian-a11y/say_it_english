@@ -139,32 +139,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const cookieHeader = req.headers.cookie || '';
       const cookies = parseCookies(cookieHeader);
-      
-      // We check for our custom 'session' cookie first (OTP)
-      // and also 'connect.sid' (standard express)
       const sessionToken = cookies['session'];
-      const connectSid = cookies['connect.sid'];
 
-      console.log("[/api/user] Checking session. Has session cookie:", !!sessionToken, "Has connect.sid:", !!connectSid);
-
-      if (sessionToken) {
-        const result = await db.query(
-          'SELECT id, username, phone, name, role, level FROM users WHERE session_token = $1',
-          [sessionToken]
-        );
-
-        if (result.rows.length > 0) {
-          console.log("[/api/user] Found user via session_token:", result.rows[0].id);
-          return res.status(200).json(result.rows[0]);
-        }
+      if (!sessionToken) {
+        return res.status(401).json(null);
       }
 
-      // If we reach here and there's no session or it's invalid, 
-      // we let the original express routes handle it if they can, 
-      // but for Vercel efficiency, we'll try to find the user by username if it was a standard login
-      // However, the best way is to return 401 if we can't find a valid DB session
-      console.log("[/api/user] No valid session found in DB");
-      return res.status(401).json(null);
+      const db = getPool();
+      // Use pool.query for raw SQL
+      const result = await db.query(
+        'SELECT id, username, phone, name, role, level FROM users WHERE session_token = $1',
+        [sessionToken]
+      );
+
+      if (result.rows.length === 0) {
+        console.log("[/api/user] Session token not found in DB");
+        return res.status(401).json(null);
+      }
+
+      const user = result.rows[0];
+      console.log("[/api/user] User identified:", user.id);
+      return res.status(200).json(user);
     } catch (err: any) {
       console.error("[/api/user] Error:", err);
       return res.status(401).json(null);
@@ -177,16 +172,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const phone = body?.phone;
 
-      if (!phone) {
-        return res.status(400).json({ error: "Phone number is required" });
-      }
+      if (!phone) return res.status(400).json({ error: "Phone number is required" });
 
       const normalized = cleanPhone(phone);
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
-      console.log("[OTP Request] Phone:", normalized, "OTP:", otp);
-
+      const db = getPool();
       const existingUsers = await db.query('SELECT * FROM users WHERE phone = $1', [normalized]);
 
       if (existingUsers.rows.length > 0) {
@@ -200,10 +192,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await sendSMS(phone, otp);
       return res.status(200).json({ message: "OTP sent successfully" });
-
     } catch (err: any) {
       console.error("[OTP Request] Error:", err);
-      return res.status(500).json({ error: "Failed to send OTP", message: err.message });
+      return res.status(500).json({ error: "Failed to send OTP" });
     }
   }
 
@@ -214,65 +205,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const phone = body?.phone;
       const code = body?.code || body?.otp;
 
-      if (!phone || !code) {
-        return res.status(400).json({ error: "Phone and code are required" });
-      }
+      if (!phone || !code) return res.status(400).json({ error: "Phone and code are required" });
 
       const normalized = cleanPhone(phone);
-      console.log("[OTP Verify] Phone:", normalized, "Code:", code);
-
+      const db = getPool();
       const result = await db.query('SELECT * FROM users WHERE phone = $1', [normalized]);
 
-      if (result.rows.length === 0) {
-        return res.status(400).json({ error: "User not found" });
-      }
+      if (result.rows.length === 0) return res.status(400).json({ error: "User not found" });
 
       const user = result.rows[0];
+      if (!user.otp || new Date() > new Date(user.otp_expires)) return res.status(400).json({ error: "OTP expired" });
+      if (user.otp !== code) return res.status(400).json({ error: "Invalid OTP code" });
 
-      if (!user.otp || new Date() > new Date(user.otp_expires)) {
-        return res.status(400).json({ error: "OTP expired" });
-      }
-
-      if (user.otp !== code) {
-        return res.status(400).json({ error: "Invalid OTP code" });
-      }
-
-      // Generate session token
       const sessionToken = generateToken();
-
-      // Update user: clear OTP and set session token
+      
       await db.query(
         'UPDATE users SET otp = NULL, otp_expires = NULL, session_token = $1 WHERE phone = $2',
         [sessionToken, normalized]
       );
 
-      // Set session cookie with production-ready flags (Secure + Lax)
-      const cookieFlags = [
-        `session=${sessionToken}`,
-        "Path=/",
-        "HttpOnly",
-        "SameSite=Lax",
-        "Max-Age=604800", // 1 week
-        "Secure" // Force Secure for Vercel HTTPS
-      ].join("; ");
-
-      res.setHeader('Set-Cookie', cookieFlags);
-
-      console.log("[OTP Verify] Success, session cookie set.");
+      // Set cookie for Vercel
+      res.setHeader('Set-Cookie', [
+        `session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`
+      ]);
 
       return res.status(200).json({ 
         message: "Login successful",
-        user: {
-          id: user.id,
-          phone: user.phone,
-          role: user.role,
-          name: user.name || null
-        }
+        user: { id: user.id, username: user.username, phone: user.phone, role: user.role }
       });
-
     } catch (err: any) {
       console.error("[OTP Verify] Error:", err);
-      return res.status(500).json({ error: "Verification failed", message: err.message });
+      return res.status(500).json({ error: "Verification failed" });
     }
   }
 
