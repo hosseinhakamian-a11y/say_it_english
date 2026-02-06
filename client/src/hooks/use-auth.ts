@@ -26,6 +26,7 @@ export function useAuth() {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(credentials),
       });
       if (!res.ok) throw new Error("نام کاربری یا رمز عبور اشتباه است");
@@ -42,6 +43,7 @@ export function useAuth() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -58,7 +60,10 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch("/api/logout", { method: "POST" });
+      await fetch("/api/logout", { 
+        method: "POST",
+        credentials: "include" 
+      });
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);

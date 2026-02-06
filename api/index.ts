@@ -118,6 +118,20 @@ function cleanPhone(phone: string): string {
   return clean;
 }
 
+// ============ COOKIE HELPER ============
+function setSessionCookie(res: VercelResponse, token: string) {
+  const cookieOptions = [
+    `session=${token}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=604800", // 1 week
+    "Secure" // Ensure this is set for Vercel
+  ].join("; ");
+  
+  res.setHeader('Set-Cookie', cookieOptions);
+}
+
 // ============ MAIN HANDLER ============
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const url = req.url || '';
@@ -198,7 +212,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const sessionToken = generateToken();
       await db.query('UPDATE users SET session_token = $1 WHERE id = $2', [sessionToken, user.id]);
 
-      res.setHeader('Set-Cookie', `session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`);
+      setSessionCookie(res, sessionToken);
       return res.status(200).json({ id: user.id, username: user.username, hasPassword: true });
     } catch (err) {
       return res.status(500).json({ error: "Login failed" });
@@ -262,8 +276,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         [sessionToken, normalized]
       );
 
-      // Set cookie as a single string for better Vercel compatibility
-      res.setHeader('Set-Cookie', `session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`);
+      setSessionCookie(res, sessionToken);
 
       return res.status(200).json({ 
         message: "Login successful",
