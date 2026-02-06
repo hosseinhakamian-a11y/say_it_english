@@ -31,7 +31,8 @@ import { useLocation } from "wouter";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { user, login, register, isLoggingIn, isRegistering, loginError, registerError } = useAuth();
+  // useAuth now provides verifyOtp and its status
+  const { user, login, register, isLoggingIn, isRegistering, loginError, registerError, verifyOtp, isVerifyingOtp, verifyOtpError } = useAuth();
 
   // اضافه کردن ریدایرکت خودکار
   if (user) {
@@ -44,7 +45,7 @@ export default function AuthPage() {
   const [otpStep, setOtpStep] = useState<"request" | "verify">("request");
   const [phone, setPhone] = useState("");
   const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  // Removed local isVerifyingOtp state as it comes from hook now
   const { toast } = useToast();
 
   const loginForm = useForm({
@@ -98,30 +99,16 @@ export default function AuthPage() {
     }
   };
 
-  const handleVerifyOtp = async (data: { otp: string }) => {
-    setIsVerifyingOtp(true);
-    try {
-      const res = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ phone, otp: data.otp }),
-      });
-      console.log("DEBUG: OTP Verify Response:", res.status);
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("DEBUG: OTP Verify Error:", errorText);
-        throw new Error(errorText);
+  const handleVerifyOtp = (data: { otp: string }) => {
+    verifyOtp(
+      { phone, otp: data.otp },
+      {
+        onError: (err: any) => {
+          console.error("DEBUG: OTP Global Error:", err);
+          toast({ title: "کد نامعتبر", description: err.message, variant: "destructive" });
+        },
       }
-      const data2 = await res.json();
-      console.log("DEBUG: OTP Verify Success:", data2);
-      // Reload to get the user from cookie session
-      window.location.href = "/";
-    } catch (err: any) {
-      toast({ title: "کد نامعتبر", description: err.message, variant: "destructive" });
-    } finally {
-      setIsVerifyingOtp(false);
-    }
+    );
   };
 
   const handleSetPassword = async (data: { password: string }) => {

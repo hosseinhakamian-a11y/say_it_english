@@ -71,15 +71,48 @@ export function useAuth() {
     },
   });
 
+  const verifyOtpMutation = useMutation({
+    mutationFn: async (data: { phone: string; otp: string }) => {
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.text();
+        try {
+          // Try to parse JSON error first
+          const json = JSON.parse(error);
+          throw new Error(json.error || json.message || "کد تایید نامعتبر است");
+        } catch (e: any) {
+          // If not JSON, throw raw text or original error
+          throw new Error(e.message !== "کد تایید نامعتبر است" ? error : e.message);
+        }
+      }
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      // The backend returns { message: "...", user: { ... } }
+      // We need to set the user object in the cache
+      console.log("OTP Verify Success, updating cache:", data.user);
+      queryClient.setQueryData(["/api/user"], data.user);
+      setLocation("/");
+    },
+  });
+
   return {
     user,
     isLoading,
     login: loginMutation.mutate,
     register: registerMutation.mutate,
     logout: logoutMutation.mutate,
+    verifyOtp: verifyOtpMutation.mutate,
     isLoggingIn: loginMutation.isPending,
     isRegistering: registerMutation.isPending,
+    isVerifyingOtp: verifyOtpMutation.isPending,
     loginError: loginMutation.error,
     registerError: registerMutation.error,
+    verifyOtpError: verifyOtpMutation.error,
   };
 }
