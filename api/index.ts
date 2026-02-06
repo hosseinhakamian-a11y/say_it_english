@@ -1,17 +1,16 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from "express";
 import serverless from "serverless-http";
-import { registerRoutes } from "../server/routes";
 
 const app = express();
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Ping endpoint to verify deployment
+// Simple ping - no external dependencies
 app.get("/api/ping", (_req, res) => {
   res.json({ 
     status: "alive", 
-    version: "4.0.0",
+    version: "5.0.0",
     timestamp: new Date().toISOString(),
     env: {
       hasDb: !!process.env.DATABASE_URL,
@@ -22,30 +21,28 @@ app.get("/api/ping", (_req, res) => {
   });
 });
 
-// Initialize routes once and cache the promise
-let routesInitialized: Promise<any> | null = null;
+let routesRegistered = false;
+let handler: any = null;
 
-const initRoutes = () => {
-  if (!routesInitialized) {
-    routesInitialized = registerRoutes(null as any, app).catch(err => {
-      console.error("Route Registration Failed:", err);
-      throw err;
-    });
-  }
-  return routesInitialized;
-};
-
-// Serverless handler that ensures routes are ready
-export default async (req: any, res: any) => {
+export default async function vercelHandler(req: VercelRequest, res: VercelResponse) {
   try {
-    await initRoutes();
-    const handler = serverless(app);
+    // Lazy load routes on first request
+    if (!routesRegistered) {
+      console.log("[Vercel] Registering routes...");
+      const { registerRoutes } = await import("../server/routes");
+      await registerRoutes(null as any, app);
+      handler = serverless(app);
+      routesRegistered = true;
+      console.log("[Vercel] Routes registered successfully");
+    }
+    
     return await handler(req, res);
   } catch (err: any) {
-    console.error("Vercel Handler Error:", err);
-    res.status(500).json({
+    console.error("[Vercel] Handler Error:", err);
+    return res.status(500).json({
       error: "Server Error",
-      message: err.message
+      message: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
-};
+}
