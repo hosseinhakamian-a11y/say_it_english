@@ -230,8 +230,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         [sessionToken, normalized]
       );
 
-      // Set session cookie
-      res.setHeader('Set-Cookie', `session_token=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`);
+      // Set session cookie with production-ready flags
+      const isProd = process.env.NODE_ENV === "production";
+      const cookieFlags = [
+        `session_token=${sessionToken}`,
+        "Path=/",
+        "HttpOnly",
+        "SameSite=Lax",
+        "Max-Age=604800", // 1 week
+        isProd ? "Secure" : ""
+      ].filter(Boolean).join("; ");
+
+      res.setHeader('Set-Cookie', cookieFlags);
 
       console.log("[OTP Verify] Success, session created for user:", user.id);
 
