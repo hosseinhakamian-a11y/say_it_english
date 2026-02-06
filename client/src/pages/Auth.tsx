@@ -93,12 +93,19 @@ export default function AuthPage() {
       const res = await fetch("/api/auth/otp/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ phone, otp: data.otp }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const user = await res.json();
-      // use-auth doesn't have a way to manually set user easily, but refetching typically works
-      window.location.reload();
+      console.log("DEBUG: OTP Verify Response:", res.status);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("DEBUG: OTP Verify Error:", errorText);
+        throw new Error(errorText);
+      }
+      const data2 = await res.json();
+      console.log("DEBUG: OTP Verify Success:", data2);
+      // Reload to get the user from cookie session
+      window.location.href = "/";
     } catch (err: any) {
       toast({ title: "کد نامعتبر", description: err.message, variant: "destructive" });
     } finally {
