@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useBookings } from "@/hooks/use-bookings";
 import { Loader2, Calendar, BookOpen, User as UserIcon, LogOut, Settings } from "lucide-react";
 import { useLocation } from "wouter";
+import { SecureVideoPlayer } from "@/components/SecureVideoPlayer";
 
 export default function Profile() {
   const { user, logout, isLoading } = useAuth();
@@ -103,6 +104,22 @@ export default function Profile() {
               </div>
             </Card>
           </div>
+
+          {/* Test Video Player Section */}
+          <Card className="rounded-[2rem] border border-border/50 shadow-sm">
+            <CardHeader>
+              <CardTitle>پخش کننده ویدیوی امن (تست)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  این بخش برای تست سیستم استریم امن است. اگر فایل `test-file.txt` (یا هر فایل ویدیویی) در باکت موجود باشد و در دیتابیس ثبت شده باشد، اینجا پخش می‌شود.
+                </p>
+                {/* Using ID 1 for test. Ensure Content ID 1 exists and has file_key set. */}
+                <SecureVideoPlayer contentId={1} />
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="rounded-[2rem] border border-border/50 shadow-sm">
             <CardHeader>

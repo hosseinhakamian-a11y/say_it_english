@@ -25,6 +25,7 @@ export const content = pgTable("content", {
   contentUrl: text("content_url"), // Optional now, used for audio/articles
   videoId: text("video_id"), // For Bunny/Aparat/YouTube ID
   videoProvider: text("video_provider"), // 'bunny', 'aparat', 'youtube', 'custom'
+  fileKey: text("file_key"), // S3/Arvan Object Key for secure download
   isPremium: boolean("is_premium").default(false),
   price: integer("price").default(0), // Price in Toman (0 = free)
   createdAt: timestamp("created_at").defaultNow(),

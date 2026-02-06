@@ -219,7 +219,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // ---- OTP Request ----
+  // ---- Secure Download (ArvanCloud/S3) ----
+  if (url.includes('/api/download') && method === 'GET') {
+    try {
+      // 1. Auth Check
+      const cookieHeader = req.headers.cookie || '';
+      const cookies = parseCookies(cookieHeader);
+      const sessionToken = cookies['session'];
+      if (!sessionToken) return res.status(401).json({ error: "Unauthorized" });
+
+      const db = getPool();
+      const userRes = await db.query('SELECT id FROM users WHERE session_token = $1', [sessionToken]);
+      if (userRes.rows.length === 0) return res.status(401).json({ error: "Unauthorized" });
+      const userId = userRes.rows[0].id;
+
+      // 2. Content Check
+      // Extract contentId from query (e.g. /api/download?id=123)
+      const urlObj = new URL(url, `http://${req.headers.host}`);
+      const contentId = urlObj.searchParams.get('id');
+      const isStream = urlObj.searchParams.get('stream') === 'true';
+      if (!contentId) return res.status(400).json({ error: "Content ID required" });
+
+      // 3. Purchase Check (Logi same as before)
+      const purchaseCheck = await db.query(
+        'SELECT * FROM purchases WHERE user_id = $1 AND content_id = $2',
+        [userId, contentId]
+      );
+      
+      const userRoleRes = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+      const isAdmin = userRoleRes.rows[0]?.role === 'admin';
+
+      if (!isAdmin && purchaseCheck.rows.length === 0) {
+        // Optional: Check if content is FREE?
+        const contentRes = await db.query('SELECT price, is_premium FROM content WHERE id = $1', [contentId]);
+        if (contentRes.rows.length === 0) return res.status(404).json({ error: "Content not found" });
+        const content = contentRes.rows[0];
+        if (content.is_premium && content.price > 0) {
+             return res.status(403).json({ error: "Purchase required" });
+        }
+      }
+
+      // 4. Get File Key
+      const contentRes = await db.query('SELECT file_key FROM content WHERE id = $1', [contentId]);
+      if (contentRes.rows.length === 0) return res.status(404).json({ error: "Content not found" });
+      const fileKey = contentRes.rows[0].file_key;
+
+      if (!fileKey) {
+        return res.status(404).json({ error: "File not available for this content" });
+      }
+
+      // 5. Generate Signed URL
+      const { generateDownloadLink } = await import('../server/s3-storage');
+      const disposition = isStream ? 'inline' : 'attachment';
+      const downloadUrl = await generateDownloadLink(fileKey, 3600, disposition);
+
+      if (!downloadUrl) {
+         return res.status(500).json({ error: "Failed to generate download link" });
+      }
+
+      // 6. Redirect or Return JSON
+      // If client prefers JSON: 
+      // return res.status(200).json({ url: downloadUrl });
+      
+      // Redirecting is often easier for "Click to Download" buttons
+      res.setHeader('Location', downloadUrl);
+      return res.status(302).end();
+
+    } catch (err: any) {
+      console.error("Download Error:", err);
+      return res.status(500).json({ error: "Download failed" });
+    }
+  }
   if (url.includes('/api/auth/otp/request') && method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
