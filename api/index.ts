@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import pg from 'pg';
+import crypto from 'crypto';
 
 // ============ DATABASE SETUP ============
 const { Pool } = pg;
@@ -20,6 +21,24 @@ function getPool() {
   return pool;
 }
 
+// ============ SESSION TOKEN HELPERS ============
+function generateToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function parseCookies(cookieHeader: string | undefined): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  if (!cookieHeader) return cookies;
+  
+  cookieHeader.split(';').forEach(cookie => {
+    const [name, value] = cookie.trim().split('=');
+    if (name && value) {
+      cookies[name] = value;
+    }
+  });
+  return cookies;
+}
+
 // ============ SMS SENDING LOGIC ============
 async function sendSMS(phone: string, code: string) {
   const SMS_IR_API_KEY = process.env.SMS_IR_API_KEY;
@@ -30,8 +49,6 @@ async function sendSMS(phone: string, code: string) {
   let cleanPhone = phone.replace(/\D/g, "");
   if (cleanPhone.startsWith("98")) cleanPhone = cleanPhone.substring(2);
   if (!cleanPhone.startsWith("0")) cleanPhone = "0" + cleanPhone;
-
-  console.log("[SMS] Sending to:", cleanPhone, "Code:", code);
 
   try {
     const response = await axios.post(
@@ -55,8 +72,6 @@ async function sendSMS(phone: string, code: string) {
     }
     throw new Error(`SMS.ir status ${response.data.status}`);
   } catch (smsError: any) {
-    console.error("[SMS] SMS.ir failed:", smsError.message);
-    
     if (SUPABASE_URL && SUPABASE_ANON_KEY) {
       try {
         await axios.post(
@@ -72,7 +87,7 @@ async function sendSMS(phone: string, code: string) {
           }
         );
         return { success: true, method: "supabase" };
-      } catch (supabaseError: any) {
+      } catch (e) {
         throw new Error(`Both SMS methods failed`);
       }
     }
@@ -96,18 +111,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   if (method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // ---- Ping/Test ----
+  const db = getPool();
+
+  // ---- Ping ----
   if (url.includes('/api/ping')) {
     return res.status(200).json({
       status: "alive",
-      version: "9.0.0-db-otp",
+      version: "10.0.0-session",
       timestamp: new Date().toISOString()
     });
+  }
+
+  // ---- Get Current User ----
+  if (url.includes('/api/user') && method === 'GET') {
+    try {
+      const cookies = parseCookies(req.headers.cookie);
+      const sessionToken = cookies['session_token'];
+
+      if (!sessionToken) {
+        return res.status(200).json(null);
+      }
+
+      // Find user by session token
+      const result = await db.query(
+        'SELECT id, phone, name, role FROM users WHERE session_token = $1',
+        [sessionToken]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(200).json(null);
+      }
+
+      return res.status(200).json(result.rows[0]);
+    } catch (err: any) {
+      console.error("[/api/user] Error:", err);
+      return res.status(200).json(null);
+    }
   }
 
   // ---- OTP Request ----
@@ -122,37 +167,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const normalized = cleanPhone(phone);
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+      const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
       console.log("[OTP Request] Phone:", normalized, "OTP:", otp);
 
-      const db = getPool();
-
-      // Check if user exists
-      const existingUsers = await db.query(
-        'SELECT * FROM users WHERE phone = $1',
-        [normalized]
-      );
+      const existingUsers = await db.query('SELECT * FROM users WHERE phone = $1', [normalized]);
 
       if (existingUsers.rows.length > 0) {
-        // Update existing user with new OTP
-        await db.query(
-          'UPDATE users SET otp = $1, otp_expires = $2 WHERE phone = $3',
-          [otp, otpExpires, normalized]
-        );
-        console.log("[OTP Request] Updated OTP for existing user");
+        await db.query('UPDATE users SET otp = $1, otp_expires = $2 WHERE phone = $3', [otp, otpExpires, normalized]);
       } else {
-        // Create new user with OTP
         await db.query(
           'INSERT INTO users (phone, otp, otp_expires, role, created_at) VALUES ($1, $2, $3, $4, NOW())',
           [normalized, otp, otpExpires, 'user']
         );
-        console.log("[OTP Request] Created new user with OTP");
       }
 
-      // Send SMS
       await sendSMS(phone, otp);
-
       return res.status(200).json({ message: "OTP sent successfully" });
 
     } catch (err: any) {
@@ -165,66 +195,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (url.includes('/api/auth/otp/verify') && method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      
-      console.log("[OTP Verify] Raw body:", JSON.stringify(body));
-      
       const phone = body?.phone;
-      // Support both 'code' and 'otp' field names
       const code = body?.code || body?.otp;
 
       if (!phone || !code) {
-        return res.status(400).json({ 
-          error: "Phone and code are required",
-          debug: { receivedBody: body }
-        });
+        return res.status(400).json({ error: "Phone and code are required" });
       }
 
       const normalized = cleanPhone(phone);
       console.log("[OTP Verify] Phone:", normalized, "Code:", code);
 
-      const db = getPool();
-
-      // Get user with OTP
-      const result = await db.query(
-        'SELECT * FROM users WHERE phone = $1',
-        [normalized]
-      );
+      const result = await db.query('SELECT * FROM users WHERE phone = $1', [normalized]);
 
       if (result.rows.length === 0) {
-        console.log("[OTP Verify] User not found");
-        return res.status(400).json({ error: "User not found. Please request OTP first." });
+        return res.status(400).json({ error: "User not found" });
       }
 
       const user = result.rows[0];
-      console.log("[OTP Verify] User found:", { 
-        id: user.id, 
-        storedOtp: user.otp, 
-        expires: user.otp_expires,
-        providedCode: code
-      });
 
-      if (!user.otp) {
-        return res.status(400).json({ error: "No OTP found. Please request a new one." });
-      }
-
-      if (new Date() > new Date(user.otp_expires)) {
-        return res.status(400).json({ error: "OTP expired. Please request a new one." });
+      if (!user.otp || new Date() > new Date(user.otp_expires)) {
+        return res.status(400).json({ error: "OTP expired" });
       }
 
       if (user.otp !== code) {
         return res.status(400).json({ error: "Invalid OTP code" });
       }
 
-      // OTP is valid - clear it
+      // Generate session token
+      const sessionToken = generateToken();
+
+      // Update user: clear OTP and set session token
       await db.query(
-        'UPDATE users SET otp = NULL, otp_expires = NULL WHERE phone = $1',
-        [normalized]
+        'UPDATE users SET otp = NULL, otp_expires = NULL, session_token = $1 WHERE phone = $2',
+        [sessionToken, normalized]
       );
 
-      console.log("[OTP Verify] Success for user:", user.id);
+      // Set session cookie
+      res.setHeader('Set-Cookie', `session_token=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`);
+
+      console.log("[OTP Verify] Success, session created for user:", user.id);
 
       return res.status(200).json({ 
-        message: "OTP verified successfully",
+        message: "Login successful",
         user: {
           id: user.id,
           phone: user.phone,
@@ -239,14 +251,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // ---- Get current user ----
-  if (url.includes('/api/user') && method === 'GET') {
-    return res.status(200).json(null);
+  // ---- Logout ----
+  if (url.includes('/api/logout') && method === 'POST') {
+    try {
+      const cookies = parseCookies(req.headers.cookie);
+      const sessionToken = cookies['session_token'];
+
+      if (sessionToken) {
+        await db.query('UPDATE users SET session_token = NULL WHERE session_token = $1', [sessionToken]);
+      }
+
+      res.setHeader('Set-Cookie', 'session_token=; Path=/; HttpOnly; Max-Age=0');
+      return res.status(200).json({ message: "Logged out" });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Logout failed" });
+    }
   }
 
-  // ---- Default response ----
-  return res.status(404).json({
-    error: "Endpoint not found",
-    requestedPath: url
-  });
+  // ---- Default ----
+  return res.status(404).json({ error: "Endpoint not found", requestedPath: url });
 }

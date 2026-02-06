@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   googleId: text("google_id").unique(),
   otp: text("otp"),
   otpExpires: timestamp("otp_expires"),
+  sessionToken: text("session_token"),
   role: text("role").default("student"), // 'admin' (teacher) or 'student'
   level: text("level").default("beginner"), // beginner, intermediate, advanced
   createdAt: timestamp("created_at").defaultNow(),
