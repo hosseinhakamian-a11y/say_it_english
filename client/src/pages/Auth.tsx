@@ -27,8 +27,17 @@ const otpSchema = z.object({
   otp: z.string().length(6, "کد تایید باید ۶ رقم باشد"),
 });
 
+import { useLocation } from "wouter";
+
 export default function AuthPage() {
+  const [, setLocation] = useLocation();
   const { user, login, register, isLoggingIn, isRegistering, loginError, registerError } = useAuth();
+
+  // اضافه کردن ریدایرکت خودکار
+  if (user && user.hasPassword) {
+    window.location.href = "/";
+    return null;
+  }
   const [mode, setMode] = useState<"login" | "register" | "otp">("login");
   const [otpStep, setOtpStep] = useState<"request" | "verify">("request");
   const [phone, setPhone] = useState("");

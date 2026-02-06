@@ -146,19 +146,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const db = getPool();
-      // Use pool.query for raw SQL
+      // Added password check
       const result = await db.query(
-        'SELECT id, username, phone, name, role, level FROM users WHERE session_token = $1',
+        'SELECT id, username, phone, name, role, level, (password IS NOT NULL) as "hasPassword" FROM users WHERE session_token = $1',
         [sessionToken]
       );
 
       if (result.rows.length === 0) {
-        console.log("[/api/user] Session token not found in DB");
         return res.status(401).json(null);
       }
 
       const user = result.rows[0];
-      console.log("[/api/user] User identified:", user.id);
       return res.status(200).json(user);
     } catch (err: any) {
       console.error("[/api/user] Error:", err);
@@ -193,7 +191,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sendSMS(phone, otp);
       return res.status(200).json({ message: "OTP sent successfully" });
     } catch (err: any) {
-      console.error("[OTP Request] Error:", err);
       return res.status(500).json({ error: "Failed to send OTP" });
     }
   }
@@ -209,7 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const normalized = cleanPhone(phone);
       const db = getPool();
-      const result = await db.query('SELECT * FROM users WHERE phone = $1', [normalized]);
+      const result = await db.query('SELECT *, (password IS NOT NULL) as "hasPassword" FROM users WHERE phone = $1', [normalized]);
 
       if (result.rows.length === 0) return res.status(400).json({ error: "User not found" });
 
@@ -224,17 +221,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         [sessionToken, normalized]
       );
 
-      // Set cookie for Vercel
-      res.setHeader('Set-Cookie', [
-        `session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`
-      ]);
+      // Set cookie as a single string for better Vercel compatibility
+      res.setHeader('Set-Cookie', `session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`);
 
       return res.status(200).json({ 
         message: "Login successful",
-        user: { id: user.id, username: user.username, phone: user.phone, role: user.role }
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          phone: user.phone, 
+          role: user.role,
+          hasPassword: user.hasPassword 
+        }
       });
     } catch (err: any) {
-      console.error("[OTP Verify] Error:", err);
       return res.status(500).json({ error: "Verification failed" });
     }
   }
