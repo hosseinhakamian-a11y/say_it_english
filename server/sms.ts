@@ -1,15 +1,21 @@
 import axios from "axios";
 
 // SMS.ir and Supabase integration
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+// Note: Environment variables are read inside the function for Vercel serverless compatibility
 
 export async function sendOTP(mobile: string, code: string) {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        console.error("CRITICAL ERROR: SUPABASE_URL or SUPABASE_ANON_KEY is not defined in environment variables!");
-        throw new Error("Server configuration error: Missing Supabase credentials");
-    }
+    // Read environment variables at runtime (not at module load time)
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+    const SMS_IR_API_KEY = process.env.SMS_IR_API_KEY;
+    const SMS_IR_TEMPLATE_ID = process.env.SMS_IR_TEMPLATE_ID;
+
+    console.log("[SMS] Environment check:", {
+        hasSmsKey: !!SMS_IR_API_KEY,
+        hasTemplateId: !!SMS_IR_TEMPLATE_ID,
+        hasSupabaseUrl: !!SUPABASE_URL,
+        hasSupabaseKey: !!SUPABASE_ANON_KEY
+    });
 
     // Standardize phone number for SMS.ir (e.g., 0912...)
     let cleanPhone = mobile.replace(/\D/g, ""); // فقط اعداد
@@ -23,12 +29,12 @@ export async function sendOTP(mobile: string, code: string) {
             "https://api.sms.ir/v1/send/verify",
             {
                 mobile: cleanPhone,
-                templateId: parseInt(process.env.SMS_IR_TEMPLATE_ID || "0"),
+                templateId: parseInt(SMS_IR_TEMPLATE_ID || "0"),
                 parameters: [{ name: "CODE", value: code }]
             },
             {
                 headers: {
-                    "x-api-key": process.env.SMS_IR_API_KEY,
+                    "x-api-key": SMS_IR_API_KEY || "",
                     "Content-Type": "application/json",
                 },
                 timeout: 5000 // 5 seconds timeout for direct call
@@ -44,6 +50,11 @@ export async function sendOTP(mobile: string, code: string) {
         console.warn(`[SMS] Direct call failed, falling back to Supabase. Error: ${directError.message}`);
 
         // Second attempt: Fallback to Supabase Edge Function
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            console.error("[SMS] Cannot fallback to Supabase: Missing SUPABASE_URL or SUPABASE_ANON_KEY");
+            throw new Error(`SMS.ir failed and Supabase fallback not configured: ${directError.message}`);
+        }
+        
         try {
             console.log(`[SMS] Attempting fallback via Supabase Edge Function...`);
             const supabaseResponse = await axios.post(
