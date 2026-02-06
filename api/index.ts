@@ -1,7 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import pg from 'pg';
-import crypto from 'crypto';
+import crypto, { scrypt, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
+
+const scryptAsync = promisify(scrypt);
 
 // ============ DATABASE SETUP ============
 const { Pool } = pg;
@@ -19,6 +22,19 @@ function getPool() {
     });
   }
   return pool;
+}
+
+// ============ PASSWORD HELPERS ============
+async function comparePasswords(supplied: string, stored: string) {
+  try {
+    const [hashed, salt] = stored.split(".");
+    if (!hashed || !salt) return false;
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (e) {
+    return false;
+  }
 }
 
 // ============ SESSION TOKEN HELPERS ============
@@ -161,6 +177,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (err: any) {
       console.error("[/api/user] Error:", err);
       return res.status(401).json(null);
+    }
+  }
+
+  // ---- Password Login ----
+  if (url.includes('/api/login') && method === 'POST') {
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { username, password } = body;
+      if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+
+      const result = await db.query('SELECT *, (password IS NOT NULL) as "hasPassword" FROM users WHERE username = $1 OR phone = $2', [username, username]);
+      if (result.rows.length === 0) return res.status(401).json({ error: "User not found" });
+
+      const user = result.rows[0];
+      if (!user.password || !(await comparePasswords(password, user.password))) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+
+      const sessionToken = generateToken();
+      await db.query('UPDATE users SET session_token = $1 WHERE id = $2', [sessionToken, user.id]);
+
+      res.setHeader('Set-Cookie', `session=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800; Secure`);
+      return res.status(200).json({ id: user.id, username: user.username, hasPassword: true });
+    } catch (err) {
+      return res.status(500).json({ error: "Login failed" });
     }
   }
 
