@@ -108,7 +108,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = req.method || 'GET';
 
   // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -130,13 +135,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ---- Get Current User ----
   if (url.includes('/api/user') && method === 'GET') {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     try {
-      const cookies = parseCookies(req.headers.cookie);
-      const sessionToken = cookies['session_token'];
+      const cookieHeader = req.headers.cookie || '';
+      console.log("[/api/user] Cookie header:", cookieHeader);
+      
+      const cookies = parseCookies(cookieHeader);
+      const sessionToken = cookies['session'];
 
       if (!sessionToken) {
-        return res.status(200).json(null);
+        console.log("[/api/user] No 'session' cookie found");
+        return res.status(401).json(null);
       }
+
+      console.log("[/api/user] Found session token:", sessionToken.substring(0, 8) + '...');
 
       // Find user by session token
       const result = await db.query(
@@ -145,13 +157,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
 
       if (result.rows.length === 0) {
-        return res.status(200).json(null);
+        console.log("[/api/user] No user matches this token");
+        return res.status(401).json(null);
       }
 
+      console.log("[/api/user] Success! User ID:", result.rows[0].id);
       return res.status(200).json(result.rows[0]);
     } catch (err: any) {
-      console.error("[/api/user] Error:", err);
-      return res.status(200).json(null);
+      console.error("[/api/user] Critical Error:", err);
+      return res.status(401).json(null);
     }
   }
 
@@ -230,20 +244,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         [sessionToken, normalized]
       );
 
-      // Set session cookie with production-ready flags
-      const isProd = process.env.NODE_ENV === "production";
+      // Set session cookie with production-ready flags (Secure + Lax)
       const cookieFlags = [
-        `session_token=${sessionToken}`,
+        `session=${sessionToken}`,
         "Path=/",
         "HttpOnly",
         "SameSite=Lax",
         "Max-Age=604800", // 1 week
-        isProd ? "Secure" : ""
-      ].filter(Boolean).join("; ");
+        "Secure" // Force Secure for Vercel HTTPS
+      ].join("; ");
 
       res.setHeader('Set-Cookie', cookieFlags);
 
-      console.log("[OTP Verify] Success, session created for user:", user.id);
+      console.log("[OTP Verify] Success, session cookie set.");
 
       return res.status(200).json({ 
         message: "Login successful",
@@ -265,13 +278,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (url.includes('/api/logout') && method === 'POST') {
     try {
       const cookies = parseCookies(req.headers.cookie);
-      const sessionToken = cookies['session_token'];
+      const sessionToken = cookies['session'];
 
       if (sessionToken) {
         await db.query('UPDATE users SET session_token = NULL WHERE session_token = $1', [sessionToken]);
       }
 
-      res.setHeader('Set-Cookie', 'session_token=; Path=/; HttpOnly; Max-Age=0');
+      res.setHeader('Set-Cookie', 'session=; Path=/; HttpOnly; Max-Age=0; Secure');
       return res.status(200).json({ message: "Logged out" });
     } catch (err: any) {
       return res.status(500).json({ error: "Logout failed" });
