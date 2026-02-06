@@ -34,7 +34,9 @@ export default function AuthPage() {
   const { user, login, register, isLoggingIn, isRegistering, loginError, registerError } = useAuth();
 
   // اضافه کردن ریدایرکت خودکار
-  if (user && user.hasPassword) {
+  if (user) {
+    // If logged in, go to home immediately. 
+    // We can handle "Set Password" suggestion inside the profile page later if needed.
     window.location.href = "/";
     return null;
   }
