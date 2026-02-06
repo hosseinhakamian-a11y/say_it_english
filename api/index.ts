@@ -165,11 +165,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (url.includes('/api/auth/otp/verify') && method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      
+      console.log("[OTP Verify] Raw body:", JSON.stringify(body));
+      
       const phone = body?.phone;
-      const code = body?.code;
+      // Support both 'code' and 'otp' field names
+      const code = body?.code || body?.otp;
 
       if (!phone || !code) {
-        return res.status(400).json({ error: "Phone and code are required" });
+        return res.status(400).json({ 
+          error: "Phone and code are required",
+          debug: { receivedBody: body }
+        });
       }
 
       const normalized = cleanPhone(phone);
