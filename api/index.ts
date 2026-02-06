@@ -138,33 +138,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     try {
       const cookieHeader = req.headers.cookie || '';
-      console.log("[/api/user] Cookie header:", cookieHeader);
-      
       const cookies = parseCookies(cookieHeader);
+      
+      // We check for our custom 'session' cookie first (OTP)
+      // and also 'connect.sid' (standard express)
       const sessionToken = cookies['session'];
+      const connectSid = cookies['connect.sid'];
 
-      if (!sessionToken) {
-        console.log("[/api/user] No 'session' cookie found");
-        return res.status(401).json(null);
+      console.log("[/api/user] Checking session. Has session cookie:", !!sessionToken, "Has connect.sid:", !!connectSid);
+
+      if (sessionToken) {
+        const result = await db.query(
+          'SELECT id, username, phone, name, role, level FROM users WHERE session_token = $1',
+          [sessionToken]
+        );
+
+        if (result.rows.length > 0) {
+          console.log("[/api/user] Found user via session_token:", result.rows[0].id);
+          return res.status(200).json(result.rows[0]);
+        }
       }
 
-      console.log("[/api/user] Found session token:", sessionToken.substring(0, 8) + '...');
-
-      // Find user by session token
-      const result = await db.query(
-        'SELECT id, phone, name, role FROM users WHERE session_token = $1',
-        [sessionToken]
-      );
-
-      if (result.rows.length === 0) {
-        console.log("[/api/user] No user matches this token");
-        return res.status(401).json(null);
-      }
-
-      console.log("[/api/user] Success! User ID:", result.rows[0].id);
-      return res.status(200).json(result.rows[0]);
+      // If we reach here and there's no session or it's invalid, 
+      // we let the original express routes handle it if they can, 
+      // but for Vercel efficiency, we'll try to find the user by username if it was a standard login
+      // However, the best way is to return 401 if we can't find a valid DB session
+      console.log("[/api/user] No valid session found in DB");
+      return res.status(401).json(null);
     } catch (err: any) {
-      console.error("[/api/user] Critical Error:", err);
+      console.error("[/api/user] Error:", err);
       return res.status(401).json(null);
     }
   }
@@ -191,8 +193,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await db.query('UPDATE users SET otp = $1, otp_expires = $2 WHERE phone = $3', [otp, otpExpires, normalized]);
       } else {
         await db.query(
-          'INSERT INTO users (phone, otp, otp_expires, role, created_at) VALUES ($1, $2, $3, $4, NOW())',
-          [normalized, otp, otpExpires, 'user']
+          'INSERT INTO users (username, phone, otp, otp_expires, role, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+          [`user_${normalized}`, normalized, otp, otpExpires, 'student']
         );
       }
 
