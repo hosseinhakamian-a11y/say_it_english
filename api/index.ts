@@ -231,15 +231,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
+      const ADMIN_PHONES = ['09222453571', '09123104254'];
+
       const db = getPool();
       const existingUsers = await db.query('SELECT * FROM users WHERE phone = $1', [normalized]);
 
       if (existingUsers.rows.length > 0) {
         await db.query('UPDATE users SET otp = $1, otp_expires = $2 WHERE phone = $3', [otp, otpExpires, normalized]);
       } else {
+        const role = ADMIN_PHONES.includes(normalized) ? 'admin' : 'student';
         await db.query(
           'INSERT INTO users (username, phone, otp, otp_expires, role, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
-          [`user_${normalized}`, normalized, otp, otpExpires, 'student']
+          [`user_${normalized}`, normalized, otp, otpExpires, role]
         );
       }
 
@@ -271,9 +274,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const sessionToken = generateToken();
       
+      const ADMIN_PHONES = ['09222453571', '09123104254'];
+      let newRole = user.role;
+      if (ADMIN_PHONES.includes(normalized) && user.role !== 'admin') {
+        newRole = 'admin';
+      }
+
       await db.query(
-        'UPDATE users SET otp = NULL, otp_expires = NULL, session_token = $1 WHERE phone = $2',
-        [sessionToken, normalized]
+        'UPDATE users SET otp = NULL, otp_expires = NULL, session_token = $1, role = $2 WHERE phone = $3',
+        [sessionToken, newRole, normalized]
       );
 
       setSessionCookie(res, sessionToken);
@@ -284,7 +293,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           id: user.id, 
           username: user.username, 
           phone: user.phone, 
-          role: user.role,
+          role: newRole,
           hasPassword: user.hasPassword 
         }
       });
