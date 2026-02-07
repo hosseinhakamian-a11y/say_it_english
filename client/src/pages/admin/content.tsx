@@ -208,6 +208,7 @@ export default function AdminContent() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Form */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border">
                     <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                         {editingId ? <Pencil className="h-5 w-5 text-amber-500" /> : <Plus className="h-5 w-5 text-primary" />}
@@ -215,11 +216,11 @@ export default function AdminContent() {
                     </h2>
 
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                             <FormField control={form.control} name="title" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>عنوان درس</FormLabel>
-                                    <FormControl><Input placeholder="مثلاً: آموزش زمان حال ساده" {...field} /></FormControl>
+                                    <FormControl><Input className="py-5" placeholder="مثلاً: آموزش زمان حال ساده" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
@@ -227,7 +228,7 @@ export default function AdminContent() {
                             <FormField control={form.control} name="description" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>توضیحات</FormLabel>
-                                    <FormControl><Textarea placeholder="توضیحات کوتاه..." className="resize-none" {...field} value={field.value || ""} /></FormControl>
+                                    <FormControl><Textarea placeholder="توضیحات کوتاه..." className="resize-none h-24" {...field} value={field.value || ""} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
@@ -238,7 +239,7 @@ export default function AdminContent() {
                                         <FormLabel>سطح</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                            <SelectContent>
+                                            <SelectContent className="bg-white z-[120]">
                                                 <SelectItem value="beginner">مبتدی</SelectItem>
                                                 <SelectItem value="intermediate">متوسط</SelectItem>
                                                 <SelectItem value="advanced">پیشرفته</SelectItem>
@@ -253,7 +254,7 @@ export default function AdminContent() {
                                         <FormLabel>نوع دسترسی</FormLabel>
                                         <Select onValueChange={(v) => field.onChange(v === "true")} value={field.value ? "true" : "false"}>
                                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                            <SelectContent>
+                                            <SelectContent className="bg-white z-[120]">
                                                 <SelectItem value="false">رایگان 🎁</SelectItem>
                                                 <SelectItem value="true">VIP 💎</SelectItem>
                                             </SelectContent>
@@ -270,6 +271,7 @@ export default function AdminContent() {
                                         <FormControl>
                                             <Input
                                                 type="number"
+                                                className="py-5"
                                                 placeholder="مثلاً: 500000"
                                                 {...field}
                                                 value={field.value || 0}
@@ -281,16 +283,16 @@ export default function AdminContent() {
                                 )} />
                             )}
 
-                            <div className="p-4 bg-gray-50 rounded-lg border space-y-4">
+                            {/* Arvan Section with stronger visual separation */}
+                            <div className="p-4 bg-primary/5 rounded-xl border border-primary/20 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h3 className="font-bold flex items-center gap-2 text-primary">
                                         <Upload className="w-4 h-4" />
                                         آپلود روی ابرآروان (استریم امن)
                                     </h3>
                                     {form.watch("fileKey") && (
-                                        <Badge className="bg-green-100 text-green-700 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3 h-3" />
-                                            آپلود شده
+                                        <Badge className="bg-green-100 text-green-700 border-green-200">
+                                            آماده ✅
                                         </Badge>
                                     )}
                                 </div>
@@ -301,33 +303,28 @@ export default function AdminContent() {
                                         onChange={handleFileUpload}
                                         disabled={uploading}
                                         accept="video/*,audio/*"
-                                        className="bg-white"
+                                        className="bg-white file:bg-primary file:text-white file:border-0"
                                     />
                                     {uploading && (
                                         <div className="space-y-2">
                                             <Progress value={uploadProgress} className="h-2" />
-                                            <p className="text-[10px] text-center text-muted-foreground animate-pulse">
-                                                در حال انتقال فایل به ابرآروان... {uploadProgress}%
+                                            <p className="text-[10px] text-center text-primary font-medium animate-pulse">
+                                                در حال انتقال... {uploadProgress}%
                                             </p>
-                                        </div>
-                                    )}
-                                    {form.watch("fileKey") && (
-                                        <div className="text-[10px] bg-white p-2 rounded border truncate font-mono text-gray-400">
-                                            Key: {form.watch("fileKey")}
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-gray-50 rounded-lg border border-dashed space-y-4">
+                            <div className="p-4 bg-gray-50 rounded-xl border border-dashed space-y-4 relative">
                                 <h3 className="font-medium text-gray-700">سایر سرویس‌ها (اختیاری)</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField control={form.control} name="videoProvider" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>سرویس</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value || "aparat"}>
-                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                                <SelectContent>
+                                                <FormControl><SelectTrigger className="bg-white"><SelectValue /></SelectTrigger></FormControl>
+                                                <SelectContent className="bg-white border shadow-2xl z-[150]">
                                                     <SelectItem value="custom">Arvan/Link 🔗</SelectItem>
                                                     <SelectItem value="aparat">آپارات 🇮🇷</SelectItem>
                                                     <SelectItem value="youtube">یوتیوب 🔴</SelectItem>
@@ -341,7 +338,7 @@ export default function AdminContent() {
                                     <FormField control={form.control} name="videoId" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>آیدی/کد ویدیو</FormLabel>
-                                            <FormControl><Input placeholder="XyZw1" {...field} value={field.value || ""} /></FormControl>
+                                            <FormControl><Input className="bg-white" placeholder="XyZw1" {...field} value={field.value || ""} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -349,12 +346,12 @@ export default function AdminContent() {
                             </div>
 
                             <div className="flex gap-2 pt-4">
-                                <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending || uploading}>
+                                <Button type="submit" className="flex-1 py-7 text-lg font-bold" disabled={createMutation.isPending || updateMutation.isPending || uploading}>
                                     {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
                                     {editingId ? "ذخیره تغییرات" : "ایجاد نهایی محتوا"}
                                 </Button>
                                 {editingId && (
-                                    <Button type="button" variant="outline" onClick={() => { setEditingId(null); form.reset(); setUploadProgress(0); }}>
+                                    <Button type="button" variant="outline" className="py-7" onClick={() => { setEditingId(null); form.reset(); setUploadProgress(0); }}>
                                         انصراف
                                     </Button>
                                 )}
@@ -363,6 +360,7 @@ export default function AdminContent() {
                     </Form>
                 </div>
 
+                {/* Content List */}
                 <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                     <div className="p-4 border-b flex items-center gap-2">
                         <Video className="h-5 w-5 text-primary" />
@@ -413,6 +411,7 @@ export default function AdminContent() {
                 </div>
             </div>
 
+            {/* Delete Confirmation */}
             <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
                 <AlertDialogContent dir="rtl">
                     <AlertDialogHeader>
