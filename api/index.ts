@@ -1,10 +1,64 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel.node';
 import axios from 'axios';
 import pg from 'pg';
 import crypto, { scrypt, timingSafeEqual } from 'crypto';
 import { promisify } from 'util';
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const scryptAsync = promisify(scrypt);
+
+// ============ ARVAN CLOUD / S3 HELPERS ============
+function getS3Config() {
+  const endpoint = process.env.ARVAN_ENDPOINT;
+  const accessKeyId = process.env.ARVAN_ACCESS_KEY;
+  const secretAccessKey = process.env.ARVAN_SECRET_KEY;
+  const bucket = process.env.ARVAN_BUCKET_NAME;
+
+  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket) {
+    throw new Error("Missing ArvanCloud S3 Configuration in environment variables");
+  }
+
+  return { 
+    client: new S3Client({
+      region: "default",
+      endpoint,
+      credentials: { accessKeyId, secretAccessKey },
+      forcePathStyle: true,
+    }),
+    bucket 
+  };
+}
+
+async function generateDownloadLink(fileKey: string, expiresInSeconds = 3600, disposition: "attachment" | "inline" = "attachment") {
+  try {
+    const { client, bucket } = getS3Config();
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: fileKey,
+      ResponseContentDisposition: disposition,
+    });
+    return await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+  } catch (error) {
+    console.error("Download link error:", error);
+    return null;
+  }
+}
+
+async function generateUploadLink(fileKey: string, contentType: string, expiresInSeconds = 3600) {
+  try {
+    const { client, bucket } = getS3Config();
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: fileKey,
+      ContentType: contentType,
+    });
+    return await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+  } catch (error) {
+    console.error("Upload link error:", error);
+    return null;
+  }
+}
 
 // ============ DATABASE SETUP ============
 const { Pool } = pg;
@@ -176,7 +230,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const db = getPool();
-      // Added password check
       const result = await db.query(
         'SELECT id, username, phone, name, role, level, (password IS NOT NULL) as "hasPassword" FROM users WHERE session_token = $1',
         [sessionToken]
@@ -219,6 +272,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // ---- ArvanCloud Upload Link (Admin Only) ----
+  if (url.includes('/api/content/upload-link') && method === 'GET') {
+    try {
+      // 1. Auth Check
+      const cookieHeader = req.headers.cookie || '';
+      const cookies = parseCookies(cookieHeader);
+      const sessionToken = cookies['session'];
+      if (!sessionToken) return res.status(401).json({ error: "Unauthorized" });
+
+      const db = getPool();
+      const userRes = await db.query('SELECT role FROM users WHERE session_token = $1', [sessionToken]);
+      if (userRes.rows.length === 0 || userRes.rows[0].role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized (Admin only)" });
+      }
+
+      // 2. Generate Link
+      const urlObj = new URL(url, `http://${req.headers.host}`);
+      const fileName = urlObj.searchParams.get('fileName');
+      const contentType = urlObj.searchParams.get('contentType');
+
+      if (!fileName || !contentType) {
+        return res.status(400).json({ error: "fileName and contentType are required" });
+      }
+
+      const fileKey = `uploads/${Date.now()}-${fileName}`;
+      const uploadUrl = await generateUploadLink(fileKey, contentType);
+
+      if (!uploadUrl) {
+        return res.status(500).json({ error: "Failed to generate upload link" });
+      }
+
+      return res.status(200).json({ uploadUrl, fileKey });
+    } catch (err: any) {
+      console.error("Upload Link Error:", err);
+      return res.status(500).json({ error: "Internal Server Error", details: err.message });
+    }
+  }
+
   // ---- Secure Download (ArvanCloud/S3) ----
   if (url.includes('/api/download') && method === 'GET') {
     try {
@@ -234,54 +325,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const userId = userRes.rows[0].id;
 
       // 2. Content Check
-      // Extract contentId from query (e.g. /api/download?id=123)
       const urlObj = new URL(url, `http://${req.headers.host}`);
       const contentId = urlObj.searchParams.get('id');
       const isStream = urlObj.searchParams.get('stream') === 'true';
       if (!contentId) return res.status(400).json({ error: "Content ID required" });
 
-      // 3. Purchase Check (Logi same as before)
-      const purchaseCheck = await db.query(
-        'SELECT * FROM purchases WHERE user_id = $1 AND content_id = $2',
-        [userId, contentId]
-      );
-      
+      // 3. Admin / Purchase Check
       const userRoleRes = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
       const isAdmin = userRoleRes.rows[0]?.role === 'admin';
 
-      if (!isAdmin && purchaseCheck.rows.length === 0) {
-        // Optional: Check if content is FREE?
-        const contentRes = await db.query('SELECT price, is_premium FROM content WHERE id = $1', [contentId]);
-        if (contentRes.rows.length === 0) return res.status(404).json({ error: "Content not found" });
-        const content = contentRes.rows[0];
-        if (content.is_premium && content.price > 0) {
-             return res.status(403).json({ error: "Purchase required" });
+      if (!isAdmin) {
+        const purchaseCheck = await db.query('SELECT * FROM purchases WHERE user_id = $1 AND content_id = $2', [userId, contentId]);
+        if (purchaseCheck.rows.length === 0) {
+          const contentRes = await db.query('SELECT price, is_premium FROM content WHERE id = $1', [contentId]);
+          if (contentRes.rows.length === 0) return res.status(404).json({ error: "Content not found" });
+          const content = contentRes.rows[0];
+          if (content.is_premium && content.price > 0) return res.status(403).json({ error: "Purchase required" });
         }
       }
 
       // 4. Get File Key
-      const contentRes = await db.query('SELECT file_key FROM content WHERE id = $1', [contentId]);
-      if (contentRes.rows.length === 0) return res.status(404).json({ error: "Content not found" });
-      const fileKey = contentRes.rows[0].file_key;
-
-      if (!fileKey) {
-        return res.status(404).json({ error: "File not available for this content" });
-      }
+      const contentDataRes = await db.query('SELECT file_key FROM content WHERE id = $1', [contentId]);
+      const fileKey = contentDataRes.rows[0]?.file_key;
+      if (!fileKey) return res.status(404).json({ error: "File not available" });
 
       // 5. Generate Signed URL
-      const { generateDownloadLink } = await import('../server/s3-storage');
       const disposition = isStream ? 'inline' : 'attachment';
       const downloadUrl = await generateDownloadLink(fileKey, 3600, disposition);
 
-      if (!downloadUrl) {
-         return res.status(500).json({ error: "Failed to generate download link" });
-      }
+      if (!downloadUrl) return res.status(500).json({ error: "Failed to generate download link" });
 
-      // 6. Redirect or Return JSON
-      // If client prefers JSON: 
-      // return res.status(200).json({ url: downloadUrl });
-      
-      // Redirecting is often easier for "Click to Download" buttons
       res.setHeader('Location', downloadUrl);
       return res.status(302).end();
 
@@ -290,19 +363,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Download failed" });
     }
   }
+
+  // ---- OTP Request ----
   if (url.includes('/api/auth/otp/request') && method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const phone = body?.phone;
-
-      if (!phone) return res.status(400).json({ error: "Phone number is required" });
+      if (!phone) return res.status(400).json({ error: "Phone number required" });
 
       const normalized = cleanPhone(phone);
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
       const ADMIN_PHONES = ['09222453571', '09123104254'];
-
       const db = getPool();
       const existingUsers = await db.query('SELECT * FROM users WHERE phone = $1', [normalized]);
 
@@ -343,7 +416,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (user.otp !== code) return res.status(400).json({ error: "Invalid OTP code" });
 
       const sessionToken = generateToken();
-      
       const ADMIN_PHONES = ['09222453571', '09123104254'];
       let newRole = user.role;
       if (ADMIN_PHONES.includes(normalized) && user.role !== 'admin') {
@@ -359,13 +431,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({ 
         message: "Login successful",
-        user: { 
-          id: user.id, 
-          username: user.username, 
-          phone: user.phone, 
-          role: newRole,
-          hasPassword: user.hasPassword 
-        }
+        user: { id: user.id, username: user.username, phone: user.phone, role: newRole, hasPassword: user.hasPassword }
       });
     } catch (err: any) {
       return res.status(500).json({ error: "Verification failed" });
@@ -377,54 +443,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const cookies = parseCookies(req.headers.cookie);
       const sessionToken = cookies['session'];
-
       if (sessionToken) {
         await db.query('UPDATE users SET session_token = NULL WHERE session_token = $1', [sessionToken]);
       }
-
       res.setHeader('Set-Cookie', 'session=; Path=/; HttpOnly; Max-Age=0; Secure');
       return res.status(200).json({ message: "Logged out" });
     } catch (err: any) {
       return res.status(500).json({ error: "Logout failed" });
-    }
-  }
-
-  // ---- ArvanCloud Upload Link (Admin Only) ----
-  if (url.includes('/api/content/upload-link') && method === 'GET') {
-    try {
-      // 1. Auth Check
-      const cookieHeader = req.headers.cookie || '';
-      const cookies = parseCookies(cookieHeader);
-      const sessionToken = cookies['session'];
-      if (!sessionToken) return res.status(401).json({ error: "Unauthorized" });
-
-      const db = getPool();
-      const userRes = await db.query('SELECT role FROM users WHERE session_token = $1', [sessionToken]);
-      if (userRes.rows.length === 0 || userRes.rows[0].role !== 'admin') {
-        return res.status(403).json({ error: "Unauthorized (Admin only)" });
-      }
-
-      // 2. Generate Link
-      const urlObj = new URL(url, `http://${req.headers.host}`);
-      const fileName = urlObj.searchParams.get('fileName');
-      const contentType = urlObj.searchParams.get('contentType');
-
-      if (!fileName || !contentType) {
-        return res.status(400).json({ error: "fileName and contentType are required" });
-      }
-
-      const { generateUploadLink } = await import('../server/s3-storage');
-      const fileKey = `uploads/${Date.now()}-${fileName}`;
-      const uploadUrl = await generateUploadLink(fileKey, contentType);
-
-      if (!uploadUrl) {
-        return res.status(500).json({ error: "Failed to generate upload link" });
-      }
-
-      return res.status(200).json({ uploadUrl, fileKey });
-    } catch (err: any) {
-      console.error("Upload Link Error:", err);
-      return res.status(500).json({ error: "Internal Server Error", details: err.message });
     }
   }
 
