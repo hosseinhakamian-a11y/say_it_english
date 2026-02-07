@@ -389,6 +389,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // ---- ArvanCloud Upload Link (Admin Only) ----
+  if (url.includes('/api/content/upload-link') && method === 'GET') {
+    try {
+      // 1. Auth Check
+      const cookieHeader = req.headers.cookie || '';
+      const cookies = parseCookies(cookieHeader);
+      const sessionToken = cookies['session'];
+      if (!sessionToken) return res.status(401).json({ error: "Unauthorized" });
+
+      const db = getPool();
+      const userRes = await db.query('SELECT role FROM users WHERE session_token = $1', [sessionToken]);
+      if (userRes.rows.length === 0 || userRes.rows[0].role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized (Admin only)" });
+      }
+
+      // 2. Generate Link
+      const urlObj = new URL(url, `http://${req.headers.host}`);
+      const fileName = urlObj.searchParams.get('fileName');
+      const contentType = urlObj.searchParams.get('contentType');
+
+      if (!fileName || !contentType) {
+        return res.status(400).json({ error: "fileName and contentType are required" });
+      }
+
+      const { generateUploadLink } = await import('../server/s3-storage');
+      const fileKey = `uploads/${Date.now()}-${fileName}`;
+      const uploadUrl = await generateUploadLink(fileKey, contentType);
+
+      if (!uploadUrl) {
+        return res.status(500).json({ error: "Failed to generate upload link" });
+      }
+
+      return res.status(200).json({ uploadUrl, fileKey });
+    } catch (err: any) {
+      console.error("Upload Link Error:", err);
+      return res.status(500).json({ error: "Internal Server Error", details: err.message });
+    }
+  }
+
   // ---- Default ----
   return res.status(404).json({ error: "Endpoint not found", requestedPath: url });
 }
