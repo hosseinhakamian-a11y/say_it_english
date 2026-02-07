@@ -12,6 +12,7 @@ import Bookings from "@/pages/Bookings";
 import Classes from "@/pages/Classes";
 import AuthPage from "@/pages/Auth";
 import Profile from "@/pages/Profile";
+import EditProfile from "@/pages/EditProfile";
 import NotFound from "@/pages/not-found";
 import VideosPage from "@/pages/Videos";
 import VideoDetailPage from "@/pages/VideoDetail";
@@ -56,6 +57,7 @@ function Router() {
           <Route path="/classes" component={Classes} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/profile" component={Profile} />
+          <Route path="/edit-profile" component={EditProfile} />
           <Route path="/videos" component={VideosPage} />
           <Route path="/videos/:videoId" component={VideoDetailPage} />
           <Route path="/payment/:id" component={PaymentPage} />

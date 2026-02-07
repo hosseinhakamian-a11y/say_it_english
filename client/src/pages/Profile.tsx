@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useBookings } from "@/hooks/use-bookings";
-import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles } from "lucide-react";
-import { useLocation } from "wouter";
+import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles, Edit, UserCog } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { SecureVideoPlayer } from "@/components/SecureVideoPlayer";
 import { motion } from "framer-motion";
 import { pageVariants, containerVariants, itemVariants } from "@/lib/animations";
@@ -125,6 +125,16 @@ export default function Profile() {
                   داشبورد ادمین
                 </Button>
               )}
+
+              <Link href="/edit-profile">
+                <Button
+                  variant="outline"
+                  className="w-full rounded-xl mb-3 border-primary/30 text-primary hover:bg-primary/10 btn-press"
+                >
+                  <Edit className="w-4 h-4 ml-2" />
+                  ویرایش پروفایل
+                </Button>
+              </Link>
 
               <Button
                 variant="outline"

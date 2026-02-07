@@ -13,6 +13,12 @@ export const users = pgTable("users", {
   sessionToken: text("session_token"),
   role: text("role").default("student"), // 'admin' (teacher) or 'student'
   level: text("level").default("beginner"), // beginner, intermediate, advanced
+  // Profile fields
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  birthDate: text("birth_date"), // Store as YYYY-MM-DD string
+  avatar: text("avatar"), // URL to avatar image
+  bio: text("bio"), // Short bio/description
   createdAt: timestamp("created_at").defaultNow(),
 });
 
