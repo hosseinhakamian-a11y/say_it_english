@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { api } from "../shared/routes";
 import { z } from "zod";
-import "./types"; // Import type definitions for Express.User
+// Types are handled by types.d.ts globally
 
 // Helper type for authenticated requests
 interface AuthenticatedRequest extends Request {
