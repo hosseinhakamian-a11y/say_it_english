@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Calendar, GraduationCap, Headphones, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { containerVariants, itemVariants, pageVariants } from "@/lib/animations";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 export default function Home() {
   const features = [
@@ -169,12 +170,13 @@ export default function Home() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="w-full md:w-5/12 aspect-[4/5] rounded-[2rem] overflow-hidden shadow-2xl transition-all duration-500 hover:scale-[1.02]"
+              className="w-full md:w-5/12 aspect-[4/5] rounded-[2rem] overflow-hidden shadow-2xl"
             >
-              <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&q=80"
+              <OptimizedImage
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800"
                 alt="Teacher Portrait"
                 className="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-700"
+                containerClassName="w-full h-full"
               />
             </motion.div>
           </div>
