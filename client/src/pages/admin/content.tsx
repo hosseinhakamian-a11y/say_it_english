@@ -133,14 +133,12 @@ export default function AdminContent() {
         setUploadProgress(5);
 
         try {
-            // 1. Get pre-signed URL
             const res = await fetch(`/api/admin/upload-url?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`);
             if (!res.ok) throw new Error("Could not get upload link");
             const { uploadUrl, fileKey } = await res.json();
 
             setUploadProgress(20);
 
-            // 2. Direct upload to S3 using XMLHttpRequest for progress tracking
             const xhr = new XMLHttpRequest();
             xhr.open("PUT", uploadUrl, true);
             xhr.setRequestHeader("Content-Type", file.type);
@@ -197,8 +195,6 @@ export default function AdminContent() {
         });
     }
 
-    const provider = form.watch("videoProvider");
-
     return (
         <AdminLayout>
             <div className="flex items-center justify-between mb-8">
@@ -212,7 +208,6 @@ export default function AdminContent() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Form */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border">
                     <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                         {editingId ? <Pencil className="h-5 w-5 text-amber-500" /> : <Plus className="h-5 w-5 text-primary" />}
@@ -268,7 +263,6 @@ export default function AdminContent() {
                                 )} />
                             </div>
 
-                            {/* Price field - show when VIP is selected */}
                             {form.watch("isPremium") && (
                                 <FormField control={form.control} name="price" render={({ field }) => (
                                     <FormItem>
@@ -369,7 +363,6 @@ export default function AdminContent() {
                     </Form>
                 </div>
 
-                {/* Content List */}
                 <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                     <div className="p-4 border-b flex items-center gap-2">
                         <Video className="h-5 w-5 text-primary" />
@@ -420,7 +413,6 @@ export default function AdminContent() {
                 </div>
             </div>
 
-            {/* Delete Confirmation */}
             <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
                 <AlertDialogContent dir="rtl">
                     <AlertDialogHeader>
