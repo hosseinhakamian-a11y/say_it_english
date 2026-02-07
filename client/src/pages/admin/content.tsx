@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { Loader2, Plus, Pencil, Trash2, Video, BookOpen, Upload, CheckCircle2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Video, BookOpen, Upload, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
@@ -438,5 +438,3 @@ export default function AdminContent() {
         </AdminLayout>
     );
 }
-
-import { ShieldCheck } from "lucide-react";
