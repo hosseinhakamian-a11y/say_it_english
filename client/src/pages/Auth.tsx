@@ -15,14 +15,17 @@ import { SiGoogle } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { pageVariants, scaleUpVariants } from "@/lib/animations";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const loginSchema = z.object({
   username: z.string().min(1, "نام کاربری الزامی است"),
   password: z.string().min(1, "رمز عبور الزامی است"),
+  rememberMe: z.boolean().default(false),
 });
 
 const phoneSchema = z.object({
   phone: z.string().regex(/^09\d{9}$/, "شماره موبایل نامعتبر است (مثال: 09123456789)"),
+  rememberMe: z.boolean().default(false),
 });
 
 const otpSchema = z.object({
@@ -33,26 +36,22 @@ import { useLocation } from "wouter";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  // useAuth now provides verifyOtp and its status
   const { user, login, register, isLoggingIn, isRegistering, loginError, registerError, verifyOtp, isVerifyingOtp, verifyOtpError } = useAuth();
 
-  // اضافه کردن ریدایرکت خودکار
   if (user) {
-    // If logged in, go to home immediately. 
-    // We can handle "Set Password" suggestion inside the profile page later if needed.
     window.location.href = "/";
     return null;
   }
   const [mode, setMode] = useState<"login" | "register" | "otp">("login");
   const [otpStep, setOtpStep] = useState<"request" | "verify">("request");
   const [phone, setPhone] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
-  // Removed local isVerifyingOtp state as it comes from hook now
   const { toast } = useToast();
 
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { username: "", password: "", rememberMe: false },
   });
 
   const registerForm = useForm({
@@ -62,7 +61,7 @@ export default function AuthPage() {
 
   const phoneForm = useForm({
     resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: "" },
+    defaultValues: { phone: "", rememberMe: false },
   });
 
   const otpForm = useForm({
@@ -75,8 +74,9 @@ export default function AuthPage() {
     defaultValues: { password: "" },
   });
 
-  const handleRequestOtp = async (data: { phone: string }) => {
+  const handleRequestOtp = async (data: { phone: string, rememberMe: boolean }) => {
     setIsSendingOtp(true);
+    setRememberMe(data.rememberMe);
     try {
       const res = await fetch("/api/auth/otp/request", {
         method: "POST",
@@ -93,7 +93,6 @@ export default function AuthPage() {
       setOtpStep("verify");
       toast({ title: "کد تایید با موفقیت ارسال شد ✅" });
     } catch (err: any) {
-      console.error("DEBUG: OTP Global Error:", err);
       toast({ title: "خطای سیستمی", description: err.message, variant: "destructive" });
     } finally {
       setIsSendingOtp(false);
@@ -102,7 +101,7 @@ export default function AuthPage() {
 
   const handleVerifyOtp = (data: { otp: string }) => {
     verifyOtp(
-      { phone, otp: data.otp },
+      { phone, otp: data.otp, rememberMe },
       {
         onError: (err: any) => {
           toast({ title: "کد نامعتبر", description: err.message, variant: "destructive" });
@@ -126,39 +125,7 @@ export default function AuthPage() {
     }
   };
 
-  if (user) {
-    return (
-      <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 bg-muted/20">
-        <Card className="w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border-0 p-8">
-          <h2 className="text-xl font-bold mb-4 text-center">تنظیم کلمه عبور</h2>
-          <p className="text-muted-foreground text-center mb-6">
-            شما وارد شده‌اید. برای مراجعات بعدی می‌توانید کلمه عبور تعریف کنید.
-          </p>
-          <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(handleSetPassword)} className="space-y-4">
-              <FormField
-                control={passwordForm.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>کلمه عبور جدید</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} className="h-12 rounded-xl" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full h-12 rounded-xl">ذخیره کلمه عبور</Button>
-            </form>
-          </Form>
-          <Button variant="outline" onClick={() => window.location.href = "/"} className="w-full h-12 rounded-xl mt-4">
-            بازگشت به پیشخوان
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  if (user) return null;
 
   return (
     <motion.div
@@ -167,11 +134,7 @@ export default function AuthPage() {
       animate="animate"
       className="min-h-[80vh] flex items-center justify-center py-12 px-4 bg-gradient-to-br from-primary/5 to-muted/20"
     >
-      <motion.div
-        variants={scaleUpVariants}
-        initial="initial"
-        animate="animate"
-      >
+      <motion.div variants={scaleUpVariants} initial="initial" animate="animate">
         <Card className="w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border-0 glass">
           <div className="bg-gradient-to-br from-primary to-primary/80 p-8 text-center text-primary-foreground">
             <motion.div
@@ -199,7 +162,7 @@ export default function AuthPage() {
 
               <TabsContent value="login">
                 <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit((data) => login(data))} className="space-y-6">
+                  <form onSubmit={loginForm.handleSubmit((data) => login(data))} className="space-y-4">
                     {loginError && (
                       <Alert variant="destructive" className="rounded-xl">
                         <AlertCircle className="h-4 w-4" />
@@ -213,9 +176,7 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>نام کاربری</FormLabel>
-                          <FormControl>
-                            <Input className="h-12 rounded-xl" placeholder="نام کاربری خود را وارد کنید" {...field} />
-                          </FormControl>
+                          <FormControl><Input className="h-12 rounded-xl" placeholder="نام کاربری یا موبایل" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -226,15 +187,26 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>رمز عبور</FormLabel>
-                          <FormControl>
-                            <Input type="password" className="h-12 rounded-xl" placeholder="••••••••" {...field} />
-                          </FormControl>
+                          <FormControl><Input type="password" className="h-12 rounded-xl" placeholder="••••••••" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isLoggingIn}>
+                    <FormField
+                      control={loginForm.control}
+                      name="rememberMe"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0 px-1">
+                          <FormControl>
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} className="ml-2" />
+                          </FormControl>
+                          <FormLabel className="text-sm font-medium cursor-pointer">مرا به خاطر بسپار</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button type="submit" className="w-full h-12 rounded-xl text-lg mt-2" disabled={isLoggingIn}>
                       {isLoggingIn ? <Loader2 className="animate-spin" /> : "ورود به حساب"}
                     </Button>
                   </form>
@@ -257,9 +229,7 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>نام کاربری</FormLabel>
-                          <FormControl>
-                            <Input className="h-12 rounded-xl" placeholder="یک نام کاربری انتخاب کنید" {...field} />
-                          </FormControl>
+                          <FormControl><Input className="h-12 rounded-xl" placeholder="یک نام کاربری انتخاب کنید" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -270,9 +240,7 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>رمز عبور</FormLabel>
-                          <FormControl>
-                            <Input type="password" className="h-12 rounded-xl" placeholder="حداقل ۶ کاراکتر" {...field} />
-                          </FormControl>
+                          <FormControl><Input type="password" className="h-12 rounded-xl" placeholder="حداقل ۶ کاراکتر" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -288,21 +256,31 @@ export default function AuthPage() {
               <TabsContent value="otp">
                 {otpStep === "request" ? (
                   <Form {...phoneForm}>
-                    <form onSubmit={phoneForm.handleSubmit(handleRequestOtp)} className="space-y-6">
+                    <form onSubmit={phoneForm.handleSubmit(handleRequestOtp)} className="space-y-4">
                       <FormField
                         control={phoneForm.control}
                         name="phone"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>شماره موبایل</FormLabel>
-                            <FormControl>
-                              <Input className="h-12 rounded-xl" placeholder="09123456789" {...field} dir="ltr" />
-                            </FormControl>
+                            <FormControl><Input className="h-12 rounded-xl" placeholder="09123456789" {...field} dir="ltr" /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isSendingOtp}>
+                      <FormField
+                        control={phoneForm.control}
+                        name="rememberMe"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center space-x-2 space-y-0 px-1">
+                            <FormControl>
+                              <Checkbox checked={field.value} onCheckedChange={field.onChange} className="ml-2" />
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium cursor-pointer">مرا به خاطر بسپار</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full h-12 rounded-xl text-lg mt-2" disabled={isSendingOtp}>
                         {isSendingOtp ? <Loader2 className="animate-spin" /> : "ارسال کد تایید"}
                       </Button>
                     </form>
@@ -337,12 +315,8 @@ export default function AuthPage() {
             </Tabs>
 
             <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">یا استفاده از</span>
-              </div>
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">یا استفاده از</span></div>
             </div>
 
             <Button

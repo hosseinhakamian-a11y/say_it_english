@@ -173,13 +173,14 @@ function cleanPhone(phone: string): string {
 }
 
 // ============ COOKIE HELPER ============
-function setSessionCookie(res: VercelResponse, token: string) {
+function setSessionCookie(res: VercelResponse, token: string, rememberMe = false) {
+  const maxAge = rememberMe ? 2592000 : 604800; // 30 days or 7 days
   const cookieOptions = [
     `session=${token}`,
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
-    "Max-Age=604800", // 1 week
+    `Max-Age=${maxAge}`,
     "Secure" // Ensure this is set for Vercel
   ].join("; ");
   
@@ -251,7 +252,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (url.includes('/api/login') && method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { username, password } = body;
+      const { username, password, rememberMe } = body;
       if (!username || !password) return res.status(400).json({ error: "Username and password required" });
 
       const result = await db.query('SELECT *, (password IS NOT NULL) as "hasPassword" FROM users WHERE username = $1 OR phone = $2', [username, username]);
@@ -265,7 +266,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const sessionToken = generateToken();
       await db.query('UPDATE users SET session_token = $1 WHERE id = $2', [sessionToken, user.id]);
 
-      setSessionCookie(res, sessionToken);
+      setSessionCookie(res, sessionToken, !!rememberMe);
       return res.status(200).json({ id: user.id, username: user.username, hasPassword: true });
     } catch (err) {
       return res.status(500).json({ error: "Login failed" });
@@ -402,6 +403,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const phone = body?.phone;
       const code = body?.code || body?.otp;
+      const rememberMe = body?.rememberMe;
 
       if (!phone || !code) return res.status(400).json({ error: "Phone and code are required" });
 
@@ -427,7 +429,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         [sessionToken, newRole, normalized]
       );
 
-      setSessionCookie(res, sessionToken);
+      setSessionCookie(res, sessionToken, !!rememberMe);
 
       return res.status(200).json({ 
         message: "Login successful",

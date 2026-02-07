@@ -22,7 +22,7 @@ export function useAuth() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string }) => {
+    mutationFn: async (credentials: { username: string; password: string; rememberMe?: boolean }) => {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,7 +72,7 @@ export function useAuth() {
   });
 
   const verifyOtpMutation = useMutation({
-    mutationFn: async (data: { phone: string; otp: string }) => {
+    mutationFn: async (data: { phone: string; otp: string; rememberMe?: boolean }) => {
       const res = await fetch("/api/auth/otp/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,19 +82,15 @@ export function useAuth() {
       if (!res.ok) {
         const error = await res.text();
         try {
-          // Try to parse JSON error first
           const json = JSON.parse(error);
           throw new Error(json.error || json.message || "کد تایید نامعتبر است");
         } catch (e: any) {
-          // If not JSON, throw raw text or original error
           throw new Error(e.message !== "کد تایید نامعتبر است" ? error : e.message);
         }
       }
       return await res.json();
     },
     onSuccess: (data) => {
-      // The backend returns { message: "...", user: { ... } }
-      // We need to set the user object in the cache
       queryClient.setQueryData(["/api/user"], data.user);
       setLocation("/");
     },

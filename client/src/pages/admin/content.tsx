@@ -154,18 +154,22 @@ export default function AdminContent() {
             };
 
             xhr.onload = () => {
-                if (xhr.status === 200) {
+                if (xhr.status === 200 || xhr.status === 201) {
                     setUploadProgress(100);
                     form.setValue("fileKey", fileKey);
                     form.setValue("videoProvider", "custom");
                     toast({ title: "فایل با موفقیت در ابرآروان آپلود شد ✅" });
                     setUploading(false);
                 } else {
-                    throw new Error("Upload failed");
+                    console.error("Upload failed with status:", xhr.status, xhr.responseText);
+                    throw new Error(`Upload failed (${xhr.status}). Check CORS settings.`);
                 }
             };
 
-            xhr.onerror = () => { throw new Error("Network error during upload"); };
+            xhr.onerror = () => {
+                console.error("XHR Network Error. This is usually a CORS issue.");
+                throw new Error("Network error. Please ensure CORS is enabled in ArvanCloud bucket settings.");
+            };
             xhr.send(file);
 
         } catch (error: any) {
