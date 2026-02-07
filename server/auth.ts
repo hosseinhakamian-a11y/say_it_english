@@ -216,13 +216,12 @@ export function setupAuth(app: Express) {
 
   // Set Password Route
   app.post("/api/user/password", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
     const { password } = req.body;
     if (!password) return res.status(400).send("Password is required");
 
     const hashedPassword = await hashPassword(password);
-    // @ts-ignore
-    await storage.updateUser(req.user.id, { password: hashedPassword });
+    await storage.updateUser((req.user as any).id, { password: hashedPassword });
     res.json({ message: "Password updated successfully" });
   });
 }

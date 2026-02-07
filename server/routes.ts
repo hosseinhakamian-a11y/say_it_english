@@ -1,9 +1,20 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { api } from "../shared/routes";
 import { z } from "zod";
+import "./types"; // Import type definitions for Express.User
+
+// Helper type for authenticated requests
+interface AuthenticatedRequest extends Request {
+  user?: Express.User;
+}
+
+// Helper function to check if user is admin
+function isAdmin(req: AuthenticatedRequest): boolean {
+  return req.isAuthenticated() && req.user?.role === "admin";
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -39,23 +50,23 @@ export async function registerRoutes(
     }
   });
 
+  // ===== Content Endpoints =====
+  
   app.get(api.content.list.path, async (req, res) => {
     const content = await storage.getContent();
     res.json(content);
   });
 
-  app.post(api.content.create.path, async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  app.post(api.content.create.path, async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     const content = await storage.createContent(req.body);
     res.status(201).json(content);
   });
 
-  app.patch("/api/content/:id", async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  app.patch("/api/content/:id", async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     const updated = await storage.updateContent(parseInt(req.params.id), req.body);
@@ -63,56 +74,52 @@ export async function registerRoutes(
     res.json(updated);
   });
 
-  app.delete("/api/content/:id", async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  app.delete("/api/content/:id", async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     await storage.deleteContent(parseInt(req.params.id));
     res.json({ success: true });
   });
 
-  app.get(api.bookings.list.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    // @ts-ignore
-    const bookings = await storage.getBookings(req.user!.id);
+  // ===== Bookings Endpoints =====
+  
+  app.get(api.bookings.list.path, async (req: AuthenticatedRequest, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
+    const bookings = await storage.getBookings(req.user.id);
     res.json(bookings);
   });
 
-  app.post(api.bookings.create.path, async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+  app.post(api.bookings.create.path, async (req: AuthenticatedRequest, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
     const booking = await storage.createBooking({
       ...req.body,
-      // @ts-ignore
-      userId: req.user!.id,
+      userId: req.user.id,
       date: new Date(req.body.date),
     });
     res.status(201).json(booking);
   });
 
+  // ===== Classes Endpoints =====
+  
   app.get(api.classes.list.path, async (req, res) => {
     const classes = await storage.getClasses();
     res.json(classes);
   });
 
-
-  // Seeding logic moved to script/seed.ts
-
-  // User Management (Admin Only)
-  app.get(api.users.list.path, async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  // ===== User Management (Admin Only) =====
+  
+  app.get(api.users.list.path, async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     const users = await storage.getAllUsers();
-    // Exclude passwords from the response
     const safeUsers = users.map(({ password, ...rest }) => rest);
     res.json(safeUsers);
   });
 
-  app.patch("/api/users/:id/role", async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  app.patch("/api/users/:id/role", async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     const { role } = req.body;
@@ -124,11 +131,9 @@ export async function registerRoutes(
 
   // ===== User Profile Endpoints =====
   
-  // Update current user's profile
-  app.patch("/api/profile", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    // @ts-ignore
-    const userId = req.user!.id;
+  app.patch("/api/profile", async (req: AuthenticatedRequest, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
+    const userId = req.user.id;
     const { firstName, lastName, birthDate, bio, level } = req.body;
     
     const user = await storage.updateUser(userId, {
@@ -143,18 +148,15 @@ export async function registerRoutes(
     res.json(safeUser);
   });
 
-  // Change password (or set password for OTP users)
-  app.post("/api/profile/password", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    // @ts-ignore
-    const userId = req.user!.id;
+  app.post("/api/profile/password", async (req: AuthenticatedRequest, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
+    const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
     
     if (!newPassword || newPassword.length < 6) {
       return res.status(400).send("Password must be at least 6 characters");
     }
     
-    // @ts-ignore
     const user = await storage.getUser(userId);
     if (!user) return res.status(404).send("User not found");
     
@@ -163,7 +165,6 @@ export async function registerRoutes(
       if (!currentPassword) {
         return res.status(400).send("Current password is required");
       }
-      // Import comparePasswords from auth module
       const crypto = await import("crypto");
       const { promisify } = await import("util");
       const scryptAsync = promisify(crypto.scrypt);
@@ -189,26 +190,24 @@ export async function registerRoutes(
     res.json({ message: "Password updated successfully" });
   });
 
-  // Payment endpoints
-  app.post("/api/payments", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    // @ts-ignore
-    const payment = await storage.createPayment({ ...req.body, userId: req.user!.id });
+  // ===== Payment Endpoints =====
+  
+  app.post("/api/payments", async (req: AuthenticatedRequest, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
+    const payment = await storage.createPayment({ ...req.body, userId: req.user.id });
     res.status(201).json(payment);
   });
 
-  app.get("/api/payments", async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  app.get("/api/payments", async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     const payments = await storage.getPayments();
     res.json(payments);
   });
 
-  app.patch("/api/payments/:id/status", async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  app.patch("/api/payments/:id/status", async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     const { status, notes } = req.body;
@@ -227,26 +226,21 @@ export async function registerRoutes(
     res.json(payment);
   });
 
-  // Get current user's purchases
-  app.get("/api/purchases", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    // @ts-ignore
-    const purchases = await storage.getUserPurchases(req.user!.id);
+  app.get("/api/purchases", async (req: AuthenticatedRequest, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.sendStatus(401);
+    const purchases = await storage.getUserPurchases(req.user.id);
     res.json(purchases);
   });
 
   // ===== Payment Settings (Admin Only) =====
   
-  // Get payment settings (public - for payment page)
   app.get("/api/payment-settings", async (req, res) => {
     const settings = await storage.getPaymentSettings();
     res.json(settings);
   });
 
-  // Update payment settings (admin only)
-  app.put("/api/payment-settings", async (req, res) => {
-    // @ts-ignore
-    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+  app.put("/api/payment-settings", async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
     }
     const settings = await storage.updatePaymentSettings(req.body);
