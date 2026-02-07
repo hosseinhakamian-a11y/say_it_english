@@ -140,5 +140,23 @@ export async function registerRoutes(
     res.json(purchases);
   });
 
+  // ===== Payment Settings (Admin Only) =====
+  
+  // Get payment settings (public - for payment page)
+  app.get("/api/payment-settings", async (req, res) => {
+    const settings = await storage.getPaymentSettings();
+    res.json(settings);
+  });
+
+  // Update payment settings (admin only)
+  app.put("/api/payment-settings", async (req, res) => {
+    // @ts-ignore
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+    const settings = await storage.updatePaymentSettings(req.body);
+    res.json(settings);
+  });
+
   return httpServer;
 }

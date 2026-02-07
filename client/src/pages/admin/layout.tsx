@@ -11,6 +11,7 @@ import {
     Menu,
     X,
     Sparkles,
+    Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +28,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         { name: "مدیریت محتوا", href: "/admin/content", icon: BookOpen },
         { name: "مدیریت کاربران", href: "/admin/users", icon: Users },
         { name: "مدیریت پرداخت‌ها", href: "/admin/payments", icon: CreditCard },
+        { name: "تنظیمات پرداخت", href: "/admin/payment-settings", icon: Wallet },
     ];
 
     const sidebarContent = (
@@ -57,8 +59,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                                 <a
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
-                                            ? "bg-primary text-white shadow-lg shadow-primary/30"
-                                            : "text-gray-600 hover:bg-primary/10 hover:text-primary"
+                                        ? "bg-primary text-white shadow-lg shadow-primary/30"
+                                        : "text-gray-600 hover:bg-primary/10 hover:text-primary"
                                         }`}
                                 >
                                     <item.icon className="h-5 w-5" />

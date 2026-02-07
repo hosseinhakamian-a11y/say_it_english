@@ -114,6 +114,14 @@ export const posts = pgTable("posts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Payment Settings (Admin's bank cards and crypto wallets)
+export const paymentSettings = pgTable("payment_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(), // 'bank_cards', 'crypto_wallets'
+  value: jsonb("value").notNull(), // Array of cards or wallets
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertContentSchema = createInsertSchema(content).omit({ id: true, createdAt: true });

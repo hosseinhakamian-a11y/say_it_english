@@ -117,9 +117,9 @@ export function setupAuth(app: Express) {
       if (err) return next(err);
       if (!user) return res.status(401).send("Invalid username or password");
       
-      // Check if username is an admin phone number and update role if needed
-      const username = user.username;
-      if (ADMIN_PHONES.includes(username) && user.role !== "admin") {
+      // Check if username OR phone is an admin phone number and update role if needed
+      const isAdminPhone = ADMIN_PHONES.includes(user.username) || ADMIN_PHONES.includes(user.phone);
+      if (isAdminPhone && user.role !== "admin") {
         await storage.updateUser(user.id, { role: "admin" });
         user.role = "admin";
       }
