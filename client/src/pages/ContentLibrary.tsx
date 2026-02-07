@@ -212,7 +212,7 @@ export default function ContentLibrary() {
                         <p className="text-center text-green-600 font-medium text-sm">✅ شما این دوره را خریداری کرده‌اید</p>
                         <Button
                           className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all btn-press"
-                          onClick={() => setSelectedContent(item)}
+                          onClick={() => navigate(`/course/${item.id}`)}
                         >
                           مشاهده دوره
                         </Button>
@@ -220,7 +220,7 @@ export default function ContentLibrary() {
                     ) : (
                       <Button
                         className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all btn-press"
-                        onClick={() => setSelectedContent(item)}
+                        onClick={() => navigate(`/course/${item.id}`)}
                       >
                         {item.type === 'video' ? 'مشاهده ویدیو' : item.type === 'podcast' ? 'گوش دادن' : 'خواندن مطلب'}
                       </Button>
