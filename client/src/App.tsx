@@ -8,8 +8,10 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { Loader2 } from "lucide-react";
+import { HelmetProvider } from "react-helmet-async";
 
 // Lazy load pages
+// ... (rest of imports remains same)
 const Home = lazy(() => import("@/pages/Home"));
 const PlacementTest = lazy(() => import("@/pages/PlacementTest"));
 const ContentLibrary = lazy(() => import("@/pages/ContentLibrary"));
@@ -93,12 +95,14 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 }
 
