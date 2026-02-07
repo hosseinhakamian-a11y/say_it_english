@@ -298,7 +298,7 @@ export async function registerRoutes(
    * Admin Upload Link Generator
    * Generates a pre-signed URL for direct browser-to-S3 upload.
    */
-  app.get("/api/admin/upload-url", async (req: AuthenticatedRequest, res) => {
+  app.get("/api/content/upload-link", async (req: AuthenticatedRequest, res) => {
     if (!isAdmin(req)) return res.status(403).send("Unauthorized");
     
     const fileName = req.query.fileName as string;

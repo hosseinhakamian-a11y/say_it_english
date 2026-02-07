@@ -133,7 +133,7 @@ export default function AdminContent() {
         setUploadProgress(5);
 
         try {
-            const res = await fetch(`/api/admin/upload-url?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`);
+            const res = await fetch(`/api/content/upload-link?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`);
             if (!res.ok) {
                 const errorMsg = await res.text();
                 throw new Error(errorMsg || "Could not get upload link");
