@@ -120,9 +120,7 @@ export function setupAuth(app: Express) {
       // Check if username OR phone is an admin phone number and update role if needed
       const isAdminPhone = ADMIN_PHONES.includes(user.username) || 
                           (user.phone && ADMIN_PHONES.includes(user.phone));
-      console.log(`Login: username=${user.username}, phone=${user.phone}, isAdmin=${isAdminPhone}, role=${user.role}`);
       if (isAdminPhone && user.role !== "admin") {
-        console.log(`Upgrading user ${user.id} to admin role`);
         await storage.updateUser(user.id, { role: "admin" });
         user.role = "admin";
       }

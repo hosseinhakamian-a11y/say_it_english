@@ -95,7 +95,6 @@ export function useAuth() {
     onSuccess: (data) => {
       // The backend returns { message: "...", user: { ... } }
       // We need to set the user object in the cache
-      console.log("OTP Verify Success, updating cache:", data.user);
       queryClient.setQueryData(["/api/user"], data.user);
       setLocation("/");
     },

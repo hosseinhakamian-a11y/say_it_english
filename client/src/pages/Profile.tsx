@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useBookings } from "@/hooks/use-bookings";
-import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles, Edit, UserCog } from "lucide-react";
+import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles, Edit } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { SecureVideoPlayer } from "@/components/SecureVideoPlayer";
 import { motion } from "framer-motion";
