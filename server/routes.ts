@@ -247,5 +247,52 @@ export async function registerRoutes(
     res.json(settings);
   });
 
+  // ===== Content Endpoints =====
+  
+  app.get(api.content.list.path, async (req, res) => {
+    const contentList = await storage.getContent();
+    res.json(contentList);
+  });
+
+  /**
+   * Secure Download/Stream Endpoint
+   * This endpoint generates a signed URL for ArvanCloud S3 objects.
+   * It checks for authentication and purchase status (if content is premium).
+   */
+  app.get("/api/download", async (req: AuthenticatedRequest, res) => {
+    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Unauthorized");
+    
+    const contentId = parseInt(req.query.id as string);
+    if (isNaN(contentId)) return res.status(400).send("Invalid content ID");
+    
+    const item = await storage.getContentById(contentId);
+    if (!item) return res.status(404).send("Content not found");
+    
+    // Check access for premium content
+    if (item.isPremium && !isAdmin(req)) {
+      const purchases = await storage.getUserPurchases(req.user.id);
+      const hasPurchased = purchases.some(p => p.contentId === item.id);
+      if (!hasPurchased) {
+        return res.status(403).send("You must purchase this content to access it.");
+      }
+    }
+    
+    // Get fileKey from content record (S3/Arvan Object Key)
+    const fileKey = item.fileKey || item.videoId || item.contentUrl;
+    if (!fileKey) return res.status(400).send("No file associated with this content");
+    
+    // Generate signed URL from ArvanCloud S3
+    const { generateDownloadLink } = await import("./s3-storage");
+    const stream = req.query.stream === "true";
+    const signedUrl = await generateDownloadLink(fileKey, 3600, stream ? "inline" : "attachment");
+    
+    if (!signedUrl) {
+      return res.status(500).send("Error generating access link");
+    }
+    
+    // Redirect user to the signed URL
+    res.redirect(signedUrl);
+  });
+
   return httpServer;
 }

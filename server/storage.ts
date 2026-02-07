@@ -41,6 +41,7 @@ export interface IStorage {
   
   // Content
   getContent(): Promise<Content[]>;
+  getContentById(id: number): Promise<Content | undefined>;
   createContent(content: InsertContent): Promise<Content>;
   updateContent(id: number, content: Partial<Content>): Promise<Content | undefined>;
   deleteContent(id: number): Promise<void>;
@@ -121,6 +122,11 @@ export class DatabaseStorage implements IStorage {
   // ===== Content =====
   async getContent(): Promise<Content[]> {
     return await db.select().from(content).orderBy(desc(content.createdAt));
+  }
+
+  async getContentById(id: number): Promise<Content | undefined> {
+    const [c] = await db.select().from(content).where(eq(content.id, id));
+    return c;
   }
 
   async createContent(insertContent: InsertContent): Promise<Content> {
