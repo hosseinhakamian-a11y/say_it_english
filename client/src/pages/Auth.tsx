@@ -9,10 +9,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { insertUserSchema } from "@shared/schema";
-import { Loader2, AlertCircle, Phone, Mail, Lock, Smartphone } from "lucide-react";
+import { Loader2, AlertCircle, Phone, Mail, Lock, Smartphone, Sparkles } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SiGoogle } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
+import { pageVariants, scaleUpVariants } from "@/lib/animations";
 
 const loginSchema = z.object({
   username: z.string().min(1, "نام کاربری الزامی است"),
@@ -159,185 +161,201 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 bg-muted/20">
-      <Card className="w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border-0">
-        <div className="bg-primary p-8 text-center text-primary-foreground">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm text-2xl font-bold">
-            F
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="min-h-[80vh] flex items-center justify-center py-12 px-4 bg-gradient-to-br from-primary/5 to-muted/20"
+    >
+      <motion.div
+        variants={scaleUpVariants}
+        initial="initial"
+        animate="animate"
+      >
+        <Card className="w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border-0 glass">
+          <div className="bg-gradient-to-br from-primary to-primary/80 p-8 text-center text-primary-foreground">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+              className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm"
+            >
+              <Sparkles className="w-8 h-8" />
+            </motion.div>
+            <h1 className="text-2xl font-bold">خوش آمدید</h1>
+            <p className="text-primary-foreground/80 mt-2">به جامعه یادگیری زبان بپیوندید</p>
           </div>
-          <h1 className="text-2xl font-bold">خوش آمدید</h1>
-          <p className="text-primary-foreground/80 mt-2">به جامعه یادگیری زبان بپیوندید</p>
-        </div>
 
-        <CardContent className="p-8">
-          <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
-            <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted rounded-xl p-1">
-              <TabsTrigger value="login" className="rounded-lg">ورود</TabsTrigger>
-              <TabsTrigger value="register" className="rounded-lg">ثبت نام</TabsTrigger>
-              <TabsTrigger value="otp" className="rounded-lg flex gap-1 items-center">
-                <Smartphone className="w-4 h-4" />
-                پیامک
-              </TabsTrigger>
-            </TabsList>
+          <CardContent className="p-8">
+            <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
+              <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted rounded-xl p-1">
+                <TabsTrigger value="login" className="rounded-lg">ورود</TabsTrigger>
+                <TabsTrigger value="register" className="rounded-lg">ثبت نام</TabsTrigger>
+                <TabsTrigger value="otp" className="rounded-lg flex gap-1 items-center">
+                  <Smartphone className="w-4 h-4" />
+                  پیامک
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="login">
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit((data) => login(data))} className="space-y-6">
-                  {loginError && (
-                    <Alert variant="destructive" className="rounded-xl">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{loginError.message}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <FormField
-                    control={loginForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>نام کاربری</FormLabel>
-                        <FormControl>
-                          <Input className="h-12 rounded-xl" placeholder="نام کاربری خود را وارد کنید" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+              <TabsContent value="login">
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit((data) => login(data))} className="space-y-6">
+                    {loginError && (
+                      <Alert variant="destructive" className="rounded-xl">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{loginError.message}</AlertDescription>
+                      </Alert>
                     )}
-                  />
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>رمز عبور</FormLabel>
-                        <FormControl>
-                          <Input type="password" className="h-12 rounded-xl" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
-                  <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isLoggingIn}>
-                    {isLoggingIn ? <Loader2 className="animate-spin" /> : "ورود به حساب"}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-
-            <TabsContent value="register">
-              <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit((data) => register(data))} className="space-y-6">
-                  {registerError && (
-                    <Alert variant="destructive" className="rounded-xl">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{registerError.message}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <FormField
-                    control={registerForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>نام کاربری</FormLabel>
-                        <FormControl>
-                          <Input className="h-12 rounded-xl" placeholder="یک نام کاربری انتخاب کنید" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>رمز عبور</FormLabel>
-                        <FormControl>
-                          <Input type="password" className="h-12 rounded-xl" placeholder="حداقل ۶ کاراکتر" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isRegistering}>
-                    {isRegistering ? <Loader2 className="animate-spin" /> : "ایجاد حساب کاربری"}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-
-            <TabsContent value="otp">
-              {otpStep === "request" ? (
-                <Form {...phoneForm}>
-                  <form onSubmit={phoneForm.handleSubmit(handleRequestOtp)} className="space-y-6">
                     <FormField
-                      control={phoneForm.control}
-                      name="phone"
+                      control={loginForm.control}
+                      name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>شماره موبایل</FormLabel>
+                          <FormLabel>نام کاربری</FormLabel>
                           <FormControl>
-                            <Input className="h-12 rounded-xl" placeholder="09123456789" {...field} dir="ltr" />
+                            <Input className="h-12 rounded-xl" placeholder="نام کاربری خود را وارد کنید" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isSendingOtp}>
-                      {isSendingOtp ? <Loader2 className="animate-spin" /> : "ارسال کد تایید"}
-                    </Button>
-                  </form>
-                </Form>
-              ) : (
-                <Form {...otpForm}>
-                  <form onSubmit={otpForm.handleSubmit(handleVerifyOtp)} className="space-y-6">
-                    <div className="text-center mb-4">
-                      <p className="text-sm text-muted-foreground italic">کد ۶ رقمی به شماره {phone} ارسال شد</p>
-                      <Button variant="link" size="sm" onClick={() => setOtpStep("request")} className="p-0 h-auto">ویرایش شماره</Button>
-                    </div>
                     <FormField
-                      control={otpForm.control}
-                      name="otp"
+                      control={loginForm.control}
+                      name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>کد تایید</FormLabel>
+                          <FormLabel>رمز عبور</FormLabel>
                           <FormControl>
-                            <Input className="h-12 rounded-xl text-center text-2xl tracking-[1em]" placeholder="••••••" {...field} dir="ltr" maxLength={6} />
+                            <Input type="password" className="h-12 rounded-xl" placeholder="••••••••" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isVerifyingOtp}>
-                      {isVerifyingOtp ? <Loader2 className="animate-spin" /> : "تایید و ورود"}
+
+                    <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isLoggingIn}>
+                      {isLoggingIn ? <Loader2 className="animate-spin" /> : "ورود به حساب"}
                     </Button>
                   </form>
                 </Form>
-              )}
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
 
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">یا استفاده از</span>
-            </div>
-          </div>
+              <TabsContent value="register">
+                <Form {...registerForm}>
+                  <form onSubmit={registerForm.handleSubmit((data) => register(data))} className="space-y-6">
+                    {registerError && (
+                      <Alert variant="destructive" className="rounded-xl">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{registerError.message}</AlertDescription>
+                      </Alert>
+                    )}
 
-          <Button
-            variant="outline"
-            className="w-full h-12 rounded-xl flex items-center justify-center gap-2"
-            onClick={() => window.location.href = "/api/auth/google"}
-          >
-            <SiGoogle className="w-5 h-5 text-red-500" />
-            ورود با حساب گوگل
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+                    <FormField
+                      control={registerForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>نام کاربری</FormLabel>
+                          <FormControl>
+                            <Input className="h-12 rounded-xl" placeholder="یک نام کاربری انتخاب کنید" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>رمز عبور</FormLabel>
+                          <FormControl>
+                            <Input type="password" className="h-12 rounded-xl" placeholder="حداقل ۶ کاراکتر" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isRegistering}>
+                      {isRegistering ? <Loader2 className="animate-spin" /> : "ایجاد حساب کاربری"}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+
+              <TabsContent value="otp">
+                {otpStep === "request" ? (
+                  <Form {...phoneForm}>
+                    <form onSubmit={phoneForm.handleSubmit(handleRequestOtp)} className="space-y-6">
+                      <FormField
+                        control={phoneForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>شماره موبایل</FormLabel>
+                            <FormControl>
+                              <Input className="h-12 rounded-xl" placeholder="09123456789" {...field} dir="ltr" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isSendingOtp}>
+                        {isSendingOtp ? <Loader2 className="animate-spin" /> : "ارسال کد تایید"}
+                      </Button>
+                    </form>
+                  </Form>
+                ) : (
+                  <Form {...otpForm}>
+                    <form onSubmit={otpForm.handleSubmit(handleVerifyOtp)} className="space-y-6">
+                      <div className="text-center mb-4">
+                        <p className="text-sm text-muted-foreground italic">کد ۶ رقمی به شماره {phone} ارسال شد</p>
+                        <Button variant="link" size="sm" onClick={() => setOtpStep("request")} className="p-0 h-auto">ویرایش شماره</Button>
+                      </div>
+                      <FormField
+                        control={otpForm.control}
+                        name="otp"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>کد تایید</FormLabel>
+                            <FormControl>
+                              <Input className="h-12 rounded-xl text-center text-2xl tracking-[1em]" placeholder="••••••" {...field} dir="ltr" maxLength={6} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isVerifyingOtp}>
+                        {isVerifyingOtp ? <Loader2 className="animate-spin" /> : "تایید و ورود"}
+                      </Button>
+                    </form>
+                  </Form>
+                )}
+              </TabsContent>
+            </Tabs>
+
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">یا استفاده از</span>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full h-12 rounded-xl flex items-center justify-center gap-2 btn-press"
+              onClick={() => window.location.href = "/api/auth/google"}
+            >
+              <SiGoogle className="w-5 h-5 text-red-500" />
+              ورود با حساب گوگل
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
   );
 }

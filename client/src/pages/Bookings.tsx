@@ -7,9 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, CheckCircle2, Loader2, Phone } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, Loader2, Phone, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { pageVariants, containerVariants, itemVariants, scaleUpVariants } from "@/lib/animations";
+import { CardSkeleton } from "@/components/ui/skeleton";
 
 interface TimeSlot {
   id: number;
@@ -79,37 +81,67 @@ export default function Bookings() {
 
   if (isSuccess) {
     return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <Card className="max-w-lg mx-auto rounded-[2rem] border-primary/20 bg-primary/5 p-12">
-          <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30">
+      <motion.div
+        variants={scaleUpVariants}
+        initial="initial"
+        animate="animate"
+        className="container mx-auto px-4 py-20 text-center"
+      >
+        <Card className="max-w-lg mx-auto rounded-[2rem] border-primary/20 glass-primary p-12">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+            className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/30"
+          >
             <CheckCircle2 className="w-10 h-10 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-primary mb-4">رزرو با موفقیت انجام شد!</h2>
+          </motion.div>
+          <h2 className="text-3xl font-bold gradient-text mb-4">رزرو با موفقیت انجام شد!</h2>
           <p className="text-muted-foreground mb-8 text-lg">
             درخواست شما ثبت شد. استاد به زودی با شما تماس خواهد گرفت.
           </p>
-          <Button onClick={() => { setIsSuccess(false); setSelectedSlot(null); }} className="rounded-xl">
+          <Button onClick={() => { setIsSuccess(false); setSelectedSlot(null); }} className="rounded-xl btn-press">
             رزرو جدید
           </Button>
         </Card>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      className="min-h-screen bg-background pb-20"
+    >
       {/* Header */}
-      <div className="bg-primary/5 py-12 md:py-16">
+      <div className="bg-gradient-to-br from-primary/10 to-primary/5 py-12 md:py-16">
         <div className="container mx-auto px-4 text-center">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="inline-block p-4 bg-background rounded-2xl shadow-lg mb-4"
+            transition={{ type: "spring", stiffness: 200 }}
+            className="inline-block p-4 glass rounded-2xl shadow-lg mb-4"
           >
             <Calendar className="w-8 h-8 text-primary" />
           </motion.div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">رزرو کلاس خصوصی</h1>
-          <p className="text-muted-foreground">یکی از زمان‌های خالی را برای کلاس ۳۰ دقیقه‌ای انتخاب کنید</p>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-3xl md:text-4xl font-bold mb-2"
+          >
+            رزرو کلاس خصوصی
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-muted-foreground"
+          >
+            یکی از زمان‌های خالی را برای کلاس ۳۰ دقیقه‌ای انتخاب کنید
+          </motion.p>
         </div>
       </div>
 
@@ -117,7 +149,12 @@ export default function Bookings() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
 
           {/* Slots List */}
-          <div className="lg:col-span-2">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="lg:col-span-2"
+          >
             <Card className="rounded-2xl border-border/50">
               <CardContent className="p-6">
                 <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
@@ -126,15 +163,20 @@ export default function Bookings() {
                 </h2>
 
                 {isLoading ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <div className="grid grid-cols-1 gap-4 py-4">
+                    <CardSkeleton />
+                    <CardSkeleton />
                   </div>
                 ) : Object.keys(slotsByDate).length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-12 text-muted-foreground"
+                  >
                     <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>در حال حاضر زمان خالی موجود نیست</p>
                     <p className="text-sm mt-2">لطفاً بعداً مراجعه کنید</p>
-                  </div>
+                  </motion.div>
                 ) : (
                   <div className="space-y-6">
                     {Object.entries(slotsByDate)
@@ -152,8 +194,8 @@ export default function Bookings() {
                                   key={slot.id}
                                   onClick={() => setSelectedSlot(slot)}
                                   className={`px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-2 ${selectedSlot?.id === slot.id
-                                      ? "border-primary bg-primary text-white"
-                                      : "border-border hover:border-primary hover:bg-primary/5"
+                                    ? "border-primary bg-primary text-white"
+                                    : "border-border hover:border-primary hover:bg-primary/5"
                                     }`}
                                 >
                                   <Clock className="h-4 w-4" />
@@ -169,11 +211,16 @@ export default function Bookings() {
                 )}
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
 
           {/* Booking Form */}
-          <div className="lg:col-span-1">
-            <Card className="rounded-2xl border-border/50 sticky top-24">
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="lg:col-span-1"
+          >
+            <Card className="rounded-2xl border-border/50 sticky top-24 glass">
               <CardContent className="p-6 space-y-6">
                 <div>
                   <h2 className="font-bold text-lg mb-2">تکمیل رزرو</h2>
@@ -219,7 +266,7 @@ export default function Bookings() {
                 <Button
                   onClick={handleBook}
                   disabled={!selectedSlot || bookMutation.isPending}
-                  className="w-full h-12 text-lg rounded-xl shadow-lg shadow-primary/20"
+                  className="w-full h-12 text-lg rounded-xl shadow-lg shadow-primary/20 btn-press"
                 >
                   {bookMutation.isPending ? (
                     <>
@@ -236,10 +283,10 @@ export default function Bookings() {
                 </p>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
 
         </div>
       </div>
-    </div>
+    </motion.div >
   );
 }
