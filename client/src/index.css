@@ -68,3 +68,61 @@
 .ltr {
   direction: ltr;
 }
+
+/* ========================================== */
+/* 🎨 Premium UI Enhancements                 */
+/* ========================================== */
+
+/* Shimmer Animation for Skeleton Screens */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Glass Effect Utilities */
+.glass {
+  @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+}
+
+.glass-dark {
+  @apply bg-black/30 backdrop-blur-xl border border-white/10 shadow-xl;
+}
+
+.glass-primary {
+  @apply bg-primary/10 backdrop-blur-xl border border-primary/20 shadow-xl;
+}
+
+/* Premium Card Hover Effect */
+.card-hover {
+  @apply transition-all duration-300 ease-out;
+}
+
+.card-hover:hover {
+  @apply -translate-y-2 shadow-2xl;
+}
+
+/* Button Press Animation */
+.btn-press {
+  @apply transition-transform duration-150 ease-out active:scale-95;
+}
+
+/* Gradient Text Effect */
+.gradient-text {
+  @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+}
+
+/* Smooth Page Transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}

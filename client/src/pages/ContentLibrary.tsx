@@ -9,6 +9,9 @@ import { useLocation } from "wouter";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/use-auth";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { motion } from "framer-motion";
+import { containerVariants, itemVariants } from "@/lib/animations";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -100,94 +103,112 @@ export default function ContentLibrary() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
         </div>
       ) : filteredContent?.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center py-20 text-muted-foreground"
+        >
           <Video className="h-16 w-16 mx-auto mb-4 opacity-50" />
           <p className="text-xl">هنوز محتوایی اضافه نشده است.</p>
           <p className="text-sm mt-2">مدرس می‌تواند از پنل ادمین محتوای جدید اضافه کند.</p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <motion.div
+          variants={containerVariants}
+          initial="initial"
+          animate="animate"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
           {filteredContent?.map((item) => (
-            <Card key={item.id} className="group overflow-hidden rounded-3xl border border-border/50 hover:shadow-xl transition-all duration-300 flex flex-col h-full bg-card">
-              <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                <div className="text-primary/30">
-                  {getTypeIcon(item.type)}
-                  <span className="sr-only">{item.type}</span>
-                </div>
-                <Badge className="absolute top-4 right-4 z-20 bg-white/90 text-foreground backdrop-blur-sm shadow-sm hover:bg-white">
-                  {getLevelLabel(item.level)}
-                </Badge>
-                {item.isPremium && (
-                  <div className="absolute top-4 left-4 z-20 bg-amber-400 text-amber-900 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 shadow-sm">
-                    <Lock className="w-3 h-3" />
-                    VIP
-                  </div>
-                )}
-              </div>
-
-              <CardHeader className="p-6 pb-2">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`p-2 rounded-lg ${item.type === 'video' ? 'bg-red-100 text-red-600' :
-                    item.type === 'podcast' ? 'bg-purple-100 text-purple-600' :
-                      'bg-blue-100 text-blue-600'
-                    }`}>
+            <motion.div
+              key={item.id}
+              variants={itemVariants}
+              whileHover={{ y: -8, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Card className="group overflow-hidden rounded-3xl border border-border/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full bg-card card-hover">
+                <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <div className="text-primary/30">
                     {getTypeIcon(item.type)}
+                    <span className="sr-only">{item.type}</span>
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {item.type === 'video' ? 'ویدیو' : item.type === 'podcast' ? 'پادکست' : 'مقاله'}
-                  </span>
+                  <Badge className="absolute top-4 right-4 z-20 bg-white/90 text-foreground backdrop-blur-sm shadow-sm hover:bg-white">
+                    {getLevelLabel(item.level)}
+                  </Badge>
+                  {item.isPremium && (
+                    <div className="absolute top-4 left-4 z-20 bg-amber-400 text-amber-900 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 shadow-sm">
+                      <Lock className="w-3 h-3" />
+                      VIP
+                    </div>
+                  )}
                 </div>
-                <h3 className="font-bold text-xl leading-snug group-hover:text-primary transition-colors">
-                  {item.title}
-                </h3>
-              </CardHeader>
 
-              <CardContent className="p-6 pt-2 flex-grow">
-                <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
-                  {item.description || "بدون توضیحات"}
-                </p>
-              </CardContent>
+                <CardHeader className="p-6 pb-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`p-2 rounded-lg ${item.type === 'video' ? 'bg-red-100 text-red-600' :
+                      item.type === 'podcast' ? 'bg-purple-100 text-purple-600' :
+                        'bg-blue-100 text-blue-600'
+                      }`}>
+                      {getTypeIcon(item.type)}
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {item.type === 'video' ? 'ویدیو' : item.type === 'podcast' ? 'پادکست' : 'مقاله'}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-xl leading-snug group-hover:text-primary transition-colors">
+                    {item.title}
+                  </h3>
+                </CardHeader>
 
-              <CardFooter className="p-6 pt-0 flex-col gap-2">
-                {item.isPremium && item.price && !hasUserPurchased(item.id) ? (
-                  <>
-                    <p className="text-center text-amber-700 font-bold text-lg">
-                      {new Intl.NumberFormat("fa-IR").format(item.price)} تومان
-                    </p>
+                <CardContent className="p-6 pt-2 flex-grow">
+                  <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
+                    {item.description || "بدون توضیحات"}
+                  </p>
+                </CardContent>
+
+                <CardFooter className="p-6 pt-0 flex-col gap-2">
+                  {item.isPremium && item.price && !hasUserPurchased(item.id) ? (
+                    <>
+                      <p className="text-center text-amber-700 font-bold text-lg">
+                        {new Intl.NumberFormat("fa-IR").format(item.price)} تومان
+                      </p>
+                      <Button
+                        className="w-full rounded-xl py-6 bg-amber-500 hover:bg-amber-600 shadow-lg btn-press"
+                        onClick={() => navigate(`/payment/${item.id}`)}
+                      >
+                        <Lock className="ml-2 h-4 w-4" />
+                        خرید دوره
+                      </Button>
+                    </>
+                  ) : hasUserPurchased(item.id) ? (
+                    <>
+                      <p className="text-center text-green-600 font-medium text-sm">✅ شما این دوره را خریداری کرده‌اید</p>
+                      <Button
+                        className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all btn-press"
+                        onClick={() => setSelectedContent(item)}
+                      >
+                        مشاهده دوره
+                      </Button>
+                    </>
+                  ) : (
                     <Button
-                      className="w-full rounded-xl py-6 bg-amber-500 hover:bg-amber-600 shadow-lg"
-                      onClick={() => navigate(`/payment/${item.id}`)}
-                    >
-                      <Lock className="ml-2 h-4 w-4" />
-                      خرید دوره
-                    </Button>
-                  </>
-                ) : hasUserPurchased(item.id) ? (
-                  <>
-                    <p className="text-center text-green-600 font-medium text-sm">✅ شما این دوره را خریداری کرده‌اید</p>
-                    <Button
-                      className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all"
+                      className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all btn-press"
                       onClick={() => setSelectedContent(item)}
                     >
-                      مشاهده دوره
+                      {item.type === 'video' ? 'مشاهده ویدیو' : item.type === 'podcast' ? 'گوش دادن' : 'خواندن مطلب'}
                     </Button>
-                  </>
-                ) : (
-                  <Button
-                    className="w-full rounded-xl py-6 shadow-lg shadow-primary/10 group-hover:shadow-primary/20 transition-all"
-                    onClick={() => setSelectedContent(item)}
-                  >
-                    {item.type === 'video' ? 'مشاهده ویدیو' : item.type === 'podcast' ? 'گوش دادن' : 'خواندن مطلب'}
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
+                  )}
+                </CardFooter>
+              </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Video Player Modal */}
