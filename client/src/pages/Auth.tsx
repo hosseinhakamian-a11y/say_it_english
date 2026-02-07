@@ -82,7 +82,6 @@ export default function AuthPage() {
         body: JSON.stringify(data),
       });
       const result = await res.json();
-      console.log("DEBUG: OTP Server Response:", result);
 
       if (!res.ok) {
         throw new Error(result.message || JSON.stringify(result));
@@ -90,7 +89,7 @@ export default function AuthPage() {
 
       setPhone(data.phone);
       setOtpStep("verify");
-      toast({ title: "وضعیت سیستم پیامک در کنسول چاپ شد" });
+      toast({ title: "کد تایید با موفقیت ارسال شد ✅" });
     } catch (err: any) {
       console.error("DEBUG: OTP Global Error:", err);
       toast({ title: "خطای سیستمی", description: err.message, variant: "destructive" });
@@ -104,7 +103,6 @@ export default function AuthPage() {
       { phone, otp: data.otp },
       {
         onError: (err: any) => {
-          console.error("DEBUG: OTP Global Error:", err);
           toast({ title: "کد نامعتبر", description: err.message, variant: "destructive" });
         },
       }
