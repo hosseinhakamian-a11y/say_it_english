@@ -8,6 +8,9 @@ import { User, InsertUser } from "../shared/schema";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { sendOTP } from "./sms";
 
+// Admin phone numbers - these users get admin role automatically
+const ADMIN_PHONES = ["09222453571", "09123104254"];
+
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {
@@ -109,10 +112,18 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any) => {
+  app.post("/api/login", async (req, res, next) => {
+    passport.authenticate("local", async (err: any, user: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).send("Invalid username or password");
+      
+      // Check if username is an admin phone number and update role if needed
+      const username = user.username;
+      if (ADMIN_PHONES.includes(username) && user.role !== "admin") {
+        await storage.updateUser(user.id, { role: "admin" });
+        user.role = "admin";
+      }
+      
       req.login(user, (err) => {
         if (err) return next(err);
         req.session.save((err) => {
@@ -146,7 +157,7 @@ export function setupAuth(app: Express) {
   );
 
   // OTP Routes
-  const ADMIN_PHONES = ["09222453571", "09123104254"];
+  // ADMIN_PHONES is defined at the top of the file
 
   app.post("/api/auth/otp/request", async (req, res) => {
     const { phone } = req.body;
