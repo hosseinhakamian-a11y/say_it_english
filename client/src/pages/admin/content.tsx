@@ -1,4 +1,3 @@
-
 import { AdminLayout } from "./layout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { Loader2, Plus, Pencil, Trash2, Video, BookOpen } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Video, BookOpen, Upload, CheckCircle2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import { Progress } from "@/components/ui/progress";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -34,6 +34,7 @@ interface Content {
     level: string;
     videoId: string | null;
     videoProvider: string | null;
+    fileKey: string | null;
     isPremium: boolean;
     price: number | null;
 }
@@ -43,6 +44,8 @@ export default function AdminContent() {
     const queryClient = useQueryClient();
     const [editingId, setEditingId] = useState<number | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const { data: contentList, isLoading: isListLoading } = useQuery<Content[]>({
         queryKey: [api.content.list.path],
@@ -62,6 +65,7 @@ export default function AdminContent() {
             level: "beginner",
             videoProvider: "aparat",
             videoId: "",
+            fileKey: "",
             contentUrl: "",
             isPremium: false,
             price: 0,
@@ -81,6 +85,7 @@ export default function AdminContent() {
         onSuccess: () => {
             toast({ title: "محتوا با موفقیت ایجاد شد ✅" });
             form.reset();
+            setUploadProgress(0);
             queryClient.invalidateQueries({ queryKey: [api.content.list.path] });
         },
         onError: (error) => {
@@ -102,6 +107,7 @@ export default function AdminContent() {
             toast({ title: "محتوا ویرایش شد ✅" });
             setEditingId(null);
             form.reset();
+            setUploadProgress(0);
             queryClient.invalidateQueries({ queryKey: [api.content.list.path] });
         },
     });
@@ -119,6 +125,55 @@ export default function AdminContent() {
         },
     });
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        setUploadProgress(5);
+
+        try {
+            // 1. Get pre-signed URL
+            const res = await fetch(`/api/admin/upload-url?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`);
+            if (!res.ok) throw new Error("Could not get upload link");
+            const { uploadUrl, fileKey } = await res.json();
+
+            setUploadProgress(20);
+
+            // 2. Direct upload to S3 using XMLHttpRequest for progress tracking
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", uploadUrl, true);
+            xhr.setRequestHeader("Content-Type", file.type);
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 75) + 20;
+                    setUploadProgress(percentComplete);
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    setUploadProgress(100);
+                    form.setValue("fileKey", fileKey);
+                    form.setValue("videoProvider", "custom");
+                    toast({ title: "فایل با موفقیت در ابرآروان آپلود شد ✅" });
+                    setUploading(false);
+                } else {
+                    throw new Error("Upload failed");
+                }
+            };
+
+            xhr.onerror = () => { throw new Error("Network error during upload"); };
+            xhr.send(file);
+
+        } catch (error: any) {
+            toast({ title: "خطا در آپلود ❌", description: error.message, variant: "destructive" });
+            setUploading(false);
+            setUploadProgress(0);
+        }
+    };
+
     function onSubmit(data: InsertContent) {
         if (editingId) {
             updateMutation.mutate({ id: editingId, data });
@@ -135,6 +190,7 @@ export default function AdminContent() {
             type: content.type,
             level: content.level,
             videoId: content.videoId || "",
+            fileKey: content.fileKey || "",
             videoProvider: content.videoProvider || "aparat",
             isPremium: content.isPremium,
             price: content.price || 0,
@@ -149,9 +205,9 @@ export default function AdminContent() {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                         <BookOpen className="h-8 w-8 text-primary" />
-                        مدیریت محتوا
+                        مدیریت محتوا (یکپارچه با ابرآروان)
                     </h1>
-                    <p className="text-gray-500 mt-2">افزودن، ویرایش و حذف درس‌ها</p>
+                    <p className="text-gray-500 mt-2">افزودن درس‌ها و آپلود مستقیم ویدیو روی فضای ابری</p>
                 </div>
             </div>
 
@@ -232,41 +288,79 @@ export default function AdminContent() {
                             )}
 
                             <div className="p-4 bg-gray-50 rounded-lg border space-y-4">
-                                <h3 className="font-medium text-gray-700">تنظیمات ویدیو</h3>
-                                <FormField control={form.control} name="videoProvider" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>سرویس</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value || "aparat"}>
-                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="aparat">آپارات 🇮🇷</SelectItem>
-                                                <SelectItem value="youtube">یوتیوب 🔴</SelectItem>
-                                                <SelectItem value="bunny">بانی 🐰</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold flex items-center gap-2 text-primary">
+                                        <Upload className="w-4 h-4" />
+                                        آپلود روی ابرآروان (استریم امن)
+                                    </h3>
+                                    {form.watch("fileKey") && (
+                                        <Badge className="bg-green-100 text-green-700 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            آپلود شده
+                                        </Badge>
+                                    )}
+                                </div>
 
-                                <FormField control={form.control} name="videoId" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>کد ویدیو</FormLabel>
-                                        <FormControl><Input placeholder={provider === "aparat" ? "XyZw1" : "video-id"} {...field} value={field.value || ""} /></FormControl>
-                                        <FormDescription className="text-xs">
-                                            {provider === "aparat" && "آیدی از انتهای لینک آپارات"}
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+                                <div className="space-y-3">
+                                    <Input
+                                        type="file"
+                                        onChange={handleFileUpload}
+                                        disabled={uploading}
+                                        accept="video/*,audio/*"
+                                        className="bg-white"
+                                    />
+                                    {uploading && (
+                                        <div className="space-y-2">
+                                            <Progress value={uploadProgress} className="h-2" />
+                                            <p className="text-[10px] text-center text-muted-foreground animate-pulse">
+                                                در حال انتقال فایل به ابرآروان... {uploadProgress}%
+                                            </p>
+                                        </div>
+                                    )}
+                                    {form.watch("fileKey") && (
+                                        <div className="text-[10px] bg-white p-2 rounded border truncate font-mono text-gray-400">
+                                            Key: {form.watch("fileKey")}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="flex gap-2">
-                                <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
+                            <div className="p-4 bg-gray-50 rounded-lg border border-dashed space-y-4">
+                                <h3 className="font-medium text-gray-700">سایر سرویس‌ها (اختیاری)</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="videoProvider" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>سرویس</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value || "aparat"}>
+                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="custom">Arvan/Link 🔗</SelectItem>
+                                                    <SelectItem value="aparat">آپارات 🇮🇷</SelectItem>
+                                                    <SelectItem value="youtube">یوتیوب 🔴</SelectItem>
+                                                    <SelectItem value="bunny">بانی 🐰</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+
+                                    <FormField control={form.control} name="videoId" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>آیدی/کد ویدیو</FormLabel>
+                                            <FormControl><Input placeholder="XyZw1" {...field} value={field.value || ""} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-4">
+                                <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending || uploading}>
                                     {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
-                                    {editingId ? "ذخیره تغییرات" : "ایجاد محتوا"}
+                                    {editingId ? "ذخیره تغییرات" : "ایجاد نهایی محتوا"}
                                 </Button>
                                 {editingId && (
-                                    <Button type="button" variant="outline" onClick={() => { setEditingId(null); form.reset(); }}>
+                                    <Button type="button" variant="outline" onClick={() => { setEditingId(null); form.reset(); setUploadProgress(0); }}>
                                         انصراف
                                     </Button>
                                 )}
@@ -286,26 +380,27 @@ export default function AdminContent() {
                     ) : contentList?.length === 0 ? (
                         <div className="p-8 text-center text-gray-400">هنوز محتوایی اضافه نشده</div>
                     ) : (
-                        <Table>
+                        <Table dir="rtl">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="text-right">عنوان</TableHead>
-                                    <TableHead className="text-right">سطح</TableHead>
                                     <TableHead className="text-right">نوع</TableHead>
+                                    <TableHead className="text-right">سرویس</TableHead>
                                     <TableHead className="text-right">عملیات</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {contentList?.map((item) => (
                                     <TableRow key={item.id}>
-                                        <TableCell className="font-medium">{item.title}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">
-                                                {item.level === "beginner" ? "مبتدی" : item.level === "intermediate" ? "متوسط" : "پیشرفته"}
-                                            </Badge>
-                                        </TableCell>
+                                        <TableCell className="font-medium max-w-[150px] truncate">{item.title}</TableCell>
                                         <TableCell>
                                             {item.isPremium ? <Badge className="bg-amber-100 text-amber-700">VIP</Badge> : <Badge variant="secondary">رایگان</Badge>}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                                                {item.fileKey ? <ShieldCheck className="w-3 h-3 text-green-600" /> : null}
+                                                {item.videoProvider || "custom"}
+                                            </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex gap-1">
@@ -344,3 +439,4 @@ export default function AdminContent() {
     );
 }
 
+import { ShieldCheck } from "lucide-react";

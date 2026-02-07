@@ -294,5 +294,32 @@ export async function registerRoutes(
     res.redirect(signedUrl);
   });
 
+  /**
+   * Admin Upload Link Generator
+   * Generates a pre-signed URL for direct browser-to-S3 upload.
+   */
+  app.get("/api/admin/upload-url", async (req: AuthenticatedRequest, res) => {
+    if (!isAdmin(req)) return res.status(403).send("Unauthorized");
+    
+    const fileName = req.query.fileName as string;
+    const contentType = req.query.contentType as string;
+    
+    if (!fileName || !contentType) {
+      return res.status(400).send("fileName and contentType are required");
+    }
+    
+    // Generate a unique key to prevent overwriting
+    const fileKey = `uploads/${Date.now()}-${fileName}`;
+    
+    const { generateUploadLink } = await import("./s3-storage");
+    const uploadUrl = await generateUploadLink(fileKey, contentType);
+    
+    if (!uploadUrl) {
+      return res.status(500).send("Error generating upload link");
+    }
+    
+    res.json({ uploadUrl, fileKey });
+  });
+
   return httpServer;
 }
