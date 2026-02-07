@@ -12,6 +12,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { motion } from "framer-motion";
 import { containerVariants, itemVariants } from "@/lib/animations";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ interface Content {
   videoProvider: string | null;
   isPremium: boolean;
   price: number | null;
+  thumbnailUrl?: string | null;
   createdAt: string;
 }
 
@@ -48,7 +50,6 @@ export default function ContentLibrary() {
     },
   });
 
-  // Fetch user's purchases to check which premium content they own
   const { data: purchases } = useQuery<{ contentId: number }[]>({
     queryKey: ["/api/purchases"],
     queryFn: async () => {
@@ -56,7 +57,7 @@ export default function ContentLibrary() {
       if (!res.ok) return [];
       return await res.json();
     },
-    enabled: !!user, // Only fetch if user is logged in
+    enabled: !!user,
   });
 
   const hasUserPurchased = (contentId: number) => {
@@ -134,19 +135,32 @@ export default function ContentLibrary() {
             >
               <Card className="group overflow-hidden rounded-3xl border border-border/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full bg-card card-hover">
                 <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                  <div className="text-primary/30">
-                    {getTypeIcon(item.type)}
-                    <span className="sr-only">{item.type}</span>
+                  <div className="absolute inset-0">
+                    <OptimizedImage
+                      src={item.thumbnailUrl || (
+                        item.type === 'video' ? "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500" :
+                          item.type === 'podcast' ? "https://images.unsplash.com/photo-1590602847861-f357a9302bbc?w=500" :
+                            "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500"
+                      )}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      containerClassName="w-full h-full"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
                   </div>
+
                   <Badge className="absolute top-4 right-4 z-20 bg-white/90 text-foreground backdrop-blur-sm shadow-sm hover:bg-white">
                     {getLevelLabel(item.level)}
                   </Badge>
                   {item.isPremium && (
-                    <div className="absolute top-4 left-4 z-20 bg-amber-400 text-amber-900 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 shadow-sm">
+                    <div className="absolute top-4 left-4 z-20 bg-amber-400 text-amber-900 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 shadow-sm uppercase tracking-wider">
                       <Lock className="w-3 h-3" />
                       VIP
                     </div>
                   )}
+                  <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 text-white/90 text-xs font-medium">
+                    {getTypeIcon(item.type)}
+                  </div>
                 </div>
 
                 <CardHeader className="p-6 pb-2">
@@ -232,4 +246,3 @@ export default function ContentLibrary() {
     </div>
   );
 }
-

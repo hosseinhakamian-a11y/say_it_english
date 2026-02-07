@@ -34,6 +34,7 @@ export const content = pgTable("content", {
   fileKey: text("file_key"), // S3/Arvan Object Key for secure download
   isPremium: boolean("is_premium").default(false),
   price: integer("price").default(0), // Price in Toman (0 = free)
+  thumbnailUrl: text("thumbnail_url"), // URL for the cover image
   createdAt: timestamp("created_at").defaultNow(),
 });
 
