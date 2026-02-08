@@ -1,23 +1,55 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import pg from 'pg';
+import { Pool } from 'pg';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomBytes, scrypt, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 
-// ============ DATABASE SETUP ============
-const { Pool } = pg;
-let pool: any = null;
+const scryptAsync = promisify(scrypt);
 
+// ============ DATABASE POOL ============
+let pool: Pool | null = null;
 function getPool() {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) throw new Error("DATABASE_URL not configured");
     pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
   }
-  return pool;
+  return pool!;
 }
 
-// ============ HELPERS ============
-// Convert snake_case database fields to camelCase for frontend
+// ============ AUTH HELPERS ============
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+async function comparePasswords(supplied: string, stored: string) {
+  const [hashed, salt] = stored.split(".");
+  const hashedBuf = Buffer.from(hashed, "hex");
+  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
+}
+
+// ============ SMS HELPER ============
+async function sendSMS(phone: string, message: string) {
+  try {
+    const apiKey = process.env.SMS_API_KEY;
+    if (!apiKey) return;
+    await fetch("https://api.sms.ir/v1/send/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-KEY": apiKey },
+      body: JSON.stringify({
+        mobile: phone,
+        templateId: parseInt(process.env.SMS_TEMPLATE_ID || "100000"),
+        parameters: [{ name: "MESSAGE", value: message }]
+      })
+    });
+  } catch (e) { console.error("SMS Error:", e); }
+}
+
+// ============ CONTENT MAPPER ============
 function mapContentRow(row: any) {
   return {
     id: row.id,
@@ -28,6 +60,8 @@ function mapContentRow(row: any) {
     contentUrl: row.content_url,
     videoId: row.video_id,
     videoProvider: row.video_provider,
+    arvanVideoId: row.arvan_video_id,
+    arvanVideoProvider: row.arvan_video_provider,
     fileKey: row.file_key,
     isPremium: row.is_premium,
     price: row.price,
@@ -36,46 +70,23 @@ function mapContentRow(row: any) {
   };
 }
 
-// ============ ARVAN CLOUD HELPERS ============
-async function generateUploadLink(fileKey: string, contentType: string) {
-  try {
-    const client = new S3Client({
-      region: "default",
-      endpoint: process.env.ARVAN_ENDPOINT!,
-      credentials: { 
-        accessKeyId: process.env.ARVAN_ACCESS_KEY!, 
-        secretAccessKey: process.env.ARVAN_SECRET_KEY! 
-      },
-      forcePathStyle: true,
-    });
-    const command = new PutObjectCommand({ Bucket: process.env.ARVAN_BUCKET_NAME!, Key: fileKey, ContentType: contentType });
-    return await getSignedUrl(client, command, { expiresIn: 3600 });
-  } catch (e) { return null; }
-}
-
 // ============ MAIN HANDLER ============
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const method = req.method || 'GET';
-  const db = getPool();
-  
-  const fullUrl = req.url || '';
-  const pathname = fullUrl.split('?')[0];
-
-  // CORS Settings
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  if (method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const db = getPool();
+  const url = new URL(req.url || '', `https://${req.headers.host}`);
+  const pathname = url.pathname;
+  const method = req.method;
 
   try {
-    // AUTH CHECK
+    // ---- AUTH CHECK ----
     const cookies = req.headers.cookie || '';
-    let sessionToken = '';
-    const sessionCookie = cookies.split(';').find((c: string) => c.trim().startsWith('session='));
-    if (sessionCookie) {
-      sessionToken = sessionCookie.split('=')[1]?.trim() || '';
-    }
+    const sessionToken = cookies.split(';').find((c: string) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
     
     let currentUser: any = null;
     if (sessionToken) {
@@ -83,80 +94,235 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (userRes.rows.length > 0) currentUser = userRes.rows[0];
     }
 
-    // ---- ROUTES ----
-
-    // 1. Content CRUD
-    if (pathname === '/api/content') {
-      if (method === 'GET') {
-        const result = await db.query('SELECT * FROM content ORDER BY id DESC');
-        // تبدیل فیلدها به camelCase برای فرانت‌اند
-        const mappedContent = result.rows.map(mapContentRow);
-        return res.status(200).json(mappedContent);
+    // ================== AUTH ROUTES ==================
+    if (pathname === '/api/login' && method === 'POST') {
+      const { username, password, rememberMe } = req.body;
+      const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+      const user = result.rows[0];
+      if (!user || !(await comparePasswords(password, user.password))) {
+        return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
       }
+      const newToken = randomBytes(32).toString('hex');
+      await db.query('UPDATE users SET session_token = $1 WHERE id = $2', [newToken, user.id]);
+      const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+      res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
+      return res.status(200).json({ id: user.id, username: user.username, role: user.role, name: user.name, avatar: user.avatar });
+    }
 
-      if (method === 'POST') {
-        if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
-        const { title, description, type, level, videoId, videoProvider, fileKey, isPremium, price } = req.body;
-        
-        const query = `
-          INSERT INTO content (title, description, type, level, video_id, video_provider, file_key, is_premium, price)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          RETURNING *
-        `;
-        const values = [
-          title || 'Untitled', 
-          description || '', 
-          type || 'video', 
-          level || 'beginner', 
-          videoId || '', 
-          videoProvider || 'custom', 
-          fileKey || '', 
-          !!isPremium, 
-          parseInt(price) || 0
-        ];
-        const result = await db.query(query, values);
-        return res.status(201).json(mapContentRow(result.rows[0]));
+    if (pathname === '/api/logout' && method === 'POST') {
+      if (currentUser) {
+        await db.query('UPDATE users SET session_token = NULL WHERE id = $1', [currentUser.id]);
+      }
+      res.setHeader('Set-Cookie', 'session=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/');
+      return res.status(200).json({ message: 'Logged out' });
+    }
+
+    if (pathname === '/api/register' && method === 'POST') {
+      const { username, password, name, phone } = req.body;
+      const existing = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (existing.rows.length > 0) return res.status(400).json({ error: 'نام کاربری تکراری است' });
+      const hashedPassword = await hashPassword(password);
+      const newToken = randomBytes(32).toString('hex');
+      const newUserRes = await db.query(
+        `INSERT INTO users (username, password, name, phone, role, session_token) VALUES ($1, $2, $3, $4, 'user', $5) RETURNING id, username, role`,
+        [username, hashedPassword, name || null, phone || null, newToken]
+      );
+      res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${604800}; Path=/`);
+      return res.status(201).json(newUserRes.rows[0]);
+    }
+
+    if (pathname === '/api/user' && method === 'GET') {
+      if (!currentUser) return res.status(401).json(null);
+      return res.status(200).json({
+        id: currentUser.id, username: currentUser.username, role: currentUser.role,
+        name: currentUser.name, firstName: currentUser.first_name, lastName: currentUser.last_name,
+        phone: currentUser.phone, avatar: currentUser.avatar
+      });
+    }
+
+    // ================== CONTENT ROUTES ==================
+    if (pathname === '/api/content' && method === 'GET') {
+      const result = await db.query('SELECT * FROM content ORDER BY id DESC');
+      return res.status(200).json(result.rows.map(mapContentRow));
+    }
+
+    if (pathname === '/api/content' && method === 'POST') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
+      const { title, description, type, level, videoId, videoProvider, arvanVideoId, arvanVideoProvider, fileKey, isPremium, price, thumbnailUrl } = req.body;
+      const result = await db.query(`
+        INSERT INTO content (title, description, type, level, video_id, video_provider, arvan_video_id, arvan_video_provider, file_key, is_premium, price, thumbnail_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *
+      `, [title, description, type || 'video', level || 'beginner', videoId, videoProvider || 'bunny', arvanVideoId, arvanVideoProvider, fileKey, !!isPremium, parseInt(price) || 0, thumbnailUrl]);
+      return res.status(201).json(mapContentRow(result.rows[0]));
+    }
+
+    if (pathname.match(/\/api\/content\/\d+/) && method === 'DELETE') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
+      const id = pathname.split('/').pop();
+      await db.query('DELETE FROM content WHERE id = $1', [id]);
+      return res.status(200).json({ success: true });
+    }
+
+    // ================== UPLOAD LINK ==================
+    if (pathname.includes('/upload-link')) {
+      const fileName = url.searchParams.get('fileName');
+      const contentType = url.searchParams.get('contentType');
+      if (fileName && contentType) {
+        const fileKey = `uploads/${Date.now()}-${fileName}`;
+        const client = new S3Client({
+          region: "default", endpoint: process.env.ARVAN_ENDPOINT!,
+          credentials: { accessKeyId: process.env.ARVAN_ACCESS_KEY!, secretAccessKey: process.env.ARVAN_SECRET_KEY! },
+          forcePathStyle: true,
+        });
+        const command = new PutObjectCommand({ Bucket: process.env.ARVAN_BUCKET_NAME!, Key: fileKey, ContentType: contentType });
+        const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
+        return res.status(200).json({ uploadUrl, fileKey });
       }
     }
 
-    // 2. Specialized Content Actions
-    if (pathname.includes('/api/content/')) {
-      const id = pathname.split('/').pop();
+    // ================== REVIEWS ROUTES ==================
+    if (pathname === '/api/reviews') {
+      if (method === 'GET') {
+        const contentId = url.searchParams.get('contentId');
+        if (!contentId) return res.status(400).json({ error: 'contentId required' });
+        const reviews = await db.query(`
+          SELECT r.*, u.username, u.first_name, u.last_name, u.avatar 
+          FROM reviews r JOIN users u ON r.user_id = u.id 
+          WHERE r.content_id = $1 AND r.is_approved = true ORDER BY r.created_at DESC
+        `, [contentId]);
+        const stats = await db.query(`SELECT COUNT(*) as total, AVG(rating) as avg FROM reviews WHERE content_id = $1 AND is_approved = true`, [contentId]);
+        return res.status(200).json({
+          reviews: reviews.rows.map(row => ({
+            id: row.id, userId: row.user_id, contentId: row.content_id, rating: row.rating, comment: row.comment, createdAt: row.created_at,
+            user: { username: row.username, firstName: row.first_name, lastName: row.last_name, avatar: row.avatar }
+          })),
+          stats: { totalReviews: parseInt(stats.rows[0]?.total || '0'), averageRating: parseFloat(stats.rows[0]?.avg || '0') }
+        });
+      }
+      
+      if (method === 'POST') {
+        if (!currentUser) return res.status(401).json({ error: 'Login required' });
+        const { contentId, rating, comment } = req.body;
+        const exist = await db.query('SELECT id FROM reviews WHERE user_id = $1 AND content_id = $2', [currentUser.id, contentId]);
+        if (exist.rows.length > 0) {
+          await db.query('UPDATE reviews SET rating = $1, comment = $2, created_at = NOW() WHERE user_id = $3 AND content_id = $4', [rating, comment, currentUser.id, contentId]);
+        } else {
+          await db.query('INSERT INTO reviews (user_id, content_id, rating, comment) VALUES ($1, $2, $3, $4)', [currentUser.id, contentId, rating, comment]);
+        }
+        return res.status(200).json({ message: 'Review saved' });
+      }
+
       if (method === 'DELETE') {
-        if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
-        await db.query('DELETE FROM content WHERE id = $1', [id]);
+        if (!currentUser) return res.status(401).json({ error: 'Login required' });
+        const { reviewId } = req.body;
+        const review = await db.query('SELECT * FROM reviews WHERE id = $1', [reviewId]);
+        if (review.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+        if (review.rows[0].user_id !== currentUser.id && currentUser.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+        await db.query('DELETE FROM reviews WHERE id = $1', [reviewId]);
+        return res.status(200).json({ message: 'Deleted' });
+      }
+    }
+
+    // ================== SLOTS ROUTES ==================
+    if (pathname === '/api/slots') {
+      if (method === 'GET') {
+        const result = await db.query('SELECT * FROM time_slots WHERE is_booked = false AND date >= NOW() ORDER BY date');
+        return res.status(200).json(result.rows);
+      }
+      if (method === 'POST') {
+        if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
+        const { date, duration } = req.body;
+        const result = await db.query('INSERT INTO time_slots (date, duration) VALUES ($1, $2) RETURNING *', [new Date(date), duration || 30]);
+        return res.status(201).json(result.rows[0]);
+      }
+      if (method === 'DELETE') {
+        if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
+        const { id } = req.query;
+        await db.query('DELETE FROM time_slots WHERE id = $1', [id]);
         return res.status(200).json({ success: true });
       }
     }
 
-    // 3. Admin / Stats
-    if (pathname.includes('/api/admin/stats')) {
-      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
-      const [u, c, p] = await Promise.all([
+    // ================== BOOKINGS ROUTES ==================
+    if (pathname === '/api/bookings' && method === 'POST') {
+      const { timeSlotId, phone, notes, type = 'private_class' } = req.body;
+      const slot = await db.query('SELECT * FROM time_slots WHERE id = $1', [timeSlotId]);
+      if (slot.rows.length === 0 || slot.rows[0].is_booked) return res.status(400).json({ error: 'Slot not available' });
+
+      const booking = await db.query(
+        `INSERT INTO bookings (user_id, time_slot_id, type, date, phone, notes, status) VALUES ($1, $2, $3, $4, $5, $6, 'confirmed') RETURNING *`,
+        [currentUser ? currentUser.id : 0, timeSlotId, type, slot.rows[0].date, phone, notes]
+      );
+      await db.query('UPDATE time_slots SET is_booked = true WHERE id = $1', [timeSlotId]);
+      
+      // Send SMS
+      const dateStr = new Date(slot.rows[0].date).toLocaleDateString('fa-IR');
+      await sendSMS("09123104254", `رزرو جدید: ${dateStr}`);
+      
+      return res.status(201).json(booking.rows[0]);
+    }
+
+    // ================== PAYMENTS & PURCHASES ==================
+    if (pathname === '/api/payments') {
+      if (!currentUser) return res.status(401).json({ error: 'Login required' });
+      
+      if (method === 'GET') {
+        // Admin gets all, user gets own
+        if (currentUser.role === 'admin') {
+          const res = await db.query('SELECT * FROM payments ORDER BY created_at DESC');
+          return res.status(200).json(res.rows);
+        }
+      }
+
+      if (method === 'POST') {
+        const { contentId, amount, trackingCode } = req.body;
+        const res = await db.query(
+          `INSERT INTO payments (user_id, content_id, amount, tracking_code) VALUES ($1, $2, $3, $4) RETURNING *`,
+          [currentUser.id, contentId, amount, trackingCode]
+        );
+        return res.status(201).json(res.rows[0]);
+      }
+
+      if (method === 'PATCH') {
+        if (currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
+        const { id, status, notes } = req.body;
+        const updated = await db.query('UPDATE payments SET status = $1, notes = $2 WHERE id = $3 RETURNING *', [status, notes, id]);
+        
+        if (status === 'approved' && updated.rows.length > 0) {
+          const payment = updated.rows[0];
+          await db.query('INSERT INTO purchases (user_id, content_id, payment_id) VALUES ($1, $2, $3)', [payment.user_id, payment.content_id, payment.id]);
+        }
+        return res.status(200).json(updated.rows[0]);
+      }
+    }
+    
+    // Purchases check
+    if (pathname === '/api/purchases') {
+      if (!currentUser) return res.status(200).json([]);
+      const res = await db.query(`
+        SELECT p.content_id as "contentId" FROM purchases p
+        WHERE p.user_id = $1
+        UNION
+        SELECT p.content_id as "contentId" FROM payments p 
+        WHERE p.user_id = $1 AND p.status = 'approved'
+      `, [currentUser.id]);
+      return res.status(200).json(res.rows);
+    }
+
+    // ================== ADMIN STATS ==================
+    if (pathname === '/api/admin/stats') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
+      const stats = await Promise.all([
         db.query('SELECT COUNT(*) FROM users'),
         db.query('SELECT COUNT(*) FROM content'),
-        db.query('SELECT COUNT(*) FROM payments')
+        db.query('SELECT COUNT(*) FROM bookings')
       ]);
-      return res.status(200).json({ users: u.rows[0].count, content: c.rows[0].count, payments: p.rows[0].count });
+      return res.status(200).json({ users: stats[0].rows[0].count, content: stats[1].rows[0].count, bookings: stats[2].rows[0].count });
     }
 
-    // 4. Arvan Upload Link
-    if (pathname.includes('/upload-link')) {
-      const urlObj = new URL(fullUrl, `https://${req.headers.host}`);
-      const fileName = urlObj.searchParams.get('fileName') || 'file';
-      const contentType = urlObj.searchParams.get('contentType') || 'video/mp4';
-      const fileKey = `uploads/${Date.now()}-${fileName}`;
-      const uploadUrl = await generateUploadLink(fileKey, contentType);
-      return res.status(200).json({ uploadUrl, fileKey });
-    }
-
-    // 5. User Status
-    if (pathname === '/api/user') return res.status(200).json(currentUser || null);
-
-    return res.status(404).json({ error: "Endpoint not found", path: pathname });
-
+    return res.status(404).json({ error: "Not Found", path: pathname });
   } catch (error: any) {
     console.error("API Error:", error);
-    return res.status(500).json({ error: "Internal Server Error", message: error.message });
+    return res.status(500).json({ error: "Internal Error", message: error.message });
   }
 }
