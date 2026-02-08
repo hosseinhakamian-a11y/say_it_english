@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
 
   const navItems = [
     { label: "خانه", path: "/" },
@@ -62,7 +62,10 @@ export function Navbar() {
 
           {/* User Menu */}
           <div className="flex items-center gap-4">
-            {user ? (
+            {isLoading ? (
+              // Loading skeleton
+              <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+            ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -87,14 +90,13 @@ export function Navbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex gap-2">
-                <Link href="/auth">
-                  <Button variant="outline" className="hidden sm:flex">ورود</Button>
-                </Link>
-                <Link href="/auth">
-                  <Button>ثبت نام</Button>
-                </Link>
-              </div>
+              // Combined login/register box
+              <Link href="/auth">
+                <div className="flex items-center gap-1 bg-gradient-to-r from-primary/10 to-primary/5 backdrop-blur-sm border border-primary/20 rounded-full p-1 hover:border-primary/40 transition-all">
+                  <span className="px-3 py-1.5 text-sm font-medium text-primary hover:bg-white/80 rounded-full transition-colors">ورود</span>
+                  <span className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-full shadow-sm">ثبت نام</span>
+                </div>
+              </Link>
             )}
 
             {/* Mobile Menu Button */}
