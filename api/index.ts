@@ -71,7 +71,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // AUTH CHECK
     const cookies = req.headers.cookie || '';
-    const sessionToken = cookies.split(';').find((c: string) => c.trim().startsWith('session='))?.split('=')[1];
+    let sessionToken = '';
+    const sessionCookie = cookies.split(';').find((c: string) => c.trim().startsWith('session='));
+    if (sessionCookie) {
+      sessionToken = sessionCookie.split('=')[1]?.trim() || '';
+    }
+    
     let currentUser: any = null;
     if (sessionToken) {
       const userRes = await db.query('SELECT * FROM users WHERE session_token = $1', [sessionToken]);
