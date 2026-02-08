@@ -66,6 +66,10 @@ function mapContentRow(row: any) {
     isPremium: row.is_premium,
     price: row.price,
     thumbnailUrl: row.thumbnail_url,
+    body: row.body,
+    slug: row.slug,
+    author: row.author,
+    tags: row.tags,
     createdAt: row.created_at,
   };
 }
@@ -269,18 +273,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (method === 'GET') {
         // Admin gets all, user gets own
         if (currentUser.role === 'admin') {
-          const res = await db.query('SELECT * FROM payments ORDER BY created_at DESC');
-          return res.status(200).json(res.rows);
+          const result = await db.query('SELECT * FROM payments ORDER BY created_at DESC');
+          return res.status(200).json(result.rows);
         }
       }
 
-      if (method === 'POST') {
+        if (method === 'POST') {
         const { contentId, amount, trackingCode } = req.body;
-        const res = await db.query(
+        const result = await db.query(
           `INSERT INTO payments (user_id, content_id, amount, tracking_code) VALUES ($1, $2, $3, $4) RETURNING *`,
           [currentUser.id, contentId, amount, trackingCode]
         );
-        return res.status(201).json(res.rows[0]);
+        return res.status(201).json(result.rows[0]);
       }
 
       if (method === 'PATCH') {
@@ -299,14 +303,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Purchases check
     if (pathname === '/api/purchases') {
       if (!currentUser) return res.status(200).json([]);
-      const res = await db.query(`
+      const result = await db.query(`
         SELECT p.content_id as "contentId" FROM purchases p
         WHERE p.user_id = $1
         UNION
         SELECT p.content_id as "contentId" FROM payments p 
         WHERE p.user_id = $1 AND p.status = 'approved'
       `, [currentUser.id]);
-      return res.status(200).json(res.rows);
+      return res.status(200).json(result.rows);
     }
 
     // ================== ADMIN STATS ==================

@@ -1,7 +1,16 @@
--- Update Article 1: IELTS Roadmap (Comprehensive & Expert)
-UPDATE content 
-SET body = '
-<h2>مقدمه: چرا اکثر داوطلبان آیلتس شکست می‌خورند؟</h2>
+-- 1. Article 1: IELTS Roadmap
+INSERT INTO content (title, slug, type, level, author, tags, is_premium, thumbnail_url, description, body)
+VALUES (
+  'چگونه آیلتس را از صفر شروع کنیم؟ (نقشه راه ۲۰۲۵)',
+  'how-to-start-ielts-from-zero',
+  'article',
+  'beginner',
+  'Hossein Hakamian',
+  ARRAY['IELTS', 'Self-study', 'Exam', 'English Basics'],
+  FALSE,
+  'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=1000',
+  'راهنمای جامع و تخصصی برای رسیدن به نمره ۷.۵ آیلتس بدون کلاس. معرفی منابع ۲۰۲۵ و استراتژی‌های هر ۴ مهارت.',
+  '<h2>مقدمه: چرا اکثر داوطلبان آیلتس شکست می‌خورند؟</h2>
 <p>آمار رسمی IDP نشان می‌دهد که میانگین نمره ایرانیان در آیلتس آکادمیک ۶.۰ است. اما چرا بسیاری از افراد با وجود کلاس‌های متعدد، در نمره ۵.۵ یا ۶ درجا می‌زنند؟ پاسخ در "نداشتن استراتژی" است، نه دانش زبان. در این مقاله، نقشه راهی را ترسیم می‌کنیم که هزاران نفر با آن به نمره ۷.۵+ رسیده‌اند.</p>
 
 <h2>فاز اول: تشخیص واقعیت (Weeks 1-2)</h2>
@@ -51,14 +60,28 @@ SET body = '
 <h2>فاز چهارم: شبیه‌سازی (The Mock Era)</h2>
 <p>در ماه آخر، هفته‌ای ۲ بار آزمون کامل (Full Test) بدهید. ساعت ۸ صبح شروع کنید (مثل روز آزمون) و بدون هدفون تست بزنید.</p>
 <hr>
-<p><strong>نتیجه‌گیری:</strong> آیلتس غول نیست، یک بازی با قوانین مشخص است. اگر حس می‌کنید در یکی از مهارت‌ها لنگ می‌زنید، همین حالا با مشاورین ما تماس بگیرید تا "نقطه کور" یادگیری‌تان را پیدا کنیم.</p>
-'
-WHERE slug = 'how-to-start-ielts-from-zero';
+<p><strong>نتیجه‌گیری:</strong> آیلتس غول نیست، یک بازی با قوانین مشخص است. اگر حس می‌کنید در یکی از مهارت‌ها لنگ می‌زنید، همین حالا با مشاورین ما تماس بگیرید تا "نقطه کور" یادگیری‌تان را پیدا کنیم.</p>'
+)
+ON CONFLICT (slug) DO UPDATE SET 
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  body = EXCLUDED.body,
+  tags = EXCLUDED.tags,
+  thumbnail_url = EXCLUDED.thumbnail_url;
 
--- Update Article 2: Speaking Techniques (Modern & AI-Driven)
-UPDATE content 
-SET body = '
-<h2>چرا هنوز "من-من" می‌کنید؟</h2>
+-- 2. Article 2: Speaking Techniques
+INSERT INTO content (title, slug, type, level, author, tags, is_premium, thumbnail_url, description, body)
+VALUES (
+  '۵ تکنیک طلایی برای تقویت مکالمه (Speaking) بدون پارتنر',
+  'improve-speaking-without-partner',
+  'article',
+  'intermediate',
+  'Hossein Hakamian',
+  ARRAY['Speaking', 'Fluency', 'Shadowing', 'Conversation'],
+  FALSE,
+  'https://images.unsplash.com/photo-1573497620053-ea5300f94f21?auto=format&fit=crop&q=80&w=1000',
+  'آموزش ۵ متد علمی (مثل تکنیک سایه و ۴/۳/۲) برای روان صحبت کردن انگلیسی بدون نیاز به کلاس یا پارتنر خارجی.',
+  '<h2>چرا هنوز "من-من" می‌کنید؟</h2>
 <p>بزرگترین مانع فلوئنسی (روانی کلام)، کمبود لغت نیست؛ بلکه "ترس از قضاوت" و "فرآیند ترجمه در ذهن" است. در این مقاله، ۵ تکنیک را معرفی می‌کنیم که نیازی به پارتنر انسانی ندارند و مستقیماً سیم‌کشی مغز شما را تغییر می‌دهند.</p>
 
 <h2>تکنیک ۱: تکنیک سایه (Shadowing) - نسخه پیشرفته</h2>
@@ -99,14 +122,28 @@ SET body = '
 </ul>
 <blockquote>
   <strong>نکته پایانی:</strong> مکالمه یک عضله است. روزی ۱۰ دقیقه تمرین متمرکز، بهتر از هفته‌ای یک بار کلاس ۵ ساعته است. همین الان موبایل را بردارید و یک دقیقه درباره "آرزوی بزرگتان" به انگلیسی حرف بزنید.
-</blockquote>
-'
-WHERE slug = 'improve-speaking-without-partner';
+</blockquote>'
+)
+ON CONFLICT (slug) DO UPDATE SET 
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  body = EXCLUDED.body,
+  tags = EXCLUDED.tags,
+  thumbnail_url = EXCLUDED.thumbnail_url;
 
--- Update Article 3: Vocabulary Learning (The Leitner System)
-UPDATE content 
-SET body = '
-<h2>چرا لغات "فرار" هستند؟</h2>
+-- 3. Article 3: Vocabulary Learning
+INSERT INTO content (title, slug, type, level, author, tags, is_premium, thumbnail_url, description, body)
+VALUES (
+  'راز فراموش نکردن لغات انگلیسی: متد جعبه لایتنر و Anki',
+  'how-to-memorize-vocabulary-forever',
+  'article',
+  'beginner',
+  'Hossein Hakamian',
+  ARRAY['Vocabulary', 'Leitner Box', 'Memory', 'Learning'],
+  FALSE,
+  'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&q=80&w=1000',
+  'چرا لغات جدید را فراموش می‌کنیم؟ آموزش یادگیری واژگان با تکنیک تکرار فاصله‌دار (Spaced Repetition) و اپلیکیشن Anki.',
+  '<h2>چرا لغات "فرار" هستند؟</h2>
 <p>تا به حال شده لغتی را در دیکشنری چک کنید، معنی‌اش را بفهمید، اما دو روز بعد که می‌خواهید استفاده کنید، یادتان نیاید؟ این پدیده <strong>Passive Knowledge</strong> نام دارد. لغت در مغز شماست، اما در دسترس نیست. بیایید آن را به <strong>Active Knowledge</strong> تبدیل کنیم.</p>
 
 <h2>۱. منحنی فراموشی (The Forgetting Curve)</h2>
@@ -145,6 +182,11 @@ SET body = '
   <li>آن را در اپلیکیشن Anki با مثال وارد کنید.</li>
   <li>هر روز ۱۰ دقیقه فلش‌کارت‌ها را مرور کنید (مثلاً در مترو).</li>
   <li>سعی کنید با آن جملات خنده‌دار بسازید.</li>
-</ol>
-'
-WHERE slug = 'how-to-memorize-vocabulary-forever';
+</ol>'
+)
+ON CONFLICT (slug) DO UPDATE SET 
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  body = EXCLUDED.body,
+  tags = EXCLUDED.tags,
+  thumbnail_url = EXCLUDED.thumbnail_url;
