@@ -39,6 +39,11 @@ export const content = pgTable("content", {
   isPremium: boolean("is_premium").default(false),
   price: integer("price").default(0), // Price in Toman (0 = free)
   thumbnailUrl: text("thumbnail_url"), // URL for the cover image
+  // Blog / Article fields
+  body: text("body"), // HTML or Markdown content for articles
+  slug: text("slug").unique(), // SEO-friendly URL slug (e.g., 'how-to-learn-english')
+  author: text("author"), // Author name (optional)
+  tags: text("tags").array(), // SEO Keywords / Categories
   createdAt: timestamp("created_at").defaultNow(),
 });
 

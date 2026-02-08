@@ -24,6 +24,7 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 const VideosPage = lazy(() => import("@/pages/Videos"));
 const VideoDetailPage = lazy(() => import("@/pages/VideoDetail"));
 const Blog = lazy(() => import("@/pages/Blog"));
+const ArticleDetail = lazy(() => import("@/pages/ArticleDetail"));
 const PaymentPage = lazy(() => import("@/pages/Payment"));
 const CourseDetail = lazy(() => import("@/pages/CourseDetail"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
@@ -86,6 +87,7 @@ function Router() {
             <Route path="/videos/:videoId" component={VideoDetailPage} />
             <Route path="/payment/:id" component={PaymentPage} />
             <Route path="/course/:id" component={CourseDetail} />
+            <Route path="/article/:slug" component={ArticleDetail} />
             <Route path="/blog" component={Blog} />
             <Route path="/pricing" component={Pricing} />
             <Route component={NotFound} />

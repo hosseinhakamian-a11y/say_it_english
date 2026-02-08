@@ -1,102 +1,127 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Calendar, ArrowLeft } from "lucide-react";
-import { Link } from "wouter";
 import { SEO } from "@/components/SEO";
-import { OptimizedImage } from "@/components/ui/optimized-image";
-
-interface Post {
-    id: number;
-    title: string;
-    slug: string;
-    excerpt: string | null;
-    coverImage: string | null;
-    status: string;
-    createdAt: string;
-}
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar, User, ArrowRight, Tag } from "lucide-react";
+import { useLocation } from "wouter";
+import { motion } from "framer-motion";
 
 export default function Blog() {
-    const { data: posts, isLoading } = useQuery<Post[]>({
-        queryKey: ["/api/posts"],
+    const [, navigate] = useLocation();
+
+    const { data: articles, isLoading } = useQuery<any[]>({
+        queryKey: ["/api/content"],
         queryFn: async () => {
-            const res = await fetch("/api/posts");
-            if (!res.ok) return [];
-            return await res.json();
-        },
+            const res = await fetch("/api/content");
+            const all = await res.json();
+            return all.filter((c: any) => c.type === 'article');
+        }
     });
 
-    const publishedPosts = posts?.filter(p => p.status === 'published') || [];
-
     return (
-        <>
+        <div className="min-h-screen bg-background">
             <SEO
-                title="وبلاگ آموزشی"
-                description="جدیدترین مقالات آموزشی، نکات گرامری و روش‌های یادگیری سریع زبان انگلیسی"
-                keywords="وبلاگ زبان, یادگیری آیلتس, گرامر انگلیسی, نکات یادگیری زبان"
+                title="وبلاگ آموزش زبان"
+                description="جدیدترین مقالات آموزش زبان انگلیسی، تکنیک‌های یادگیری و نکات آیلتس"
             />
-            <div className="container mx-auto px-4 py-12" dir="rtl">
-                <div className="max-w-4xl mx-auto">
-                    <div className="text-center mb-12">
-                        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-l from-primary to-teal-600 bg-clip-text text-transparent">
-                            وبلاگ آموزشی
-                        </h1>
-                        <p className="text-xl text-muted-foreground">
-                            مقالات و نکات کاربردی برای یادگیری زبان انگلیسی
-                        </p>
-                    </div>
 
-                    {isLoading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    ) : publishedPosts.length === 0 ? (
-                        <div className="text-center py-16 bg-muted/30 rounded-3xl">
-                            <p className="text-muted-foreground text-lg">هنوز مقاله‌ای منتشر نشده است.</p>
-                            <p className="text-muted-foreground mt-2">به زودی مقالات جدید اضافه خواهند شد!</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            {publishedPosts.map((post) => (
-                                <Card key={post.id} className="rounded-2xl overflow-hidden hover:shadow-lg transition-shadow group">
-                                    <div className="flex flex-col md:flex-row">
-                                        {post.coverImage && (
-                                            <div className="md:w-64 h-48 md:h-auto bg-muted overflow-hidden">
-                                                <OptimizedImage
-                                                    src={post.coverImage}
-                                                    alt={post.title}
-                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                    containerClassName="w-full h-full"
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="flex-1 p-6">
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                                                <Calendar className="h-4 w-4" />
-                                                {new Date(post.createdAt).toLocaleDateString('fa-IR')}
-                                            </div>
-                                            <h2 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-                                                {post.title}
-                                            </h2>
-                                            {post.excerpt && (
-                                                <p className="text-muted-foreground mb-4 line-clamp-2">
-                                                    {post.excerpt}
-                                                </p>
-                                            )}
-                                            <Link href={`/blog/${post.slug}`}>
-                                                <a className="inline-flex items-center gap-2 text-primary font-medium hover:underline">
-                                                    ادامه مطلب
-                                                    <ArrowLeft className="h-4 w-4" />
-                                                </a>
-                                            </Link>
+            {/* Hero Section */}
+            <section className="bg-primary/5 py-16 border-b border-primary/10">
+                <div className="container mx-auto px-4 text-center">
+                    <h1 className="text-4xl font-extrabold gradient-text mb-4">
+                        مجله آموزشی Say It English
+                    </h1>
+                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                        تکنیک‌های روز دنیا برای یادگیری سریع‌تر زبان انگلیسی
+                    </p>
+                </div>
+            </section>
+
+            {/* Articles Grid */}
+            <div className="container mx-auto px-4 py-16">
+                {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-96 bg-muted/20 animate-pulse rounded-2xl" />
+                        ))}
+                    </div>
+                ) : articles && articles.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {articles.map((article, index) => (
+                            <motion.div
+                                key={article.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                            >
+                                <Card className="overflow-hidden border-2 border-transparent hover:border-primary/20 transition-all duration-300 hover:shadow-xl group h-full flex flex-col">
+                                    <div className="relative h-48 overflow-hidden bg-muted">
+                                        <img
+                                            src={article.thumbnailUrl || "/bg-pattern.png"}
+                                            alt={article.title}
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        />
+                                        <div className="absolute top-4 right-4">
+                                            <Badge variant="secondary" className="backdrop-blur-md bg-black/50 text-white border-0">
+                                                {article.level === 'beginner' ? 'مبتدی' : article.level === 'intermediate' ? 'متوسط' : 'پیشرفته'}
+                                            </Badge>
                                         </div>
                                     </div>
+
+                                    <CardContent className="p-6 flex-1">
+                                        <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {new Date(article.createdAt).toLocaleDateString('fa-IR')}
+                                            </span>
+                                            <span>•</span>
+                                            <span className="flex items-center gap-1">
+                                                <User className="w-3 h-3" />
+                                                {article.author || "تیم محتوا"}
+                                            </span>
+                                        </div>
+
+                                        <h3 className="text-xl font-bold mb-3 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                                            {article.title}
+                                        </h3>
+
+                                        <p className="text-muted-foreground text-sm line-clamp-3 leading-relaxed mb-4">
+                                            {article.description}
+                                        </p>
+
+                                        {article.tags && (
+                                            <div className="flex flex-wrap gap-2 mt-auto">
+                                                {article.tags.slice(0, 2).map((tag: string) => (
+                                                    <span key={tag} className="bg-primary/5 text-primary text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                        <Tag className="w-2 h-2" />
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </CardContent>
+
+                                    <CardFooter className="p-6 pt-0 mt-auto">
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full justify-between hover:bg-primary/5 hover:text-primary group/btn"
+                                            onClick={() => navigate(`/article/${article.slug || article.id}`)}
+                                        >
+                                            مطالعه کامل
+                                            <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:-translate-x-1" />
+                                        </Button>
+                                    </CardFooter>
                                 </Card>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-20">
+                        <p className="text-xl text-muted-foreground">هنوز مقاله‌ای منتشر نشده است.</p>
+                    </div>
+                )}
             </div>
-        </>
+        </div>
     );
 }
