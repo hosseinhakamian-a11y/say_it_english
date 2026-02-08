@@ -147,7 +147,7 @@ export function VideoPlayer({
                         style={{ border: 'none' }}
                     />
                 </div>
-                <ProviderBadge provider="Bunny" isActive={!useArvan} />
+                <ProviderBadge provider="B" isActive={!useArvan} />
             </div>
         );
     }
@@ -174,7 +174,7 @@ export function VideoPlayer({
                         style={{ border: 'none' }}
                     />
                 </div>
-                <ProviderBadge provider="ArvanCloud" isActive={useArvan} />
+                <ProviderBadge provider="A" isActive={useArvan} />
             </div>
         );
     }
@@ -198,7 +198,7 @@ export function VideoPlayer({
                     مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.
                 </video>
             </div>
-            <ProviderBadge provider={useArvan ? "ArvanCloud" : "CDN"} isActive={true} />
+            <ProviderBadge provider={useArvan ? "A" : "B"} isActive={true} />
         </div>
     );
 }
