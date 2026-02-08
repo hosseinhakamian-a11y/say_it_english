@@ -133,6 +133,17 @@ export const paymentSettings = pgTable("payment_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Reviews and Ratings for Content
+export const reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Who wrote the review
+  contentId: integer("content_id").notNull(), // Which course/content
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"), // Optional text comment
+  isApproved: boolean("is_approved").default(true), // Admin can hide reviews
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertContentSchema = createInsertSchema(content).omit({ id: true, createdAt: true });
@@ -142,6 +153,7 @@ export const insertClassSchema = createInsertSchema(classes).omit({ id: true, cr
 export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id: true, createdAt: true, status: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, status: true, notes: true });
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: true, createdAt: true });
+export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, isApproved: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -160,3 +172,5 @@ export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Purchase = typeof purchases.$inferSelect;
 export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = z.infer<typeof insertReviewSchema>;

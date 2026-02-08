@@ -18,6 +18,7 @@ import { SecureVideoPlayer } from "@/components/SecureVideoPlayer";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
 import { pageVariants, containerVariants, itemVariants } from "@/lib/animations";
+import { ReviewsSection } from "@/components/ReviewsSection";
 
 export default function CourseDetail() {
     const [, params] = useRoute("/course/:id");
@@ -193,6 +194,9 @@ export default function CourseDetail() {
                                 </ul>
                             </div>
                         </section>
+
+                        {/* Reviews Section */}
+                        <ReviewsSection contentId={courseId} />
                     </div>
 
                     {/* Sidebar Purchase Card */}
