@@ -101,11 +101,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return res.status(403).json({ error: "Unauthorized. Admin role required." });
             }
 
-            const { title, description, type, level, videoId, videoProvider, fileKey, isPremium, price } = req.body;
+            const { title, description, type, level, videoId, videoProvider, fileKey, isPremium, price, thumbnailUrl } = req.body;
 
             const query = `
-                INSERT INTO content (title, description, type, level, video_id, video_provider, file_key, is_premium, price)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                INSERT INTO content (title, description, type, level, video_id, video_provider, file_key, is_premium, price, thumbnail_url)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 RETURNING *
             `;
             const values = [
@@ -117,7 +117,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 videoProvider || 'custom',
                 fileKey || '',
                 !!isPremium,
-                parseInt(price) || 0
+                parseInt(price) || 0,
+                thumbnailUrl || ''
             ];
 
             const result = await db.query(query, values);

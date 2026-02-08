@@ -67,6 +67,7 @@ export default function AdminContent() {
             videoId: "",
             fileKey: "",
             contentUrl: "",
+            thumbnailUrl: "",
             isPremium: false,
             price: 0,
         },
@@ -351,6 +352,39 @@ export default function AdminContent() {
                                         </FormItem>
                                     )} />
                                 </div>
+                            </div>
+
+                            {/* Thumbnail URL Field */}
+                            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 space-y-3">
+                                <h3 className="font-medium text-amber-700 flex items-center gap-2">
+                                    🖼️ عکس پیش‌نمایش (اختیاری)
+                                </h3>
+                                <FormField control={form.control} name="thumbnailUrl" render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Input
+                                                className="bg-white"
+                                                placeholder="https://example.com/thumbnail.jpg"
+                                                {...field}
+                                                value={field.value || ""}
+                                            />
+                                        </FormControl>
+                                        <FormDescription className="text-[10px] text-amber-600">
+                                            لینک تصویر کاور دوره را وارد کنید. می‌توانید از Bunny Storage یا هر CDN دیگر استفاده کنید.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                {form.watch("thumbnailUrl") && (
+                                    <div className="mt-2 rounded-lg overflow-hidden border border-amber-200 max-w-[120px]">
+                                        <img
+                                            src={form.watch("thumbnailUrl") ?? ""}
+                                            alt="Preview"
+                                            className="w-full aspect-[9/16] object-cover"
+                                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-2 pt-4">

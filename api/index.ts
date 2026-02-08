@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel.node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import pg from 'pg';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -71,7 +71,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // AUTH CHECK
     const cookies = req.headers.cookie || '';
-    const sessionToken = cookies.split(';').find(c => c.trim().startsWith('session='))?.split('=')[1];
+    const sessionToken = cookies.split(';').find((c: string) => c.trim().startsWith('session='))?.split('=')[1];
     let currentUser: any = null;
     if (sessionToken) {
       const userRes = await db.query('SELECT * FROM users WHERE session_token = $1', [sessionToken]);
