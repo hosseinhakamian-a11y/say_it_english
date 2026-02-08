@@ -63,8 +63,10 @@ export default function AdminContent() {
             description: "",
             type: "video",
             level: "beginner",
-            videoProvider: "aparat",
+            videoProvider: "bunny",
             videoId: "",
+            arvanVideoProvider: "",
+            arvanVideoId: "",
             fileKey: "",
             contentUrl: "",
             thumbnailUrl: "",
@@ -325,19 +327,22 @@ export default function AdminContent() {
                             </div>
 
 
-                            <div className="p-4 bg-gray-50 rounded-xl border border-dashed space-y-4 relative">
-                                <h3 className="font-medium text-gray-700">سایر سرویس‌ها (اختیاری)</h3>
+                            {/* International Video Source (Bunny/YouTube/etc) */}
+                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-4 relative">
+                                <h3 className="font-medium text-blue-700 flex items-center gap-2">
+                                    🌍 سرویس بین‌المللی (برای خارج ایران)
+                                </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField control={form.control} name="videoProvider" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>سرویس</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value || "aparat"}>
+                                            <Select onValueChange={field.onChange} value={field.value || "bunny"}>
                                                 <FormControl><SelectTrigger className="bg-white"><SelectValue /></SelectTrigger></FormControl>
                                                 <SelectContent className="bg-white border shadow-2xl z-[150]">
-                                                    <SelectItem value="custom">Arvan/Link 🔗</SelectItem>
-                                                    <SelectItem value="aparat">آپارات 🇮🇷</SelectItem>
-                                                    <SelectItem value="youtube">یوتیوب 🔴</SelectItem>
                                                     <SelectItem value="bunny">بانی 🐰</SelectItem>
+                                                    <SelectItem value="youtube">یوتیوب 🔴</SelectItem>
+                                                    <SelectItem value="aparat">آپارات 🇮🇷</SelectItem>
+                                                    <SelectItem value="custom">لینک مستقیم 🔗</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -346,8 +351,42 @@ export default function AdminContent() {
 
                                     <FormField control={form.control} name="videoId" render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>آیدی/کد ویدیو</FormLabel>
-                                            <FormControl><Input className="bg-white" placeholder="XyZw1" {...field} value={field.value || ""} /></FormControl>
+                                            <FormLabel>آیدی/لینک ویدیو</FormLabel>
+                                            <FormControl><Input className="bg-white" placeholder="لینک یا کد ویدیو" {...field} value={field.value || ""} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                            </div>
+
+                            {/* ArvanCloud Video Source (for Iran) */}
+                            <div className="p-4 bg-green-50 rounded-xl border border-green-200 space-y-4 relative">
+                                <h3 className="font-medium text-green-700 flex items-center gap-2">
+                                    🇮🇷 ابرآروان (برای کاربران ایرانی - اختیاری)
+                                </h3>
+                                <p className="text-[11px] text-green-600">
+                                    اگر ویدیو را در ابرآروان هم آپلود کرده‌اید، لینک آن را وارد کنید. سیستم برای کاربران ایرانی از این منبع استفاده می‌کند.
+                                </p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="arvanVideoProvider" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>نوع سرویس</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                                                <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="انتخاب کنید..." /></SelectTrigger></FormControl>
+                                                <SelectContent className="bg-white border shadow-2xl z-[150]">
+                                                    <SelectItem value="">بدون ابرآروان</SelectItem>
+                                                    <SelectItem value="arvan-vod">پلتفرم ویدیو 🎬</SelectItem>
+                                                    <SelectItem value="arvan-storage">فضای ابری (Storage) 📦</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+
+                                    <FormField control={form.control} name="arvanVideoId" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>آیدی/لینک ابرآروان</FormLabel>
+                                            <FormControl><Input className="bg-white" placeholder="لینک پخش یا آیدی" {...field} value={field.value || ""} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />

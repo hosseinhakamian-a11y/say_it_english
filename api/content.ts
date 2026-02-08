@@ -26,6 +26,8 @@ function mapContentRow(row: any) {
         contentUrl: row.content_url,
         videoId: row.video_id,
         videoProvider: row.video_provider,
+        arvanVideoId: row.arvan_video_id,
+        arvanVideoProvider: row.arvan_video_provider,
         fileKey: row.file_key,
         isPremium: row.is_premium,
         price: row.price,
@@ -101,11 +103,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return res.status(403).json({ error: "Unauthorized. Admin role required." });
             }
 
-            const { title, description, type, level, videoId, videoProvider, fileKey, isPremium, price, thumbnailUrl } = req.body;
+            const { title, description, type, level, videoId, videoProvider, arvanVideoId, arvanVideoProvider, fileKey, isPremium, price, thumbnailUrl } = req.body;
 
             const query = `
-                INSERT INTO content (title, description, type, level, video_id, video_provider, file_key, is_premium, price, thumbnail_url)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                INSERT INTO content (title, description, type, level, video_id, video_provider, arvan_video_id, arvan_video_provider, file_key, is_premium, price, thumbnail_url)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 RETURNING *
             `;
             const values = [
@@ -114,7 +116,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 type || 'video',
                 level || 'beginner',
                 videoId || '',
-                videoProvider || 'custom',
+                videoProvider || 'bunny',
+                arvanVideoId || '',
+                arvanVideoProvider || '',
                 fileKey || '',
                 !!isPremium,
                 parseInt(price) || 0,

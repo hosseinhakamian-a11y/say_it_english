@@ -29,8 +29,12 @@ export const content = pgTable("content", {
   type: text("type").notNull(), // 'podcast', 'article', 'video'
   level: text("level").notNull(), // 'beginner', 'intermediate', 'advanced'
   contentUrl: text("content_url"), // Optional now, used for audio/articles
+  // Primary video source (usually Bunny for international users)
   videoId: text("video_id"), // For Bunny/Aparat/YouTube ID
   videoProvider: text("video_provider"), // 'bunny', 'aparat', 'youtube', 'custom'
+  // Secondary video source (ArvanCloud for Iranian users / fallback)
+  arvanVideoId: text("arvan_video_id"), // ArvanCloud Video Platform ID
+  arvanVideoProvider: text("arvan_video_provider"), // 'arvan-vod' (VOD) or 'arvan-storage' (direct link)
   fileKey: text("file_key"), // S3/Arvan Object Key for secure download
   isPremium: boolean("is_premium").default(false),
   price: integer("price").default(0), // Price in Toman (0 = free)
