@@ -1,55 +1,56 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
-import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.SESSION_SECRET || 'sayitenglish-secret-2025';
-
-const users = pgTable("users", {
-    id: serial("id").primaryKey(),
-    username: text("username").notNull().unique(),
-    password: text("password").notNull(),
-    role: text("role").default("user"),
-    createdAt: timestamp("created_at").defaultNow(),
-});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // CORS
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
     try {
-        // Get token from header
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Not authenticated' });
+        // Get session token from cookie
+        const cookies = req.headers.cookie || '';
+        let sessionToken = '';
+        const sessionCookie = cookies.split(';').find((c: string) => c.trim().startsWith('session='));
+        if (sessionCookie) {
+            sessionToken = sessionCookie.split('=')[1]?.trim() || '';
         }
 
-        const token = authHeader.split(' ')[1];
+        if (!sessionToken) {
+            return res.status(200).json(null); // Not logged in
+        }
 
-        // Verify token
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: number; username: string; role: string };
-
-        // Get fresh user data from database
+        // Get user from database by session token
         const pool = new Pool({
             connectionString: process.env.DATABASE_URL,
             ssl: { rejectUnauthorized: false }
         });
-        const db = drizzle(pool);
 
-        const [user] = await db.select().from(users).where(eq(users.id, decoded.id));
+        const result = await pool.query('SELECT * FROM users WHERE session_token = $1', [sessionToken]);
         await pool.end();
 
-        if (!user) {
-            return res.status(401).json({ error: 'User not found' });
+        if (result.rows.length === 0) {
+            return res.status(200).json(null); // Session expired or invalid
         }
 
-        res.status(200).json({
+        const user = result.rows[0];
+
+        return res.status(200).json({
             id: user.id,
             username: user.username,
             role: user.role,
-            createdAt: user.createdAt
+            name: user.name,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            phone: user.phone,
+            avatar: user.avatar,
+            level: user.level,
+            createdAt: user.created_at
         });
     } catch (error: any) {
-        console.error('User error:', error);
-        res.status(401).json({ error: 'Invalid or expired token' });
+        console.error('User fetch error:', error);
+        return res.status(500).json({ error: 'خطا در دریافت اطلاعات کاربر' });
     }
 }
