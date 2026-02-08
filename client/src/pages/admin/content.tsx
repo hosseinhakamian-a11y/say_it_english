@@ -510,5 +510,3 @@ export default function AdminContent() {
         </AdminLayout>
     );
 }
-/ /   f o r c e   r e b u i l d  
- 
