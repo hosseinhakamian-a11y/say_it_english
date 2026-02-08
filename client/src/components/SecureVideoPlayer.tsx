@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Loader2, Lock, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { motion } from "framer-motion";
 
 interface SecureVideoPlayerProps {
     contentId: number;
@@ -26,7 +27,7 @@ export function SecureVideoPlayer({ contentId, poster }: SecureVideoPlayerProps)
 
     if (error) {
         return (
-            <div className="w-full aspect-video bg-gray-900 rounded-[2rem] flex flex-col items-center justify-center text-white gap-4 p-8 border border-red-900/20 glass">
+            <div className="w-full max-w-md mx-auto aspect-[9/16] bg-gray-900 rounded-2xl flex flex-col items-center justify-center text-white gap-4 p-8 border border-red-900/20">
                 <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-2">
                     <Lock className="w-8 h-8 text-red-500" />
                 </div>
@@ -44,11 +45,12 @@ export function SecureVideoPlayer({ contentId, poster }: SecureVideoPlayerProps)
 
     if (isPlaying) {
         return (
-            <div className="w-full aspect-video bg-black rounded-[2rem] overflow-hidden relative shadow-2xl border border-white/5 shadow-primary/20">
+            <div className="w-full max-w-md mx-auto aspect-[9/16] bg-black rounded-2xl overflow-hidden relative shadow-2xl border border-white/5">
                 <video
                     controls
                     autoPlay
-                    className="w-full h-full"
+                    playsInline
+                    className="w-full h-full object-contain"
                     poster={poster}
                     controlsList="nodownload"
                     onContextMenu={(e) => e.preventDefault()}
@@ -69,7 +71,7 @@ export function SecureVideoPlayer({ contentId, poster }: SecureVideoPlayerProps)
     }
 
     return (
-        <div className="w-full aspect-video bg-gray-900 rounded-[2rem] flex flex-col items-center justify-center relative overflow-hidden group shadow-xl border border-white/5">
+        <div className="w-full max-w-md mx-auto aspect-[9/16] bg-gray-900 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group shadow-xl border border-white/5">
             {poster ? (
                 <img
                     src={poster}
@@ -106,7 +108,3 @@ export function SecureVideoPlayer({ contentId, poster }: SecureVideoPlayerProps)
         </div>
     );
 }
-
-// Separate import for motion to avoid issues if not used correctly
-import { motion } from "framer-motion";
-const motion_div = motion.div;
