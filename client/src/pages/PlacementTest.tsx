@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, ChevronLeft, AlertCircle, BookOpen, Zap } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, BookOpen, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 
@@ -290,6 +290,16 @@ export default function PlacementTest() {
 
                   <div className="mt-10 flex justify-between items-center">
                     <Button
+                      onClick={handleNext}
+                      disabled={!answers[currentSection.id as SectionKey]?.[currentQuestion]}
+                      size="lg"
+                      className="rounded-lg px-8 bg-primary hover:bg-primary/90 text-white"
+                    >
+                      {sectionIndex === sections.length - 1 && currentQuestion === currentSection.questions.length - 1 ? "مشاهده نتیجه" : "بعدی"}
+                      <ChevronRight className="mr-2 h-4 w-4" />
+                    </Button>
+
+                    <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
@@ -305,15 +315,6 @@ export default function PlacementTest() {
                     >
                       <ChevronLeft className="ml-2 h-4 w-4" />
                       قبلی
-                    </Button>
-                    <Button
-                      onClick={handleNext}
-                      disabled={!answers[currentSection.id as SectionKey]?.[currentQuestion]}
-                      size="lg"
-                      className="rounded-lg px-8"
-                    >
-                      {sectionIndex === sections.length - 1 && currentQuestion === currentSection.questions.length - 1 ? "مشاهده نتیجه" : "بعدی"}
-                      <ChevronLeft className="mr-2 h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>

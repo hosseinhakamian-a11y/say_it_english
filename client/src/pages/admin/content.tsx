@@ -148,7 +148,7 @@ export default function AdminContent() {
 
             xhr.upload.onprogress = (event) => {
                 if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 75) + 20;
+                    const percentComplete = Math.round((event.loaded / event.total) * 79) + 20;
                     setUploadProgress(percentComplete);
                 }
             };
@@ -316,12 +316,13 @@ export default function AdminContent() {
                                         <div className="space-y-2">
                                             <Progress value={uploadProgress} className="h-2" />
                                             <p className="text-[10px] text-center text-primary font-medium animate-pulse">
-                                                در حال انتقال... {uploadProgress}%
+                                                {uploadProgress >= 99 ? "در حال نهایی‌سازی در ابرآروان..." : `در حال انتقال... ${uploadProgress}%`}
                                             </p>
                                         </div>
                                     )}
                                 </div>
                             </div>
+
 
                             <div className="p-4 bg-gray-50 rounded-xl border border-dashed space-y-4 relative">
                                 <h3 className="font-medium text-gray-700">سایر سرویس‌ها (اختیاری)</h3>
