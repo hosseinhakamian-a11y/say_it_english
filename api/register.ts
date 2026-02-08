@@ -1,22 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
-import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
 import { scrypt, randomBytes } from 'crypto';
 import { promisify } from 'util';
-import jwt from 'jsonwebtoken';
 
 const scryptAsync = promisify(scrypt);
-const JWT_SECRET = process.env.SESSION_SECRET || 'sayitenglish-secret-2025';
-
-const users = pgTable("users", {
-    id: serial("id").primaryKey(),
-    username: text("username").notNull().unique(),
-    password: text("password").notNull(),
-    role: text("role").default("user"),
-    createdAt: timestamp("created_at").defaultNow(),
-});
 
 async function hashPassword(password: string) {
     const salt = randomBytes(16).toString("hex");
@@ -25,53 +12,66 @@ async function hashPassword(password: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // CORS
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    try {
-        const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-        });
-        const db = drizzle(pool);
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
 
-        const { username, password } = req.body;
+    try {
+        const { username, password, name, phone } = req.body;
 
         if (!username || !password) {
             await pool.end();
             return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
         }
 
-        const [existing] = await db.select().from(users).where(eq(users.username, username));
-        if (existing) {
+        // Check if user exists
+        const existing = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+        if (existing.rows.length > 0) {
             await pool.end();
             return res.status(400).json({ error: 'کاربر با این نام وجود دارد' });
         }
 
         const hashedPassword = await hashPassword(password);
-        const [newUser] = await db.insert(users).values({
-            username,
-            password: hashedPassword
-        }).returning();
+        const sessionToken = randomBytes(32).toString('hex');
+
+        // Insert new user with session token
+        const result = await pool.query(
+            `INSERT INTO users (username, password, name, phone, role, session_token) 
+             VALUES ($1, $2, $3, $4, 'user', $5) 
+             RETURNING id, username, role, name, phone`,
+            [username, hashedPassword, name || null, phone || null, sessionToken]
+        );
+
+        const newUser = result.rows[0];
 
         await pool.end();
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { id: newUser.id, username: newUser.username, role: newUser.role },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        // Set session cookie (7 days)
+        const maxAge = 7 * 24 * 60 * 60;
+        res.setHeader('Set-Cookie', `session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
 
-        res.status(200).json({
+        return res.status(200).json({
             id: newUser.id,
             username: newUser.username,
             role: newUser.role,
-            token
+            name: newUser.name,
+            phone: newUser.phone,
         });
     } catch (error: any) {
         console.error('Register error:', error);
-        res.status(500).json({ error: 'خطا در ثبت نام', details: error.message });
+        await pool.end();
+        return res.status(500).json({ error: 'خطا در ثبت نام', details: error.message });
     }
 }

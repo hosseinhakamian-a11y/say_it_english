@@ -1,22 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Pool } from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
-import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
-import { scrypt, timingSafeEqual } from 'crypto';
+import { scrypt, timingSafeEqual, randomBytes } from 'crypto';
 import { promisify } from 'util';
-import jwt from 'jsonwebtoken';
 
 const scryptAsync = promisify(scrypt);
-const JWT_SECRET = process.env.SESSION_SECRET || 'sayitenglish-secret-2025';
-
-const users = pgTable("users", {
-    id: serial("id").primaryKey(),
-    username: text("username").notNull().unique(),
-    password: text("password").notNull(),
-    role: text("role").default("user"),
-    createdAt: timestamp("created_at").defaultNow(),
-});
 
 async function comparePasswords(supplied: string, stored: string) {
     const [hashed, salt] = stored.split(".");
@@ -26,48 +13,61 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // CORS
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    try {
-        const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
-        });
-        const db = drizzle(pool);
+    const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+    });
 
-        const { username, password } = req.body;
+    try {
+        const { username, password, rememberMe } = req.body;
 
         if (!username || !password) {
             await pool.end();
             return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
         }
 
-        const [user] = await db.select().from(users).where(eq(users.username, username));
+        // Find user
+        const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        const user = userResult.rows[0];
 
         if (!user || !(await comparePasswords(password, user.password))) {
             await pool.end();
             return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
         }
 
+        // Generate session token
+        const sessionToken = randomBytes(32).toString('hex');
+
+        // Save session token to database
+        await pool.query('UPDATE users SET session_token = $1 WHERE id = $2', [sessionToken, user.id]);
+
         await pool.end();
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { id: user.id, username: user.username, role: user.role },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        // Set cookie - 30 days if rememberMe, else 7 days
+        const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+        res.setHeader('Set-Cookie', `session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
 
-        res.status(200).json({
+        return res.status(200).json({
             id: user.id,
             username: user.username,
             role: user.role,
-            token
+            name: user.name,
+            phone: user.phone,
         });
     } catch (error: any) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'خطا در ورود', details: error.message });
+        await pool.end();
+        return res.status(500).json({ error: 'خطا در ورود', details: error.message });
     }
 }
