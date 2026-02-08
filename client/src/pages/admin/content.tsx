@@ -65,7 +65,7 @@ export default function AdminContent() {
             level: "beginner",
             videoProvider: "bunny",
             videoId: "",
-            arvanVideoProvider: "",
+            arvanVideoProvider: "none",
             arvanVideoId: "",
             fileKey: "",
             contentUrl: "",
@@ -371,10 +371,10 @@ export default function AdminContent() {
                                     <FormField control={form.control} name="arvanVideoProvider" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>نوع سرویس</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                                            <Select onValueChange={field.onChange} value={field.value || "none"}>
                                                 <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="انتخاب کنید..." /></SelectTrigger></FormControl>
                                                 <SelectContent className="bg-white border shadow-2xl z-[150]">
-                                                    <SelectItem value="">بدون ابرآروان</SelectItem>
+                                                    <SelectItem value="none">بدون ابرآروان</SelectItem>
                                                     <SelectItem value="arvan-vod">پلتفرم ویدیو 🎬</SelectItem>
                                                     <SelectItem value="arvan-storage">فضای ابری (Storage) 📦</SelectItem>
                                                 </SelectContent>
