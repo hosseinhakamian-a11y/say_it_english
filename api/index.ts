@@ -48,21 +48,6 @@ function getS3Config() {
   };
 }
 
-async function generateDownloadLink(fileKey: string, expiresInSeconds = 3600, disposition: "attachment" | "inline" = "attachment") {
-  try {
-    const { client, bucket } = getS3Config();
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: fileKey,
-      ResponseContentDisposition: disposition,
-    });
-    return await getSignedUrl(client, command, { expiresIn: expiresInSeconds });
-  } catch (error) {
-    console.error("Download link error:", error);
-    return null;
-  }
-}
-
 async function generateUploadLink(fileKey: string, contentType: string, expiresInSeconds = 3600) {
   try {
     const { client, bucket } = getS3Config();
@@ -79,16 +64,6 @@ async function generateUploadLink(fileKey: string, contentType: string, expiresI
 }
 
 // ============ AUTH HELPERS ============
-async function comparePasswords(supplied: string, stored: string) {
-  try {
-    const [hashed, salt] = stored.split(".");
-    if (!hashed || !salt) return false;
-    const hashedBuf = Buffer.from(hashed, "hex");
-    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-    return timingSafeEqual(hashedBuf, suppliedBuf);
-  } catch (e) { return false; }
-}
-
 function parseCookies(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
   if (!cookieHeader) return cookies;
@@ -113,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (method === 'OPTIONS') return res.status(200).end();
 
-  // AUTH CHECK (Session Token)
+  // AUTH CHECK
   const cookies = parseCookies(req.headers.cookie);
   const sessionToken = cookies['session'];
   let currentUser: any = null;
@@ -122,8 +97,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (userResult.rows.length > 0) currentUser = userResult.rows[0];
   }
 
-  // ---- 1. Admin Stats (FIXING 404) ----
-  if (url.includes('/api/admin/stats')) {
+  // ---- 1. Admin Stats ----
+  if (url === '/api/admin/stats') {
     if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
     const userCount = await db.query('SELECT COUNT(*) FROM users');
     const contentCount = await db.query('SELECT COUNT(*) FROM content');
@@ -135,39 +110,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  // ---- 2. Bookings (FIXING 404) ----
-  if (url.includes('/api/bookings')) {
-    if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
-    if (method === 'GET') {
-      const bookings = await db.query('SELECT * FROM bookings WHERE user_id = $1', [currentUser.id]);
-      return res.status(200).json(bookings.rows);
+  // ---- 2. Content CRUD (FIXING THE ISSUE) ----
+  if (url === '/api/content' || url.startsWith('/api/content/')) {
+    // List Content
+    if (method === 'GET' && url === '/api/content') {
+      const result = await db.query('SELECT * FROM content ORDER BY id DESC');
+      return res.status(200).json(result.rows);
+    }
+
+    // Create Content (Admin Only)
+    if (method === 'POST') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
+      const { title, description, type, level, videoId, videoProvider, fileKey, isPremium, price } = req.body;
+      const query = `
+        INSERT INTO content (title, description, type, level, video_id, video_provider, file_key, is_premium, price)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *
+      `;
+      const result = await db.query(query, [title, description, type, level, videoId, videoProvider, fileKey, isPremium, price]);
+      return res.status(201).json(result.rows[0]);
+    }
+
+    // Delete Content
+    if (method === 'DELETE') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
+      const id = url.split('/').pop();
+      await db.query('DELETE FROM content WHERE id = $1', [id]);
+      return res.status(200).json({ success: true });
     }
   }
 
-  // ---- 3. Content List ----
-  if (url.includes('/api/content') && method === 'GET' && !url.includes('upload-link')) {
-    const content = await db.query('SELECT * FROM content');
-    return res.status(200).json(content.rows);
-  }
-
-  // ---- 4. ArvanCloud Upload Link ----
+  // ---- 3. ArvanCloud Upload Link ----
   if (url.includes('/api/content/upload-link')) {
     if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
     const urlObj = new URL(url, `https://${req.headers.host}`);
     const fileName = urlObj.searchParams.get('fileName');
     const contentType = urlObj.searchParams.get('contentType');
-    if (!fileName || !contentType) return res.status(400).json({ error: "Missing parameters" });
+    if (!fileName || !contentType) return res.status(400).json({ error: "Missing params" });
     
     const fileKey = `uploads/${Date.now()}-${fileName}`;
     const uploadUrl = await generateUploadLink(fileKey, contentType);
     return res.status(200).json({ uploadUrl, fileKey });
   }
 
-  // ---- 5. Auth / Login / User ----
-  if (url.includes('/api/user') && method === 'GET') {
+  // ---- 4. User Status ----
+  if (url === '/api/user') {
     return res.status(200).json(currentUser || null);
   }
 
-  // Fallback to 404
   return res.status(404).json({ error: "Endpoint not found", path: url });
 }
