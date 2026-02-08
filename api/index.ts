@@ -16,6 +16,26 @@ function getPool() {
   return pool;
 }
 
+// ============ HELPERS ============
+// Convert snake_case database fields to camelCase for frontend
+function mapContentRow(row: any) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    type: row.type,
+    level: row.level,
+    contentUrl: row.content_url,
+    videoId: row.video_id,
+    videoProvider: row.video_provider,
+    fileKey: row.file_key,
+    isPremium: row.is_premium,
+    price: row.price,
+    thumbnailUrl: row.thumbnail_url,
+    createdAt: row.created_at,
+  };
+}
+
 // ============ ARVAN CLOUD HELPERS ============
 async function generateUploadLink(fileKey: string, contentType: string) {
   try {
@@ -38,7 +58,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const method = req.method || 'GET';
   const db = getPool();
   
-  // به دست آوردن مسیر بدون پارامترهای اضافی (مثل ?v=1)
   const fullUrl = req.url || '';
   const pathname = fullUrl.split('?')[0];
 
@@ -59,20 +78,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (userRes.rows.length > 0) currentUser = userRes.rows[0];
     }
 
-    // ---- ROUTES (Flexible Matching) ----
+    // ---- ROUTES ----
 
     // 1. Content CRUD
     if (pathname === '/api/content') {
       if (method === 'GET') {
         const result = await db.query('SELECT * FROM content ORDER BY id DESC');
-        return res.status(200).json(result.rows);
+        // تبدیل فیلدها به camelCase برای فرانت‌اند
+        const mappedContent = result.rows.map(mapContentRow);
+        return res.status(200).json(mappedContent);
       }
 
       if (method === 'POST') {
         if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Unauthorized" });
         const { title, description, type, level, videoId, videoProvider, fileKey, isPremium, price } = req.body;
         
-        // اطمینان از مقداردهی فیلدهای ضروری برای جلوگیری از خطای دیتابیس
         const query = `
           INSERT INTO content (title, description, type, level, video_id, video_provider, file_key, is_premium, price)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -90,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           parseInt(price) || 0
         ];
         const result = await db.query(query, values);
-        return res.status(201).json(result.rows[0]);
+        return res.status(201).json(mapContentRow(result.rows[0]));
       }
     }
 
