@@ -18,6 +18,7 @@ interface Content {
     thumbnailUrl: string | null;
     createdAt: string;
     isPremium: boolean;
+    videoId: string | null;
     videoProvider: string | null;
 }
 
@@ -32,18 +33,26 @@ export function VideoCard({ video }: VideoCardProps) {
                 <Card className="h-full overflow-hidden hover:shadow-xl transition-all duration-300 border-border/50 bg-card group relative flex flex-col">
                     <CardHeader className="p-0">
                         <div className="relative overflow-hidden aspect-video">
-                            {video.thumbnailUrl ? (
-                                <OptimizedImage
-                                    src={video.thumbnailUrl}
-                                    alt={video.title}
-                                    className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
-                                    containerClassName="w-full h-full"
-                                />
-                            ) : (
-                                <div className="w-full h-full bg-muted/30 flex items-center justify-center">
-                                    <Play className="w-12 h-12 text-muted-foreground/30" />
-                                </div>
-                            )}
+                            {(() => {
+                                let thumb = video.thumbnailUrl;
+                                // Auto-use YouTube thumbnail if no custom one exists
+                                if (!thumb && video.videoProvider === 'youtube' && video.videoId) {
+                                    thumb = `https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`;
+                                }
+
+                                return thumb ? (
+                                    <OptimizedImage
+                                        src={thumb}
+                                        alt={video.title}
+                                        className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
+                                        containerClassName="w-full h-full"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full bg-muted/30 flex items-center justify-center">
+                                        <Play className="w-12 h-12 text-muted-foreground/30" />
+                                    </div>
+                                );
+                            })()}
 
                             {/* Overlay */}
                             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 duration-300">

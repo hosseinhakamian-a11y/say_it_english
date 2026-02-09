@@ -70,6 +70,7 @@ function mapContentRow(row: any) {
     slug: row.slug,
     author: row.author,
     tags: row.tags,
+    metadata: row.metadata || {},
     createdAt: row.created_at,
   };
 }
@@ -150,13 +151,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(result.rows.map(mapContentRow));
     }
 
+    if (pathname.match(/^\/api\/content\/\d+$/) && method === 'GET') {
+      const id = pathname.split('/').pop();
+      const result = await db.query('SELECT * FROM content WHERE id = $1', [id]);
+      if (result.rows.length === 0) return res.status(404).json({ error: "Content not found" });
+      return res.status(200).json(mapContentRow(result.rows[0]));
+    }
+
+    if (pathname.match(/^\/api\/content\/\d+$/) && method === 'PATCH') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
+      const id = pathname.split('/').pop();
+      const { title, description, type, level, videoId, videoProvider, arvanVideoId, arvanVideoProvider, fileKey, isPremium, price, thumbnailUrl, metadata } = req.body;
+      
+      // Build dynamic update query
+      const keys = [];
+      const values = [];
+      let idx = 1;
+      
+      if (title !== undefined) { keys.push(`title=$${idx++}`); values.push(title); }
+      if (description !== undefined) { keys.push(`description=$${idx++}`); values.push(description); }
+      if (type !== undefined) { keys.push(`type=$${idx++}`); values.push(type); }
+      if (level !== undefined) { keys.push(`level=$${idx++}`); values.push(level); }
+      if (videoId !== undefined) { keys.push(`video_id=$${idx++}`); values.push(videoId); }
+      if (videoProvider !== undefined) { keys.push(`video_provider=$${idx++}`); values.push(videoProvider); }
+      if (arvanVideoId !== undefined) { keys.push(`arvan_video_id=$${idx++}`); values.push(arvanVideoId); }
+      if (arvanVideoProvider !== undefined) { keys.push(`arvan_video_provider=$${idx++}`); values.push(arvanVideoProvider); }
+      if (fileKey !== undefined) { keys.push(`file_key=$${idx++}`); values.push(fileKey); }
+      if (isPremium !== undefined) { keys.push(`is_premium=$${idx++}`); values.push(isPremium); }
+      if (price !== undefined) { keys.push(`price=$${idx++}`); values.push(price); }
+      if (thumbnailUrl !== undefined) { keys.push(`thumbnail_url=$${idx++}`); values.push(thumbnailUrl); }
+      if (metadata !== undefined) { keys.push(`metadata=$${idx++}`); values.push(metadata); }
+      
+      if (keys.length === 0) return res.status(400).json({ error: "No fields to update" });
+      
+      values.push(id);
+      const result = await db.query(`UPDATE content SET ${keys.join(", ")} WHERE id = $${idx} RETURNING *`, values);
+      
+      if (result.rows.length === 0) return res.status(404).json({ error: "Content not found" });
+      return res.status(200).json(mapContentRow(result.rows[0]));
+    }
+
     if (pathname === '/api/content' && method === 'POST') {
       if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
-      const { title, description, type, level, videoId, videoProvider, arvanVideoId, arvanVideoProvider, fileKey, isPremium, price, thumbnailUrl } = req.body;
+      const { title, description, type, level, videoId, videoProvider, arvanVideoId, arvanVideoProvider, fileKey, isPremium, price, thumbnailUrl, metadata } = req.body;
       const result = await db.query(`
-        INSERT INTO content (title, description, type, level, video_id, video_provider, arvan_video_id, arvan_video_provider, file_key, is_premium, price, thumbnail_url)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *
-      `, [title, description, type || 'video', level || 'beginner', videoId, videoProvider || 'bunny', arvanVideoId, arvanVideoProvider, fileKey, !!isPremium, parseInt(price) || 0, thumbnailUrl]);
+        INSERT INTO content (title, description, type, level, video_id, video_provider, arvan_video_id, arvan_video_provider, file_key, is_premium, price, thumbnail_url, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *
+      `, [title, description, type || 'video', level || 'beginner', videoId, videoProvider || 'bunny', arvanVideoId, arvanVideoProvider, fileKey, !!isPremium, parseInt(price) || 0, thumbnailUrl, metadata || {}]);
       return res.status(201).json(mapContentRow(result.rows[0]));
     }
 
