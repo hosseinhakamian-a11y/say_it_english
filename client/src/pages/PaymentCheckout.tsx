@@ -19,9 +19,10 @@ import {
 // Payment Info (You can move this to env or config)
 const PAYMENT_INFO = {
     card: {
-        number: "6037-9971-1234-5678", // Replace with real card
-        owner: "حسین حکامیان",
-        bank: "بانک ملی",
+        number: "6104-3379-6429-8218",
+        accountNumber: "1781839276",
+        owner: "حسین حکمیان",
+        bank: "بانک ملت",
     },
     crypto: {
         address: "0x2ca84105e9e3f3a91f0385acbd497923d743a342",
@@ -153,7 +154,7 @@ export default function PaymentCheckout() {
 
                                             <div className="relative z-10">
                                                 <p className="text-sm opacity-80 mb-4">شماره کارت</p>
-                                                <div className="flex items-center justify-between mb-6">
+                                                <div className="flex items-center justify-between mb-4">
                                                     <span className="text-2xl font-mono tracking-widest">{PAYMENT_INFO.card.number}</span>
                                                     <Button
                                                         variant="ghost"
@@ -163,6 +164,10 @@ export default function PaymentCheckout() {
                                                     >
                                                         {copied ? <CheckCircle2 className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                                                     </Button>
+                                                </div>
+                                                <div className="bg-white/10 rounded-lg px-3 py-2 mb-4">
+                                                    <p className="text-xs opacity-70">شماره حساب (برای انتقال ساتنا/پایا)</p>
+                                                    <p className="font-mono text-lg">{PAYMENT_INFO.card.accountNumber}</p>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <div>
