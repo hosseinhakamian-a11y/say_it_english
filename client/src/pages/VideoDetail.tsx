@@ -28,6 +28,10 @@ export default function VideoDetailPage() {
     const [, params] = useRoute("/videos/:videoId");
     const videoId = params?.videoId ? parseInt(params.videoId) : 0;
 
+    // All hooks MUST be called before any conditional returns (React Rules of Hooks)
+    const { user } = useAuth();
+    const [, navigate] = useLocation();
+
     // Fetch single video details
     const { data: video, isLoading } = useQuery({
         queryKey: [`/api/content/${videoId}`],
@@ -40,8 +44,7 @@ export default function VideoDetailPage() {
         enabled: !!videoId
     });
 
-    // Fetch related videos (mock logic: fetch all and filter)
-    // In production, we should have a dedicated 'related' endpoint
+    // Fetch related videos
     const { data: allContent } = useQuery<any[]>({
         queryKey: [api.content.list.path],
         queryFn: async () => {
@@ -50,10 +53,22 @@ export default function VideoDetailPage() {
         }
     });
 
+    // Check if user has purchased this specific content
+    const { data: purchases } = useQuery<{ contentId: number }[]>({
+        queryKey: ["/api/purchases"],
+        queryFn: async () => {
+            const res = await fetch("/api/purchases", { credentials: "include" });
+            if (!res.ok) return [];
+            return await res.json();
+        },
+        enabled: !!user
+    });
+
     const relatedVideos = allContent
         ?.filter((c: any) => c.type === 'video' && c.id !== videoId)
         .slice(0, 4) || [];
 
+    // Loading state
     if (isLoading) {
         return (
             <div className="min-h-screen pt-32 flex flex-col items-center justify-center gap-4">
@@ -63,6 +78,7 @@ export default function VideoDetailPage() {
         );
     }
 
+    // Not found state
     if (!video) {
         return (
             <div className="min-h-screen pt-32 text-center container px-4">
@@ -80,25 +96,10 @@ export default function VideoDetailPage() {
         );
     }
 
+    // Premium Content Lock Logic
     const metadata = (video.metadata || {}) as VideoMetadata;
     const hasLearningMaterials = metadata.vocabulary?.length || metadata.quiz?.length || metadata.phrases?.length;
-
-    // Premium Content Lock Logic
-    const { user } = useAuth();
-    const [, navigate] = useLocation();
     const isPremium = video.isPremium;
-
-    // Check if user has purchased this specific content
-    const { data: purchases } = useQuery<{ contentId: number }[]>({
-        queryKey: ["/api/purchases"],
-        queryFn: async () => {
-            const res = await fetch("/api/purchases", { credentials: "include" });
-            if (!res.ok) return [];
-            return await res.json();
-        },
-        enabled: !!user
-    });
-
     const hasPurchased = purchases?.some(p => p.contentId === videoId) || false;
     const hasFullAccess = !isPremium || hasPurchased;
 
