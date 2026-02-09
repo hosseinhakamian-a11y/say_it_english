@@ -352,8 +352,46 @@ export default function AdminContent() {
                                     <FormField control={form.control} name="videoId" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>آیدی/لینک ویدیو</FormLabel>
-                                            <FormControl><Input className="bg-white" placeholder="لینک یا کد ویدیو" {...field} value={field.value || ""} /></FormControl>
+                                            <FormControl>
+                                                <Input
+                                                    className="bg-white text-left font-mono"
+                                                    placeholder="لینک یوتیوب یا ID ویدیو"
+                                                    dir="ltr"
+                                                    {...field}
+                                                    value={field.value || ""}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        // Auto-extract YouTube ID if user pastes full URL and provider is youtube
+                                                        if (form.getValues("videoProvider") === "youtube") {
+                                                            try {
+                                                                const url = new URL(val);
+                                                                if (url.hostname.includes("youtube.com")) {
+                                                                    val = url.searchParams.get("v") || val;
+                                                                } else if (url.hostname.includes("youtu.be")) {
+                                                                    val = url.pathname.slice(1) || val;
+                                                                }
+                                                            } catch (err) {
+                                                                // Not a valid URL, treat as ID or partial string
+                                                            }
+                                                        }
+                                                        field.onChange(val);
+                                                    }}
+                                                />
+                                            </FormControl>
                                             <FormMessage />
+                                            {form.watch("videoProvider") === "youtube" && field.value && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="text-[10px] text-gray-500">پیش‌نمایش:</span>
+                                                    <a
+                                                        href={`https://www.youtube.com/watch?v=${field.value}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-[10px] text-blue-600 hover:underline truncate max-w-[200px]"
+                                                    >
+                                                        https://www.youtube.com/watch?v={field.value}
+                                                    </a>
+                                                </div>
+                                            )}
                                         </FormItem>
                                     )} />
                                 </div>
