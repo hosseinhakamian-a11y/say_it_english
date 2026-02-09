@@ -324,6 +324,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ users: stats[0].rows[0].count, content: stats[1].rows[0].count, bookings: stats[2].rows[0].count });
     }
 
+    // ================== PAYMENT SETTINGS ==================
+    if (pathname === '/api/payment-settings') {
+      if (method === 'GET') {
+        try {
+          const result = await db.query("SELECT value FROM settings WHERE key = 'payment_settings'");
+          if (result.rows.length === 0) {
+            return res.status(200).json({ bankCards: [], cryptoWallets: [] });
+          }
+          return res.status(200).json(result.rows[0].value);
+        } catch (e) {
+          // Table might not exist, return default
+          return res.status(200).json({ bankCards: [], cryptoWallets: [] });
+        }
+      }
+      
+      if (method === 'PUT') {
+        if (!currentUser || currentUser.role !== 'admin') {
+          return res.status(403).json({ error: "Admin only" });
+        }
+        const { bankCards, cryptoWallets } = req.body;
+        const value = JSON.stringify({ bankCards: bankCards || [], cryptoWallets: cryptoWallets || [] });
+        
+        // Upsert settings
+        await db.query(`
+          INSERT INTO settings (key, value) VALUES ('payment_settings', $1::jsonb)
+          ON CONFLICT (key) DO UPDATE SET value = $1::jsonb, updated_at = NOW()
+        `, [value]);
+        
+        return res.status(200).json({ success: true });
+      }
+    }
+
     return res.status(404).json({ error: "Not Found", path: pathname });
   } catch (error: any) {
     console.error("API Error:", error);

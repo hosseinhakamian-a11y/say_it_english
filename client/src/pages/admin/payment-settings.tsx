@@ -48,7 +48,7 @@ export default function AdminPaymentSettings() {
     const { data: settings, isLoading } = useQuery<PaymentSettings>({
         queryKey: ["/api/payment-settings"],
         queryFn: async () => {
-            const res = await fetch("/api/payment-settings");
+            const res = await fetch("/api/payment-settings", { credentials: "include" });
             if (!res.ok) throw new Error("Failed to fetch");
             return res.json();
         },
@@ -66,6 +66,7 @@ export default function AdminPaymentSettings() {
             const res = await fetch("/api/payment-settings", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify(data),
             });
             if (!res.ok) throw new Error("Failed to update");
