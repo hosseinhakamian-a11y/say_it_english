@@ -204,9 +204,9 @@ export default function VideoDetailPage() {
 
                                         {/* Locked Content Overlay */}
                                         {!hasFullAccess && metadata.vocabulary && metadata.vocabulary.length > FREE_VOCAB_LIMIT && (
-                                            <div className="mt-4 relative">
+                                            <div className="mt-6">
                                                 {/* Blurred Preview */}
-                                                <div className="grid gap-4 sm:grid-cols-2 blur-sm opacity-50 pointer-events-none">
+                                                <div className="grid gap-4 sm:grid-cols-2 blur-sm opacity-40 pointer-events-none select-none">
                                                     {metadata.vocabulary.slice(FREE_VOCAB_LIMIT, FREE_VOCAB_LIMIT + 2).map((vocab, idx) => (
                                                         <div key={idx} className="bg-muted/30 p-4 rounded-xl border flex flex-col gap-1">
                                                             <div className="flex justify-between items-center">
@@ -217,22 +217,20 @@ export default function VideoDetailPage() {
                                                     ))}
                                                 </div>
 
-                                                {/* Lock Overlay */}
-                                                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background flex items-end justify-center pb-4">
-                                                    <div className="text-center p-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-sm">
-                                                        <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                            <Lock className="w-6 h-6 text-amber-600" />
-                                                        </div>
-                                                        <p className="font-bold text-lg mb-1">+{metadata.vocabulary.length - FREE_VOCAB_LIMIT} لغت دیگر</p>
-                                                        <p className="text-sm text-muted-foreground mb-4">برای دسترسی کامل خرید کنید</p>
-                                                        <Button
-                                                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg"
-                                                            onClick={() => navigate(`/payment/${videoId}`)}
-                                                        >
-                                                            <Crown className="w-4 h-4 ml-2" />
-                                                            باز کردن همه لغات
-                                                        </Button>
+                                                {/* Lock CTA Card - Separate block, not absolute */}
+                                                <div className="mt-4 text-center p-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl">
+                                                    <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                        <Lock className="w-6 h-6 text-amber-600" />
                                                     </div>
+                                                    <p className="font-bold text-lg mb-1">+{metadata.vocabulary.length - FREE_VOCAB_LIMIT} لغت دیگر</p>
+                                                    <p className="text-sm text-muted-foreground mb-4">برای دسترسی کامل خرید کنید</p>
+                                                    <Button
+                                                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg"
+                                                        onClick={() => navigate(`/payment/${videoId}`)}
+                                                    >
+                                                        <Crown className="w-4 h-4 ml-2" />
+                                                        باز کردن همه لغات
+                                                    </Button>
                                                 </div>
                                             </div>
                                         )}
