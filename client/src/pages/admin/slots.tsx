@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, Plus, Trash2, Loader2, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Clock, Plus, Trash2, Loader2, Check, X, CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./layout";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { pageVariants, containerVariants, itemVariants } from "@/lib/animations";
 import { CardSkeleton, StatsSkeleton } from "@/components/ui/skeleton";
 
@@ -20,11 +21,30 @@ interface TimeSlot {
     isBooked: boolean;
 }
 
+// Persian date formatting helper
+const toPersianDate = (date: Date): string => {
+    return new Intl.DateTimeFormat('fa-IR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    }).format(date);
+};
+
+const toPersianDateShort = (date: Date): string => {
+    return new Intl.DateTimeFormat('fa-IR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(date);
+};
+
 export default function AdminSlotsPage() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [selectedDate, setSelectedDate] = useState("");
-    const [selectedTime, setSelectedTime] = useState("");
+    const [selectedTimes, setSelectedTimes] = useState<string[]>([]);
+    const [isAdding, setIsAdding] = useState(false);
 
     const { data: slots, isLoading } = useQuery<TimeSlot[]>({
         queryKey: ["/api/slots"],
@@ -35,6 +55,7 @@ export default function AdminSlotsPage() {
             const res = await fetch("/api/slots", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify(data),
             });
             if (!res.ok) throw new Error("Failed to add slot");
@@ -42,9 +63,6 @@ export default function AdminSlotsPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["/api/slots"] });
-            toast({ title: "✅ زمان جدید اضافه شد" });
-            setSelectedDate("");
-            setSelectedTime("");
         },
         onError: () => {
             toast({ title: "❌ خطا در افزودن زمان", variant: "destructive" });
@@ -53,7 +71,10 @@ export default function AdminSlotsPage() {
 
     const deleteSlotMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`/api/slots?id=${id}`, { method: "DELETE" });
+            const res = await fetch(`/api/slots?id=${id}`, {
+                method: "DELETE",
+                credentials: "include"
+            });
             if (!res.ok) throw new Error("Failed to delete slot");
             return res.json();
         },
@@ -63,30 +84,71 @@ export default function AdminSlotsPage() {
         },
     });
 
-    const handleAddSlot = () => {
-        if (!selectedDate || !selectedTime) {
+    const handleToggleTime = (time: string) => {
+        setSelectedTimes(prev =>
+            prev.includes(time)
+                ? prev.filter(t => t !== time)
+                : [...prev, time].sort()
+        );
+    };
+
+    const handleAddAllSlots = async () => {
+        if (!selectedDate || selectedTimes.length === 0) {
             toast({
-                title: "لطفاً تاریخ و ساعت را انتخاب کنید",
+                title: "لطفاً تاریخ و حداقل یک ساعت انتخاب کنید",
                 variant: "destructive",
             });
             return;
         }
-        const dateTime = `${selectedDate}T${selectedTime}:00+03:30`;
-        addSlotMutation.mutate({ date: dateTime });
+
+        setIsAdding(true);
+        let successCount = 0;
+
+        for (const time of selectedTimes) {
+            const dateTime = `${selectedDate}T${time}:00+03:30`;
+            try {
+                await addSlotMutation.mutateAsync({ date: dateTime });
+                successCount++;
+            } catch (e) {
+                // Continue with others
+            }
+        }
+
+        setIsAdding(false);
+        if (successCount > 0) {
+            toast({
+                title: `✅ ${successCount} زمان جدید اضافه شد`,
+                description: `تاریخ: ${toPersianDateShort(new Date(selectedDate))}`
+            });
+            setSelectedTimes([]);
+        }
+    };
+
+    const handleSelectAllTimes = () => {
+        if (selectedTimes.length === quickTimes.length) {
+            setSelectedTimes([]);
+        } else {
+            setSelectedTimes([...quickTimes]);
+        }
     };
 
     const quickTimes = [
-        "09:00",
-        "10:00",
-        "11:00",
-        "14:00",
-        "15:00",
-        "16:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
+        "09:00", "09:30",
+        "10:00", "10:30",
+        "11:00", "11:30",
+        "14:00", "14:30",
+        "15:00", "15:30",
+        "16:00", "16:30",
+        "17:00", "17:30",
+        "18:00", "18:30",
+        "19:00", "19:30",
+        "20:00", "20:30",
+        "21:00",
     ];
+
+    const morningTimes = quickTimes.filter(t => parseInt(t.split(':')[0]) < 12);
+    const afternoonTimes = quickTimes.filter(t => parseInt(t.split(':')[0]) >= 12 && parseInt(t.split(':')[0]) < 17);
+    const eveningTimes = quickTimes.filter(t => parseInt(t.split(':')[0]) >= 17);
 
     const slotsByDate =
         slots?.reduce((acc, slot) => {
@@ -100,6 +162,11 @@ export default function AdminSlotsPage() {
     const totalSlots = slots?.length || 0;
     const bookedSlots = slots?.filter((s) => s.isBooked).length || 0;
     const availableSlots = totalSlots - bookedSlots;
+
+    // Check existing times for selected date
+    const existingTimesForDate = selectedDate
+        ? (slotsByDate[selectedDate] || []).map(s => format(new Date(s.date), "HH:mm"))
+        : [];
 
     return (
         <AdminLayout>
@@ -189,81 +256,229 @@ export default function AdminSlotsPage() {
                     </motion.div>
                 )}
 
-                {/* Add New Slot Form */}
+                {/* Add New Slot Form - IMPROVED */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                 >
-                    <Card className="rounded-2xl border-0 shadow-md">
-                        <CardHeader>
+                    <Card className="rounded-2xl border-0 shadow-md overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
                             <CardTitle className="flex items-center gap-2">
                                 <Plus className="h-5 w-5 text-primary" />
-                                افزودن زمان جدید
+                                افزودن زمان‌های جدید
+                                {selectedTimes.length > 0 && (
+                                    <Badge variant="secondary" className="mr-2">
+                                        {selectedTimes.length} ساعت انتخاب شده
+                                    </Badge>
+                                )}
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                                <div className="space-y-2">
-                                    <Label htmlFor="date">تاریخ</Label>
+                        <CardContent className="p-6 space-y-6">
+                            {/* Step 1: Date Selection */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">۱</div>
+                                    <Label className="text-base font-semibold">انتخاب تاریخ</Label>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-4">
                                     <Input
-                                        id="date"
                                         type="date"
                                         value={selectedDate}
-                                        onChange={(e) => setSelectedDate(e.target.value)}
+                                        onChange={(e) => {
+                                            setSelectedDate(e.target.value);
+                                            setSelectedTimes([]);
+                                        }}
                                         min={format(new Date(), "yyyy-MM-dd")}
-                                        className="rounded-xl"
+                                        className="w-48 rounded-xl"
                                     />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="time">ساعت</Label>
-                                    <Input
-                                        id="time"
-                                        type="time"
-                                        value={selectedTime}
-                                        onChange={(e) => setSelectedTime(e.target.value)}
-                                        className="rounded-xl"
-                                    />
-                                </div>
-                                <Button
-                                    onClick={handleAddSlot}
-                                    disabled={addSlotMutation.isPending}
-                                    className="rounded-xl btn-press"
-                                >
-                                    {addSlotMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        "افزودن"
+                                    {selectedDate && (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl"
+                                        >
+                                            <CalendarDays className="w-4 h-4 text-primary" />
+                                            <span className="font-medium text-primary">
+                                                {toPersianDate(new Date(selectedDate))}
+                                            </span>
+                                        </motion.div>
                                     )}
-                                </Button>
+                                </div>
                             </div>
 
-                            {/* Quick Time Buttons */}
-                            {selectedDate && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    className="mt-4"
-                                >
-                                    <Label className="mb-2 block">انتخاب سریع ساعت:</Label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {quickTimes.map((time) => (
-                                            <motion.button
-                                                key={time}
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                onClick={() => setSelectedTime(time)}
-                                                className={`px-4 py-2 rounded-xl border-2 transition-all font-medium ${selectedTime === time
-                                                        ? "border-primary bg-primary text-white shadow-lg shadow-primary/30"
-                                                        : "border-gray-200 hover:border-primary hover:bg-primary/5"
-                                                    }`}
+                            {/* Step 2: Time Selection - Multi Select */}
+                            <AnimatePresence>
+                                {selectedDate && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="space-y-4"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">۲</div>
+                                                <Label className="text-base font-semibold">انتخاب ساعت‌ها (چند انتخابی)</Label>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleSelectAllTimes}
+                                                className="text-xs"
                                             >
-                                                {time}
-                                            </motion.button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
+                                                {selectedTimes.length === quickTimes.length ? "لغو همه" : "انتخاب همه"}
+                                            </Button>
+                                        </div>
+
+                                        {/* Morning */}
+                                        <div className="space-y-2">
+                                            <p className="text-sm text-muted-foreground font-medium">🌅 صبح</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {morningTimes.map((time) => {
+                                                    const isExisting = existingTimesForDate.includes(time);
+                                                    const isSelected = selectedTimes.includes(time);
+                                                    return (
+                                                        <motion.button
+                                                            key={time}
+                                                            whileHover={{ scale: isExisting ? 1 : 1.05 }}
+                                                            whileTap={{ scale: isExisting ? 1 : 0.95 }}
+                                                            onClick={() => !isExisting && handleToggleTime(time)}
+                                                            disabled={isExisting}
+                                                            className={`px-4 py-2.5 rounded-xl border-2 transition-all font-medium text-sm
+                                                                ${isExisting
+                                                                    ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed line-through"
+                                                                    : isSelected
+                                                                        ? "border-primary bg-primary text-white shadow-lg shadow-primary/30"
+                                                                        : "border-gray-200 hover:border-primary hover:bg-primary/5"
+                                                                }`}
+                                                        >
+                                                            {isSelected && <Check className="inline w-3 h-3 ml-1" />}
+                                                            {time}
+                                                        </motion.button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Afternoon */}
+                                        <div className="space-y-2">
+                                            <p className="text-sm text-muted-foreground font-medium">☀️ بعدازظهر</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {afternoonTimes.map((time) => {
+                                                    const isExisting = existingTimesForDate.includes(time);
+                                                    const isSelected = selectedTimes.includes(time);
+                                                    return (
+                                                        <motion.button
+                                                            key={time}
+                                                            whileHover={{ scale: isExisting ? 1 : 1.05 }}
+                                                            whileTap={{ scale: isExisting ? 1 : 0.95 }}
+                                                            onClick={() => !isExisting && handleToggleTime(time)}
+                                                            disabled={isExisting}
+                                                            className={`px-4 py-2.5 rounded-xl border-2 transition-all font-medium text-sm
+                                                                ${isExisting
+                                                                    ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed line-through"
+                                                                    : isSelected
+                                                                        ? "border-primary bg-primary text-white shadow-lg shadow-primary/30"
+                                                                        : "border-gray-200 hover:border-primary hover:bg-primary/5"
+                                                                }`}
+                                                        >
+                                                            {isSelected && <Check className="inline w-3 h-3 ml-1" />}
+                                                            {time}
+                                                        </motion.button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Evening */}
+                                        <div className="space-y-2">
+                                            <p className="text-sm text-muted-foreground font-medium">🌙 عصر و شب</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {eveningTimes.map((time) => {
+                                                    const isExisting = existingTimesForDate.includes(time);
+                                                    const isSelected = selectedTimes.includes(time);
+                                                    return (
+                                                        <motion.button
+                                                            key={time}
+                                                            whileHover={{ scale: isExisting ? 1 : 1.05 }}
+                                                            whileTap={{ scale: isExisting ? 1 : 0.95 }}
+                                                            onClick={() => !isExisting && handleToggleTime(time)}
+                                                            disabled={isExisting}
+                                                            className={`px-4 py-2.5 rounded-xl border-2 transition-all font-medium text-sm
+                                                                ${isExisting
+                                                                    ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed line-through"
+                                                                    : isSelected
+                                                                        ? "border-primary bg-primary text-white shadow-lg shadow-primary/30"
+                                                                        : "border-gray-200 hover:border-primary hover:bg-primary/5"
+                                                                }`}
+                                                        >
+                                                            {isSelected && <Check className="inline w-3 h-3 ml-1" />}
+                                                            {time}
+                                                        </motion.button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Step 3: Preview & Submit */}
+                            <AnimatePresence>
+                                {selectedTimes.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="space-y-4 pt-4 border-t"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold">۳</div>
+                                            <Label className="text-base font-semibold">پیش‌نمایش و تایید</Label>
+                                        </div>
+
+                                        <div className="bg-green-50 dark:bg-green-950/30 rounded-xl p-4 space-y-2">
+                                            <p className="text-sm text-green-800 dark:text-green-200 font-medium">
+                                                📅 تاریخ: {toPersianDate(new Date(selectedDate))}
+                                            </p>
+                                            <p className="text-sm text-green-800 dark:text-green-200">
+                                                ⏰ ساعت‌ها: {selectedTimes.join(" ، ")}
+                                            </p>
+                                            <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                                مجموعاً {selectedTimes.length} زمان جدید اضافه خواهد شد.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex gap-3">
+                                            <Button
+                                                onClick={handleAddAllSlots}
+                                                disabled={isAdding}
+                                                className="flex-1 h-12 rounded-xl text-base font-bold"
+                                            >
+                                                {isAdding ? (
+                                                    <>
+                                                        <Loader2 className="h-5 w-5 animate-spin ml-2" />
+                                                        در حال افزودن...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Plus className="h-5 w-5 ml-2" />
+                                                        افزودن {selectedTimes.length} زمان
+                                                    </>
+                                                )}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setSelectedTimes([])}
+                                                className="rounded-xl"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </CardContent>
                     </Card>
                 </motion.div>
@@ -316,9 +531,10 @@ export default function AdminSlotsPage() {
                                             >
                                                 <h3 className="font-bold mb-3 flex items-center gap-2 text-gray-700">
                                                     <Calendar className="h-4 w-4 text-primary" />
-                                                    {format(new Date(dateKey), "EEEE d MMMM", {
-                                                        locale: faIR,
-                                                    })}
+                                                    {toPersianDate(new Date(dateKey))}
+                                                    <Badge variant="outline" className="mr-2">
+                                                        {dateSlots.length} زمان
+                                                    </Badge>
                                                 </h3>
                                                 <div className="flex flex-wrap gap-2">
                                                     {dateSlots
@@ -332,8 +548,8 @@ export default function AdminSlotsPage() {
                                                                 key={slot.id}
                                                                 whileHover={{ scale: 1.02 }}
                                                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 transition-all ${slot.isBooked
-                                                                        ? "bg-red-50 border-red-200 text-red-700"
-                                                                        : "bg-green-50 border-green-200 text-green-700"
+                                                                    ? "bg-red-50 border-red-200 text-red-700"
+                                                                    : "bg-green-50 border-green-200 text-green-700"
                                                                     }`}
                                                             >
                                                                 <Clock className="h-4 w-4" />
