@@ -279,10 +279,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
         if (method === 'POST') {
-        const { contentId, amount, trackingCode } = req.body;
+        const { contentId, planId, amount, trackingCode, method: paymentMethod } = req.body;
         const result = await db.query(
-          `INSERT INTO payments (user_id, content_id, amount, tracking_code) VALUES ($1, $2, $3, $4) RETURNING *`,
-          [currentUser.id, contentId, amount, trackingCode]
+          `INSERT INTO payments (user_id, content_id, amount, tracking_code, payment_method, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [currentUser.id, contentId || null, amount, trackingCode, paymentMethod || 'card', planId ? `Plan: ${planId}` : null]
         );
         return res.status(201).json(result.rows[0]);
       }

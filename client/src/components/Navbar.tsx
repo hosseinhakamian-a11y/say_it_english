@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, User, LogOut, LayoutDashboard, Crown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ export function Navbar() {
     { label: "رزرو وقت", path: "/bookings" },
     { label: "کلاس‌های گروهی", path: "/classes" },
     { label: "وبلاگ", path: "/blog" },
+    { label: "قیمت‌ها", path: "/pricing", highlight: true },
   ];
 
   const isActive = (path: string) => location === path;
@@ -77,6 +78,12 @@ export function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span>داشبورد من</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
                       <User className="h-4 w-4" />

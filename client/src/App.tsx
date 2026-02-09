@@ -28,6 +28,8 @@ const ArticleDetail = lazy(() => import("@/pages/ArticleDetail"));
 const PaymentPage = lazy(() => import("@/pages/Payment"));
 const CourseDetail = lazy(() => import("@/pages/CourseDetail"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
+const PaymentCheckout = lazy(() => import("@/pages/PaymentCheckout"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
 
 // Lazy load admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/dashboard"));
@@ -90,6 +92,8 @@ function Router() {
             <Route path="/article/:slug" component={ArticleDetail} />
             <Route path="/blog" component={Blog} />
             <Route path="/pricing" component={Pricing} />
+            <Route path="/payment/checkout" component={PaymentCheckout} />
+            <Route path="/dashboard" component={Dashboard} />
             <Route component={NotFound} />
           </Switch>
         </Suspense>
