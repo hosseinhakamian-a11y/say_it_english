@@ -180,9 +180,9 @@ export default function ContentLibrary() {
           <CardHeader className="p-6 pb-2">
             <div className="flex items-center gap-2 mb-3">
               <div className={`p-2 rounded-lg ${item.type === 'video' ? 'bg-red-100 text-red-600' :
-                  item.type === 'podcast' ? 'bg-purple-100 text-purple-600' :
-                    item.type === 'package' || item.type === 'course' ? 'bg-amber-100 text-amber-600' :
-                      'bg-blue-100 text-blue-600'
+                item.type === 'podcast' ? 'bg-purple-100 text-purple-600' :
+                  item.type === 'package' || item.type === 'course' ? 'bg-amber-100 text-amber-600' :
+                    'bg-blue-100 text-blue-600'
                 }`}>
                 {getTypeIcon(item.type)}
               </div>
@@ -273,8 +273,8 @@ export default function ContentLibrary() {
                 <BookOpen className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold">محتوای آموزشی</h1>
-                <p className="text-muted-foreground">ویدیو، پادکست و مقالات برای یادگیری زبان</p>
+                <h1 className="text-3xl font-bold">دوره‌های آموزشی</h1>
+                <p className="text-muted-foreground">مجموعه‌ای از دوره‌های ویدیویی، صوتی و متنی</p>
               </div>
             </div>
           </div>

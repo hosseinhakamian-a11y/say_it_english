@@ -19,7 +19,7 @@ export function Navbar() {
   const navItems = [
     { label: "خانه", path: "/" },
     { label: "تعیین سطح", path: "/placement" },
-    { label: "محتوای آموزشی", path: "/content" },
+    { label: "دوره‌های آموزشی", path: "/content" },
     { label: "ویدیوهای آموزشی", path: "/videos" },
     { label: "رزرو وقت", path: "/bookings" },
     { label: "کلاس‌های گروهی", path: "/classes" },
