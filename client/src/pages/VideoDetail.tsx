@@ -4,8 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import {
     Calendar, CheckCircle, Clock, Share2,
     BookOpen, HelpCircle, MessageSquare,
-    ListVideo, Play, Loader2, ArrowLeft
+    ListVideo, Play, Loader2, ArrowLeft, Lock, Crown
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { format } from "date-fns-jalali";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -80,6 +82,29 @@ export default function VideoDetailPage() {
 
     const metadata = (video.metadata || {}) as VideoMetadata;
     const hasLearningMaterials = metadata.vocabulary?.length || metadata.quiz?.length || metadata.phrases?.length;
+
+    // Premium Content Lock Logic
+    const { user } = useAuth();
+    const [, navigate] = useLocation();
+    const isPremium = video.isPremium;
+
+    // Check if user has purchased this specific content
+    const { data: purchases } = useQuery<{ contentId: number }[]>({
+        queryKey: ["/api/purchases"],
+        queryFn: async () => {
+            const res = await fetch("/api/purchases", { credentials: "include" });
+            if (!res.ok) return [];
+            return await res.json();
+        },
+        enabled: !!user
+    });
+
+    const hasPurchased = purchases?.some(p => p.contentId === videoId) || false;
+    const hasFullAccess = !isPremium || hasPurchased;
+
+    // Free preview limits
+    const FREE_VOCAB_LIMIT = 2;
+    const FREE_QUIZ_LIMIT = 1;
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -161,39 +186,97 @@ export default function VideoDetailPage() {
                                 </TabsContent>
 
                                 <TabsContent value="vocab" className="p-6">
-                                    <div className="grid gap-4 sm:grid-cols-2">
-                                        {metadata.vocabulary?.map((vocab, idx) => (
-                                            <div key={idx} className="bg-muted/30 p-4 rounded-xl border flex flex-col gap-1">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="font-bold text-lg text-primary">{vocab.word}</span>
-                                                    {vocab.time && (
-                                                        <span className="text-xs bg-black/10 px-2 py-0.5 rounded-full font-mono">{vocab.time}</span>
-                                                    )}
+                                    <div className="relative">
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            {metadata.vocabulary?.slice(0, hasFullAccess ? undefined : FREE_VOCAB_LIMIT).map((vocab, idx) => (
+                                                <div key={idx} className="bg-muted/30 p-4 rounded-xl border flex flex-col gap-1">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-bold text-lg text-primary">{vocab.word}</span>
+                                                        {vocab.time && (
+                                                            <span className="text-xs bg-black/10 px-2 py-0.5 rounded-full font-mono">{vocab.time}</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-muted-foreground text-sm">{vocab.meaning}</p>
                                                 </div>
-                                                <p className="text-muted-foreground text-sm">{vocab.meaning}</p>
+                                            ))}
+                                        </div>
+
+                                        {/* Locked Content Overlay */}
+                                        {!hasFullAccess && metadata.vocabulary && metadata.vocabulary.length > FREE_VOCAB_LIMIT && (
+                                            <div className="mt-4 relative">
+                                                {/* Blurred Preview */}
+                                                <div className="grid gap-4 sm:grid-cols-2 blur-sm opacity-50 pointer-events-none">
+                                                    {metadata.vocabulary.slice(FREE_VOCAB_LIMIT, FREE_VOCAB_LIMIT + 2).map((vocab, idx) => (
+                                                        <div key={idx} className="bg-muted/30 p-4 rounded-xl border flex flex-col gap-1">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="font-bold text-lg text-primary">{vocab.word}</span>
+                                                            </div>
+                                                            <p className="text-muted-foreground text-sm">{vocab.meaning}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Lock Overlay */}
+                                                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/80 to-background flex items-end justify-center pb-4">
+                                                    <div className="text-center p-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl backdrop-blur-sm">
+                                                        <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                            <Lock className="w-6 h-6 text-amber-600" />
+                                                        </div>
+                                                        <p className="font-bold text-lg mb-1">+{metadata.vocabulary.length - FREE_VOCAB_LIMIT} لغت دیگر</p>
+                                                        <p className="text-sm text-muted-foreground mb-4">برای دسترسی کامل خرید کنید</p>
+                                                        <Button
+                                                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg"
+                                                            onClick={() => navigate(`/payment/${videoId}`)}
+                                                        >
+                                                            <Crown className="w-4 h-4 ml-2" />
+                                                            باز کردن همه لغات
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 </TabsContent>
 
                                 <TabsContent value="quiz" className="p-6">
-                                    <div className="space-y-6">
-                                        {metadata.quiz?.map((q, idx) => (
-                                            <div key={idx} className="space-y-3">
-                                                <p className="font-medium flex gap-2">
-                                                    <span className="text-primary font-bold">{idx + 1}.</span>
-                                                    {q.question}
-                                                </p>
-                                                <div className="grid gap-2 pr-6">
-                                                    {q.options.map((opt, optIdx) => (
-                                                        <div key={optIdx} className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
-                                                            <div className="w-4 h-4 rounded-full border border-primary/50" />
-                                                            <span className="text-sm">{opt}</span>
-                                                        </div>
-                                                    ))}
+                                    <div className="relative">
+                                        <div className="space-y-6">
+                                            {metadata.quiz?.slice(0, hasFullAccess ? undefined : FREE_QUIZ_LIMIT).map((q, idx) => (
+                                                <div key={idx} className="space-y-3">
+                                                    <p className="font-medium flex gap-2">
+                                                        <span className="text-primary font-bold">{idx + 1}.</span>
+                                                        {q.question}
+                                                    </p>
+                                                    <div className="grid gap-2 pr-6">
+                                                        {q.options.map((opt, optIdx) => (
+                                                            <div key={optIdx} className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
+                                                                <div className="w-4 h-4 rounded-full border border-primary/50" />
+                                                                <span className="text-sm">{opt}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Locked Quiz Overlay */}
+                                        {!hasFullAccess && metadata.quiz && metadata.quiz.length > FREE_QUIZ_LIMIT && (
+                                            <div className="mt-6 p-8 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl text-center">
+                                                <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <Lock className="w-8 h-8 text-amber-600" />
+                                                </div>
+                                                <p className="font-bold text-xl mb-2">+{metadata.quiz.length - FREE_QUIZ_LIMIT} سوال دیگر</p>
+                                                <p className="text-muted-foreground mb-6">آزمون کامل و جواب سوالات فقط برای کاربران پریمیوم</p>
+                                                <Button
+                                                    size="lg"
+                                                    className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg"
+                                                    onClick={() => navigate(`/payment/${videoId}`)}
+                                                >
+                                                    <Crown className="w-5 h-5 ml-2" />
+                                                    خرید دسترسی کامل
+                                                </Button>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 </TabsContent>
                             </Tabs>
