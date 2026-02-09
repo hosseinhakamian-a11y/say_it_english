@@ -1,175 +1,307 @@
 
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Helmet } from "react-helmet-async";
-import { Calendar, Share2, Clock, CheckCircle, Play } from "lucide-react";
-import { format } from "date-fns";
+import {
+    Calendar, CheckCircle, Clock, Share2,
+    BookOpen, HelpCircle, MessageSquare,
+    ListVideo, Play, Loader2, ArrowLeft
+} from "lucide-react";
+import { format } from "date-fns-jalali";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { SEO } from "@/components/SEO";
+import { VideoPlayer } from "@/components/VideoPlayer";
+import { api } from "@shared/routes";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+interface VideoMetadata {
+    vocabulary?: { word: string; meaning: string; time?: string }[];
+    quiz?: { question: string; options: string[]; answer: number }[];
+    phrases?: { phrase: string; meaning: string }[];
+}
 
 export default function VideoDetailPage() {
     const [, params] = useRoute("/videos/:videoId");
-    // Safely handle potentially undefined videoId, though routing should prevent this
-    const videoId = params?.videoId || "";
+    const videoId = params?.videoId ? parseInt(params.videoId) : 0;
 
-    // In a real app with many videos, we'd have a specific endpoint for single video details
-    // For now/mock mode, we fetch the list and find the item
-    const { data: videos, isLoading } = useQuery<any[]>({
-        queryKey: ["/api/youtube"],
+    // Fetch single video details
+    const { data: video, isLoading } = useQuery({
+        queryKey: [`/api/content/${videoId}`],
+        queryFn: async () => {
+            if (!videoId) return null;
+            const res = await fetch(`/api/content/${videoId}`);
+            if (!res.ok) throw new Error("Failed to fetch video");
+            return await res.json();
+        },
+        enabled: !!videoId
     });
 
-    const video = videos?.find((v: any) =>
-        (typeof v.id === 'string' ? v.id : v.snippet.resourceId?.videoId) === videoId
-    );
+    // Fetch related videos (mock logic: fetch all and filter)
+    // In production, we should have a dedicated 'related' endpoint
+    const { data: allContent } = useQuery<any[]>({
+        queryKey: [api.content.list.path],
+        queryFn: async () => {
+            const res = await fetch(api.content.list.path);
+            return await res.json();
+        }
+    });
 
-    // Get related videos (all except current)
-    const relatedVideos = videos?.filter((v: any) =>
-        (typeof v.id === 'string' ? v.id : v.snippet.resourceId?.videoId) !== videoId
-    ).slice(0, 4);
+    const relatedVideos = allContent
+        ?.filter((c: any) => c.type === 'video' && c.id !== videoId)
+        .slice(0, 4) || [];
 
     if (isLoading) {
-        return <div className="min-h-screen pt-24 flex justify-center"><div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div></div>;
-    }
-
-    if (!video) {
         return (
-            <div className="min-h-screen pt-32 text-center container">
-                <h1 className="text-2xl font-bold mb-4">ویدیو یافت نشد</h1>
-                <Link href="/videos"><Button>بازگشت به لیست ویدیوها</Button></Link>
+            <div className="min-h-screen pt-32 flex flex-col items-center justify-center gap-4">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <p className="text-muted-foreground animate-pulse">در حال آماده‌سازی کلاس درس...</p>
             </div>
         );
     }
 
-    // Schema.org VideoObject for SEO
-    const videoSchema = {
-        "@context": "https://schema.org",
-        "@type": "VideoObject",
-        "name": video.snippet.title,
-        "description": video.snippet.description,
-        "thumbnailUrl": [video.snippet.thumbnails.high.url],
-        "uploadDate": video.snippet.publishedAt,
-        "embedUrl": `https://www.youtube.com/embed/${videoId}`
-    };
+    if (!video) {
+        return (
+            <div className="min-h-screen pt-32 text-center container px-4">
+                <div className="max-w-md mx-auto bg-card p-8 rounded-3xl shadow-lg border border-border/50">
+                    <h1 className="text-2xl font-bold mb-4 text-destructive">ویدیو پیدا نشد!</h1>
+                    <p className="text-muted-foreground mb-6">ممکن است این ویدیو حذف شده باشد یا لینک اشتباه است.</p>
+                    <Link href="/videos">
+                        <Button className="w-full rounded-xl">
+                            <ArrowLeft className="ml-2 h-4 w-4" />
+                            بازگشت به لیست ویدیوها
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    const metadata = (video.metadata || {}) as VideoMetadata;
+    const hasLearningMaterials = metadata.vocabulary?.length || metadata.quiz?.length || metadata.phrases?.length;
 
     return (
         <div className="min-h-screen bg-background pb-20">
-            <Helmet>
-                <title>{video.snippet.title} | Say It English</title>
-                <meta name="description" content={video.snippet.description.slice(0, 150) + "..."} />
-                <script type="application/ld+json">{JSON.stringify(videoSchema)}</script>
-            </Helmet>
+            <SEO
+                title={video.title}
+                description={video.description?.substring(0, 150)}
+                keywords={video.tags?.join(", ") || "ویدیو آموزشی, انگلیسی, مکالمه"}
+                type="article"
+                image={video.thumbnailUrl}
+            />
 
             <div className="container mx-auto px-4 py-8 md:py-12">
+
+                {/* Breakcrumb */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 overflow-x-auto whitespace-nowrap pb-2">
+                    <Link href="/">صفحه اصلی</Link>
+                    <span>/</span>
+                    <Link href="/videos">ویدیوهای آموزشی</Link>
+                    <span>/</span>
+                    <span className="text-foreground font-medium truncate">{video.title}</span>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                     {/* Main Content Column */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Video Player */}
-                        <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
-                            <iframe
-                                src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`}
-                                title={video.snippet.title}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="absolute top-0 left-0 w-full h-full border-0"
+                    <div className="lg:col-span-2 space-y-8">
+
+                        {/* Video Player Section */}
+                        <div className="space-y-4">
+                            <VideoPlayer
+                                videoId={video.videoId}
+                                provider={video.videoProvider}
+                                arvanVideoId={video.arvanVideoId}
+                                arvanProvider={video.arvanVideoProvider}
+                                title={video.title}
                             />
+
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                                <div className="space-y-1">
+                                    <h1 className="text-2xl md:text-3xl font-bold leading-tight">{video.title}</h1>
+                                    <div className="flex items-center gap-4 text-muted-foreground text-sm">
+                                        <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-lg">
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span>{new Date(video.createdAt).toLocaleDateString('fa-IR')}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-lg">
+                                            <Clock className="w-3.5 h-3.5" />
+                                            <span>ویدیو آموزشی</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Button variant="outline" size="sm" className="rounded-xl gap-2 hover:bg-primary/5 hover:text-primary border-primary/20">
+                                    <Share2 className="w-4 h-4" />
+                                    اشتراک‌گذاری
+                                </Button>
+                            </div>
                         </div>
 
-                        {/* Video Info */}
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold mb-4 leading-tight">{video.snippet.title}</h1>
-                            <div className="flex items-center gap-4 text-muted-foreground text-sm mb-6 pb-6 border-b border-border">
-                                <div className="flex items-center gap-1">
-                                    <Calendar className="w-4 h-4" />
-                                    <span>{format(new Date(video.snippet.publishedAt), "PPP")}</span>
-                                </div>
-                                {/* Placeholder for duration if we had it */}
-                                <div className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4" />
-                                    <span>10:00</span>
-                                </div>
-                            </div>
+                        {/* Learning Tabs (Desktop) */}
+                        <div className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                            <Tabs defaultValue="description" className="w-full">
+                                <TabsList className="w-full flex justify-start p-1 bg-muted/30 border-b overflow-x-auto">
+                                    <TabsTrigger value="description" className="rounded-lg flex-1 min-w-[100px]">توضیحات</TabsTrigger>
+                                    <TabsTrigger value="vocab" className="rounded-lg flex-1 min-w-[100px]" disabled={!metadata.vocabulary?.length}>
+                                        لغات ({metadata.vocabulary?.length || 0})
+                                    </TabsTrigger>
+                                    <TabsTrigger value="quiz" className="rounded-lg flex-1 min-w-[100px]" disabled={!metadata.quiz?.length}>
+                                        آزمون ({metadata.quiz?.length || 0})
+                                    </TabsTrigger>
+                                </TabsList>
 
-                            <div className="prose prose-lg dark:prose-invert max-w-none dir-rtl">
-                                <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{video.snippet.description}</p>
-                            </div>
+                                <TabsContent value="description" className="p-6">
+                                    <div className="prose prose-lg dark:prose-invert max-w-none dir-rtl">
+                                        <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                                            {video.description || "توضیحاتی برای این ویدیو ثبت نشده است."}
+                                        </p>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="vocab" className="p-6">
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {metadata.vocabulary?.map((vocab, idx) => (
+                                            <div key={idx} className="bg-muted/30 p-4 rounded-xl border flex flex-col gap-1">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-bold text-lg text-primary">{vocab.word}</span>
+                                                    {vocab.time && (
+                                                        <span className="text-xs bg-black/10 px-2 py-0.5 rounded-full font-mono">{vocab.time}</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-muted-foreground text-sm">{vocab.meaning}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="quiz" className="p-6">
+                                    <div className="space-y-6">
+                                        {metadata.quiz?.map((q, idx) => (
+                                            <div key={idx} className="space-y-3">
+                                                <p className="font-medium flex gap-2">
+                                                    <span className="text-primary font-bold">{idx + 1}.</span>
+                                                    {q.question}
+                                                </p>
+                                                <div className="grid gap-2 pr-6">
+                                                    {q.options.map((opt, optIdx) => (
+                                                        <div key={optIdx} className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
+                                                            <div className="w-4 h-4 rounded-full border border-primary/50" />
+                                                            <span className="text-sm">{opt}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                         </div>
                     </div>
 
                     {/* Sidebar */}
                     <div className="lg:col-span-1 space-y-6">
 
-                        {/* CTA Card */}
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="bg-card border border-border/50 rounded-2xl p-6 shadow-lg"
-                        >
-                            <div className="text-center mb-6">
-                                <h3 className="text-xl font-bold mb-2">یادگیری را جدی‌تر دنبال کنید</h3>
-                                <p className="text-muted-foreground text-sm">همین حالا یک کلاس خصوصی رزرو کنید و پیشرفت خود را سرعت ببخشید.</p>
-                            </div>
-
-                            <ul className="space-y-3 mb-6">
-                                <li className="flex items-center gap-3 text-sm">
-                                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                                    <span>برنامه ریزی اختصاصی</span>
-                                </li>
-                                <li className="flex items-center gap-3 text-sm">
-                                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                                    <span>مکالمه محور</span>
-                                </li>
-                                <li className="flex items-center gap-3 text-sm">
-                                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                                    <span>اصلاح فوری اشتباهات</span>
-                                </li>
-                            </ul>
-
-                            <Link href="/bookings">
-                                <Button size="lg" className="w-full text-lg shadow-lg shadow-primary/20">
-                                    رزرو کلاس خصوصی
-                                </Button>
-                            </Link>
-                        </motion.div>
-
-                        {/* Related Videos */}
-                        {relatedVideos && relatedVideos.length > 0 && (
+                        {/* Teacher's Note / CTA */}
+                        {hasLearningMaterials ? (
                             <motion.div
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="bg-card border border-border/50 rounded-2xl p-6 shadow-lg"
+                                className="bg-gradient-to-br from-indigo-600 to-violet-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden"
                             >
-                                <h3 className="text-lg font-bold mb-4">ویدیوهای مرتبط</h3>
-                                <div className="space-y-4">
-                                    {relatedVideos.map((rv: any) => {
-                                        const rvId = typeof rv.id === 'string' ? rv.id : rv.snippet.resourceId?.videoId;
-                                        return (
-                                            <Link key={rvId} href={`/videos/${rvId}`}>
-                                                <div className="flex gap-3 group cursor-pointer hover:bg-muted/50 p-2 rounded-xl transition-colors -mx-2">
-                                                    <div className="relative w-24 h-16 flex-shrink-0 rounded-lg overflow-hidden">
-                                                        <img
-                                                            src={rv.snippet.thumbnails.medium.url}
-                                                            alt={rv.snippet.title}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <Play className="w-5 h-5 text-white fill-white" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">
-                                                            {rv.snippet.title}
-                                                        </h4>
-                                                    </div>
-                                                </div>
-                                            </Link>
-                                        );
-                                    })}
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="p-2 bg-white/20 rounded-xl">
+                                            <BookOpen className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="font-bold text-lg">نکات آموزشی این درس</h3>
+                                    </div>
+                                    <p className="text-white/80 text-sm mb-6 leading-relaxed">
+                                        برای یادگیری بهتر، حتماً لغات جدید را در دفترچه خود یادداشت کنید و در آزمون پایان درس شرکت کنید.
+                                    </p>
+                                    <div className="space-y-2">
+                                        {metadata.vocabulary && (
+                                            <div className="flex items-center gap-2 text-sm bg-white/10 p-2 rounded-lg">
+                                                <CheckCircle className="w-4 h-4 text-green-300" />
+                                                <span>{metadata.vocabulary.length} لغت جدید</span>
+                                            </div>
+                                        )}
+                                        {metadata.quiz && (
+                                            <div className="flex items-center gap-2 text-sm bg-white/10 p-2 rounded-lg">
+                                                <HelpCircle className="w-4 h-4 text-amber-300" />
+                                                <span>آزمون درک مطلب</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </motion.div>
+                        ) : (
+                            // Default CTA for Private Classes
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="bg-card border border-border/50 rounded-2xl p-6 shadow-lg relative overflow-hidden group"
+                            >
+                                <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
+                                <div className="relative z-10 text-center mb-6">
+                                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
+                                        <MessageSquare className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-xl font-bold mb-2">نیاز به تمرین مکالمه داری؟</h3>
+                                    <p className="text-muted-foreground text-sm">
+                                        همین حالا یک کلاس مکالمه خصوصی رزرو کن و با مدرس نیتیو تمرین کن.
+                                    </p>
+                                </div>
+                                <Link href="/bookings">
+                                    <Button className="w-full text-lg py-6 rounded-xl shadow-lg shadow-primary/20 btn-press">
+                                        رزرو کلاس خصوصی
+                                    </Button>
+                                </Link>
+                            </motion.div>
+                        )}
+
+                        {/* Related Videos */}
+                        {relatedVideos && relatedVideos.length > 0 && (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-primary font-bold px-1">
+                                    <ListVideo className="w-5 h-5" />
+                                    <h3>ویدیوهای پیشنهادی</h3>
+                                </div>
+                                {relatedVideos.map((rv: any) => (
+                                    <Link key={rv.id} href={`/videos/${rv.id}`}>
+                                        <div className="flex gap-3 group cursor-pointer bg-card hover:bg-muted/50 p-2 rounded-xl transition-all border border-transparent hover:border-border/50">
+                                            <div className="relative w-28 aspect-video flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+                                                {rv.thumbnailUrl ? (
+                                                    <img
+                                                        src={rv.thumbnailUrl}
+                                                        alt={rv.title}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                                        <Play className="w-6 h-6 opacity-50" />
+                                                    </div>
+                                                )}
+                                                {/* Duration badge placeholder */}
+                                                <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 rounded">
+                                                    Video
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                <h4 className="text-sm font-bold line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+                                                    {rv.title}
+                                                </h4>
+                                                <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">
+                                                    {rv.description || "بدون توضیحات"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
                         )}
                     </div>
 

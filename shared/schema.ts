@@ -44,6 +44,7 @@ export const content = pgTable("content", {
   slug: text("slug").unique(), // SEO-friendly URL slug (e.g., 'how-to-learn-english')
   author: text("author"), // Author name (optional)
   tags: text("tags").array(), // SEO Keywords / Categories
+  metadata: jsonb("metadata"), // Learning materials (vocab, quiz, key phrases)
   createdAt: timestamp("created_at").defaultNow(),
 });
 

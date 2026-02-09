@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 interface SEOProps {
     title?: string;
     description?: string;
+    keywords?: string;
     image?: string;
     type?: "website" | "article" | "course"; // Improved type definition
     schema?: object; // Add structured data support
@@ -12,6 +13,7 @@ interface SEOProps {
 export function SEO({
     title,
     description,
+    keywords,
     image,
     type = "website",
     schema
@@ -57,6 +59,7 @@ export function SEO({
             {/* Standard Meta Tags */}
             <title>{finalTitle}</title>
             <meta name="description" content={finalDesc} />
+            {keywords && <meta name="keywords" content={keywords} />}
             <link rel="canonical" href={currentUrl} />
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
             <meta name="robots" content="index, follow" />

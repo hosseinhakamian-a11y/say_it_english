@@ -37,6 +37,7 @@ interface Content {
     fileKey: string | null;
     isPremium: boolean;
     price: number | null;
+    metadata: any;
 }
 
 export default function AdminContent() {
@@ -202,6 +203,7 @@ export default function AdminContent() {
             videoProvider: content.videoProvider || "aparat",
             isPremium: content.isPremium,
             price: content.price || 0,
+            metadata: content.metadata || {},
         });
     }
 
@@ -462,6 +464,38 @@ export default function AdminContent() {
                                         />
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Metadata JSON Field (Learning Materials) */}
+                            <div className="p-4 bg-purple-50 rounded-xl border border-purple-200 space-y-3">
+                                <h3 className="font-medium text-purple-700 flex items-center gap-2">
+                                    📚 مواد آموزشی (JSON)
+                                </h3>
+                                <p className="text-[11px] text-purple-600">
+                                    لغات، کوییز و نکات آموزشی را با فرمت JSON وارد کنید.
+                                    مثال: <code>{`{ "vocabulary": [{"word": "Hello", "meaning": "سلام"}], "quiz": [] }`}</code>
+                                </p>
+                                <FormField control={form.control} name="metadata" render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Textarea
+                                                className="bg-white font-mono text-xs h-40 dir-ltr text-left"
+                                                placeholder='{ "vocabulary": [], "quiz": [] }'
+                                                {...field}
+                                                value={typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : (field.value as string) || ""}
+                                                onChange={(e) => {
+                                                    try {
+                                                        const json = JSON.parse(e.target.value);
+                                                        field.onChange(json);
+                                                    } catch (err) {
+                                                        field.onChange(e.target.value);
+                                                    }
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
                             </div>
 
                             <div className="flex gap-2 pt-4">
