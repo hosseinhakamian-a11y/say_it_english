@@ -329,7 +329,7 @@ export default function AdminContent() {
                             </div>
 
 
-                            {/* International Video Source (Bunny/YouTube/etc) */}
+                            {/* International Video Source (Bunny/YouTube/Instagram/etc) */}
                             <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-4 relative">
                                 <h3 className="font-medium text-blue-700 flex items-center gap-2">
                                     🌍 سرویس بین‌المللی (برای خارج ایران)
@@ -343,6 +343,7 @@ export default function AdminContent() {
                                                 <SelectContent className="bg-white border shadow-2xl z-[150]">
                                                     <SelectItem value="bunny">بانی 🐰</SelectItem>
                                                     <SelectItem value="youtube">یوتیوب 🔴</SelectItem>
+                                                    <SelectItem value="instagram">اینستاگرام 📸</SelectItem>
                                                     <SelectItem value="aparat">آپارات 🇮🇷</SelectItem>
                                                     <SelectItem value="custom">لینک مستقیم 🔗</SelectItem>
                                                 </SelectContent>
@@ -357,14 +358,16 @@ export default function AdminContent() {
                                             <FormControl>
                                                 <Input
                                                     className="bg-white text-left font-mono"
-                                                    placeholder="لینک یوتیوب یا ID ویدیو"
+                                                    placeholder="لینک ویدیو یا ID"
                                                     dir="ltr"
                                                     {...field}
                                                     value={field.value || ""}
                                                     onChange={(e) => {
                                                         let val = e.target.value;
-                                                        // Auto-extract YouTube ID if user pastes full URL and provider is youtube
-                                                        if (form.getValues("videoProvider") === "youtube") {
+                                                        const provider = form.getValues("videoProvider");
+
+                                                        // Auto-extract YouTube ID
+                                                        if (provider === "youtube") {
                                                             try {
                                                                 const url = new URL(val);
                                                                 if (url.hostname.includes("youtube.com")) {
@@ -372,10 +375,18 @@ export default function AdminContent() {
                                                                 } else if (url.hostname.includes("youtu.be")) {
                                                                     val = url.pathname.slice(1) || val;
                                                                 }
-                                                            } catch (err) {
-                                                                // Not a valid URL, treat as ID or partial string
+                                                            } catch (err) { }
+                                                        }
+
+                                                        // Auto-extract Instagram ID
+                                                        if (provider === "instagram") {
+                                                            // Match /reel/CODE/ or /p/CODE/
+                                                            const match = val.match(/(?:reel|p)\/([a-zA-Z0-9_-]+)/);
+                                                            if (match && match[1]) {
+                                                                val = match[1];
                                                             }
                                                         }
+
                                                         field.onChange(val);
                                                     }}
                                                 />
@@ -390,8 +401,14 @@ export default function AdminContent() {
                                                         rel="noreferrer"
                                                         className="text-[10px] text-blue-600 hover:underline truncate max-w-[200px]"
                                                     >
-                                                        https://www.youtube.com/watch?v={field.value}
+                                                        Link
                                                     </a>
+                                                </div>
+                                            )}
+                                            {form.watch("videoProvider") === "instagram" && field.value && (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="text-[10px] text-gray-500">ID استخراج شده:</span>
+                                                    <span className="text-[10px] font-mono bg-gray-100 px-1 rounded">{field.value}</span>
                                                 </div>
                                             )}
                                         </FormItem>

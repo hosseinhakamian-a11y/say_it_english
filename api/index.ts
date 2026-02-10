@@ -312,13 +312,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ================== PAYMENTS & PURCHASES ==================
+    // Handle dynamic route for Payment Status Update: /api/payments/:id/status
+    const paymentStatusMatch = pathname.match(/^\/api\/payments\/(\d+)\/status$/);
+    if (paymentStatusMatch && method === 'PATCH') {
+         if (!currentUser || currentUser.role !== 'admin') {
+             return res.status(403).json({ error: "Admin only" });
+         }
+         const paymentId = paymentStatusMatch[1];
+         const { status } = req.body;
+         
+         const updated = await db.query(
+             'UPDATE payments SET status = $1 WHERE id = $2 RETURNING *', 
+             [status, paymentId]
+         );
+         
+         if (status === 'approved' && updated.rows.length > 0) {
+           const payment = updated.rows[0];
+           // Add to purchases if not already there
+            if (payment.content_id) {
+                await db.query(
+                    'INSERT INTO purchases (user_id, content_id, payment_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', 
+                    [payment.user_id, payment.content_id, payment.id]
+                );
+            }
+         }
+         return res.status(200).json(updated.rows[0]);
+    }
+
     if (pathname === '/api/payments') {
       if (!currentUser) return res.status(401).json({ error: 'Login required' });
       
       if (method === 'GET') {
         // Admin gets all, user gets own
         if (currentUser.role === 'admin') {
-          const result = await db.query('SELECT * FROM payments ORDER BY created_at DESC');
+          const result = await db.query(`
+            SELECT id, user_id as "userId", content_id as "contentId", amount, 
+                   tracking_code as "trackingCode", status, notes, created_at as "createdAt"
+            FROM payments ORDER BY created_at DESC
+          `);
           return res.status(200).json(result.rows);
         }
       }
@@ -333,14 +364,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (method === 'PATCH') {
+         // Fallback for non-dynamic path if needed, but the dynamic one above should handle standard requests
+         // This block handles general updates if useful
         if (currentUser.role !== 'admin') return res.status(403).json({ error: "Admin only" });
         const { id, status, notes } = req.body;
         const updated = await db.query('UPDATE payments SET status = $1, notes = $2 WHERE id = $3 RETURNING *', [status, notes, id]);
         
-        if (status === 'approved' && updated.rows.length > 0) {
-          const payment = updated.rows[0];
-          await db.query('INSERT INTO purchases (user_id, content_id, payment_id) VALUES ($1, $2, $3)', [payment.user_id, payment.content_id, payment.id]);
-        }
         return res.status(200).json(updated.rows[0]);
       }
     }
