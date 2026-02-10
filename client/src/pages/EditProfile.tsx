@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+
 import { useToast } from "@/hooks/use-toast";
 import {
     User,
@@ -25,6 +19,7 @@ import {
     ArrowRight,
     Eye,
     EyeOff,
+    Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { pageVariants } from "@/lib/animations";
@@ -201,20 +196,16 @@ export default function EditProfile() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="level">سطح زبان</Label>
-                                    <Select
-                                        value={formData.level}
-                                        onValueChange={(value) => setFormData({ ...formData, level: value })}
-                                    >
-                                        <SelectTrigger className="rounded-xl">
-                                            <SelectValue placeholder="سطح خود را انتخاب کنید" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="beginner">مبتدی</SelectItem>
-                                            <SelectItem value="intermediate">متوسط</SelectItem>
-                                            <SelectItem value="advanced">پیشرفته</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label>سطح زبان (از آزمون تعیین سطح)</Label>
+                                    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-xl">
+                                        <Sparkles className="w-4 h-4 text-primary" />
+                                        <span className="text-sm font-medium">
+                                            {formData.level === 'advanced' ? 'پیشرفته' : formData.level === 'intermediate' ? 'متوسط' : formData.level === 'beginner' ? 'مبتدی' : 'تعیین نشده'}
+                                        </span>
+                                    </div>
+                                    <Link href="/placement">
+                                        <a className="text-xs text-primary hover:underline">شرکت در آزمون تعیین سطح ←</a>
+                                    </Link>
                                 </div>
                             </div>
 

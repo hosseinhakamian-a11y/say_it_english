@@ -112,8 +112,20 @@ export default function Profile() {
                   سطح زبان
                 </p>
                 <p className="font-bold text-lg gradient-text">
-                  {user.level || "تعیین سطح نشده"}
+                  {user.level === 'advanced' ? 'پیشرفته' : user.level === 'intermediate' ? 'متوسط' : user.level === 'beginner' ? 'مبتدی' : 'تعیین سطح نشده'}
                 </p>
+                {(user as any).placementResult?.avgScore && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    امتیاز آزمون: {(user as any).placementResult.avgScore}%
+                  </p>
+                )}
+                {!user.level && (
+                  <Link href="/placement">
+                    <Button size="sm" variant="link" className="text-primary mt-1 p-0 h-auto text-xs">
+                      شروع آزمون تعیین سطح ←
+                    </Button>
+                  </Link>
+                )}
               </motion.div>
 
               {user.role === 'admin' && (

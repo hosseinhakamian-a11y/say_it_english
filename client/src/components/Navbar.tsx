@@ -56,23 +56,25 @@ export function Navbar() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-popover/100 bg-white dark:bg-gray-900 shadow-xl border" align="start" sideOffset={8}>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
-                      <LayoutDashboard className="h-4 w-4" />
-                      <span>داشبورد من</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-                      <User className="h-4 w-4" />
-                      <span>پروفایل کاربری</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    <span>خروج از حساب</span>
-                  </DropdownMenuItem>
+                <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 shadow-xl border" align="start" sideOffset={8}>
+                  <div dir="rtl">
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>داشبورد من</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                        <User className="h-4 w-4" />
+                        <span>پروفایل کاربری</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
+                      <LogOut className="h-4 w-4 ml-2" />
+                      <span>خروج از حساب</span>
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -128,22 +130,24 @@ export function Navbar() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 shadow-xl border" align="end" sideOffset={8}>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
-                      <LayoutDashboard className="h-4 w-4" />
-                      <span>داشبورد من</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-                      <User className="h-4 w-4" />
-                      <span>پروفایل کاربری</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    <span>خروج از حساب</span>
-                  </DropdownMenuItem>
+                  <div dir="rtl">
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>داشبورد من</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                        <User className="h-4 w-4" />
+                        <span>پروفایل کاربری</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
+                      <LogOut className="h-4 w-4 ml-2" />
+                      <span>خروج از حساب</span>
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
