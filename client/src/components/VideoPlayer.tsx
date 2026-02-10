@@ -237,6 +237,20 @@ export function VideoPlayer({
         );
     }
 
+    // Instagram Embed
+    if (activeProvider === "instagram") {
+        return (
+            <div className="relative w-full max-w-md mx-auto aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center">
+                <iframe
+                    src={`https://www.instagram.com/reel/${activeVideoId}/embed/`}
+                    className="w-full h-full border-0 rounded-2xl"
+                    allowTransparency
+                    loading="lazy"
+                />
+            </div>
+        );
+    }
+
     // ArvanCloud Storage (Direct link) or Custom
     return (
         <div className="relative w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-xl bg-black border border-white/10">
