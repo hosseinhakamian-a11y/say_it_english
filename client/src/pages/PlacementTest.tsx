@@ -201,7 +201,7 @@ export default function PlacementTest() {
     }
   };
 
-  const calculateResults = () => {
+  const calculateResults = async () => {
     const newScores: Record<string, number> = {};
     sections.forEach((section) => {
       const sectionId = section.id as SectionKey;
@@ -215,6 +215,28 @@ export default function PlacementTest() {
     });
     setScores(newScores);
     setShowResult(true);
+
+    // Save placement test result to server
+    const avgScore = Object.values(newScores).reduce((a, b) => a + b, 0) / Object.values(newScores).length;
+    let level = "beginner";
+    if (avgScore > 40 && avgScore <= 70) level = "intermediate";
+    if (avgScore > 70) level = "advanced";
+
+    try {
+      await fetch("/api/placement-result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          level,
+          scores: newScores,
+          avgScore: Math.round(avgScore),
+          completedAt: new Date().toISOString(),
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to save placement result:", e);
+    }
   };
 
   const getOverallLevel = () => {

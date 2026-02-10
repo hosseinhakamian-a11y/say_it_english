@@ -1,0 +1,9 @@
+-- Add profile fields to users table
+-- Run this in Supabase SQL Editor
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS level VARCHAR(20) DEFAULT 'beginner';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS placement_result JSONB;

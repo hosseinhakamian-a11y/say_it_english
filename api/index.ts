@@ -141,7 +141,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({
         id: currentUser.id, username: currentUser.username, role: currentUser.role,
         name: currentUser.name, firstName: currentUser.first_name, lastName: currentUser.last_name,
-        phone: currentUser.phone, avatar: currentUser.avatar
+        phone: currentUser.phone, avatar: currentUser.avatar,
+        level: currentUser.level || null,
+        bio: currentUser.bio || null,
+        birthDate: currentUser.birth_date || null,
+        placementResult: currentUser.placement_result || null,
       });
     }
 
@@ -395,6 +399,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         return res.status(200).json({ success: true });
       }
+    }
+    // ================== USER PROFILE ==================
+    if (pathname === '/api/profile' && method === 'PATCH') {
+      if (!currentUser) return res.status(401).json({ error: "Not authenticated" });
+      const { firstName, lastName, birthDate, bio, level } = req.body;
+      
+      const keys = [];
+      const values = [];
+      let idx = 1;
+      
+      if (firstName !== undefined) { keys.push(`first_name=$${idx++}`); values.push(firstName); }
+      if (lastName !== undefined) { keys.push(`last_name=$${idx++}`); values.push(lastName); }
+      if (birthDate !== undefined) { keys.push(`birth_date=$${idx++}`); values.push(birthDate || null); }
+      if (bio !== undefined) { keys.push(`bio=$${idx++}`); values.push(bio); }
+      if (level !== undefined) { keys.push(`level=$${idx++}`); values.push(level); }
+      
+      if (keys.length === 0) return res.status(400).json({ error: "No fields to update" });
+      
+      values.push(currentUser.id);
+      await db.query(`UPDATE users SET ${keys.join(', ')} WHERE id = $${idx}`, values);
+      
+      return res.status(200).json({ success: true });
+    }
+
+    // ================== PLACEMENT TEST RESULT ==================
+    if (pathname === '/api/placement-result' && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Not authenticated" });
+      const { level, scores, avgScore, completedAt } = req.body;
+      
+      // Save level and placement result to user profile
+      const placementResult = JSON.stringify({ scores, avgScore, completedAt });
+      await db.query(
+        `UPDATE users SET level = $1, placement_result = $2 WHERE id = $3`,
+        [level, placementResult, currentUser.id]
+      );
+      
+      return res.status(200).json({ success: true, level });
+    }
+
+    // ================== PROFILE PASSWORD ==================
+    if (pathname === '/api/profile/password' && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Not authenticated" });
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ error: "رمز عبور باید حداقل ۶ کاراکتر باشد" });
+      }
+      
+      // If user has existing password, verify it
+      if (currentUser.password && currentPassword) {
+        const valid = await comparePasswords(currentPassword, currentUser.password);
+        if (!valid) return res.status(400).json({ error: "رمز عبور فعلی اشتباه است" });
+      }
+      
+      const hashedPassword = await hashPassword(newPassword);
+      await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, currentUser.id]);
+      
+      return res.status(200).json({ success: true });
     }
 
     return res.status(404).json({ error: "Not Found", path: pathname });
