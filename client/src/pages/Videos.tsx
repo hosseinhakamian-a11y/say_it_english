@@ -1,12 +1,17 @@
-
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { VideoCard } from "@/components/VideoCard";
 import { Loader2, Youtube, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "@shared/routes";
 import { SEO } from "@/components/SEO";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type FilterType = "all" | "free" | "premium" | "instagram" | "youtube";
 
 export default function VideosPage() {
+    const [filter, setFilter] = useState<FilterType>("all");
+
     // Fetch videos from our internal API
     const { data: contentList, isLoading, error } = useQuery<any[]>({
         queryKey: [api.content.list.path],
@@ -18,6 +23,15 @@ export default function VideosPage() {
     });
 
     const videos = contentList?.filter((c: any) => c.type === 'video') || [];
+
+    const filteredContent = videos?.filter(item => {
+        if (filter === "all") return true;
+        if (filter === "free") return !item.isPremium;
+        if (filter === "premium") return item.isPremium;
+        if (filter === "instagram") return item.videoProvider === "instagram";
+        if (filter === "youtube") return item.videoProvider === "youtube";
+        return true;
+    });
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -81,7 +95,34 @@ export default function VideosPage() {
                 </div>
             </div>
 
-            <div className="container mx-auto px-4 -mt-12 relative z-20">
+            <div className="container mx-auto px-4 py-8 mt-10" dir="rtl">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+                    <div>
+                        <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60 mb-2">
+                            آرشیو ویدیوها
+                        </h2>
+                        <p className="text-muted-foreground text-sm">
+                            دسترسی سریع به محتوای ویدیویی
+                        </p>
+                    </div>
+
+                    <Tabs defaultValue="all" onValueChange={(v) => setFilter(v as FilterType)} className="w-full md:w-auto">
+                        <TabsList className="grid w-full grid-cols-5 md:w-auto bg-muted/50 p-1.5 rounded-2xl h-auto">
+                            <TabsTrigger value="all" className="rounded-xl py-2 px-4 text-xs sm:text-sm">همه</TabsTrigger>
+                            <TabsTrigger value="instagram" className="rounded-xl py-2 px-4 text-xs sm:text-sm gap-1">
+                                <span className="hidden sm:inline">اینستاگرام</span>
+                                <span className="sm:hidden">IG</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="youtube" className="rounded-xl py-2 px-4 text-xs sm:text-sm gap-1">
+                                <span className="hidden sm:inline">یوتیوب</span>
+                                <span className="sm:hidden">YT</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="free" className="rounded-xl py-2 px-4 text-xs sm:text-sm text-green-600">رایگان</TabsTrigger>
+                            <TabsTrigger value="premium" className="rounded-xl py-2 px-4 text-xs sm:text-sm text-amber-600">VIP</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+
                 {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {[1, 2, 3, 4].map((i) => (
@@ -93,15 +134,15 @@ export default function VideosPage() {
                         <h3 className="text-xl font-bold text-destructive mb-2">خطا در دریافت ویدیوها</h3>
                         <p className="text-muted-foreground">لطفا اتصال اینترنت خود را بررسی کنید و دوباره تلاش کنید.</p>
                     </div>
-                ) : videos.length === 0 ? (
+                ) : filteredContent.length === 0 ? (
                     <div className="text-center py-20 bg-card rounded-3xl shadow-sm border border-border/50">
                         <Youtube className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                        <h3 className="text-xl font-bold text-muted-foreground mb-2">هنوز ویدیویی اضافه نشده</h3>
-                        <p className="text-muted-foreground text-sm">به زودی ویدیوهای آموزشی جدید قرار می‌گیرد.</p>
+                        <h3 className="text-xl font-bold text-muted-foreground mb-2">ویدیویی با این فیلتر یافت نشد</h3>
+                        <p className="text-muted-foreground text-sm">لطفا فیلترهای خود را تغییر دهید.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {videos.map((video: any, idx: number) => (
+                        {filteredContent.map((video: any, idx: number) => (
                             <motion.div
                                 key={video.id}
                                 initial={{ opacity: 0, y: 20 }}

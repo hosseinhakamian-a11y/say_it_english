@@ -240,12 +240,14 @@ export function VideoPlayer({
     // Instagram Embed
     if (activeProvider === "instagram") {
         return (
-            <div className="relative w-full max-w-md mx-auto aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center">
+            <div className="relative w-full max-w-[350px] mx-auto aspect-[9/16] bg-black rounded-3xl overflow-hidden border-[4px] border-gray-900 shadow-2xl">
                 <iframe
                     src={`https://www.instagram.com/reel/${activeVideoId}/embed/`}
-                    className="w-full h-full border-0 rounded-2xl"
+                    className="w-full h-full border-0"
                     allowTransparency
+                    scrolling="no"
                     loading="lazy"
+                    style={{ background: 'black' }}
                 />
             </div>
         );
