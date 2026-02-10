@@ -19,7 +19,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 interface VideoMetadata {
-    vocabulary?: { word: string; meaning: string; time?: string }[];
+    vocabulary?: {
+        word: string;
+        meaning: string;
+        time?: string;
+        definition?: string;
+        pronunciation?: string;
+    }[];
     quiz?: { question: string; options: string[]; answer: number }[];
     phrases?: { phrase: string; meaning: string }[];
 }
@@ -188,48 +194,76 @@ export default function VideoDetailPage() {
 
                                 <TabsContent value="vocab" className="p-6">
                                     <div className="relative">
-                                        <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="grid gap-4 sm:grid-cols-1">
                                             {metadata.vocabulary?.slice(0, hasFullAccess ? undefined : FREE_VOCAB_LIMIT).map((vocab, idx) => (
-                                                <div key={idx} className="bg-muted/30 p-4 rounded-xl border flex flex-col gap-1">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="font-bold text-lg text-primary">{vocab.word}</span>
+                                                <div key={idx} className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors group">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-3 flex-wrap">
+                                                                <span className="font-black text-2xl text-primary tracking-tight">{vocab.word}</span>
+                                                                {vocab.pronunciation && (
+                                                                    <span className="text-xs text-muted-foreground/80 font-mono bg-muted/50 border px-2 py-1 rounded-md tracking-wider">
+                                                                        {vocab.pronunciation}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {vocab.definition && (
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400 dir-ltr text-left italic">
+                                                                    "{vocab.definition}"
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                         {vocab.time && (
-                                                            <span className="text-xs bg-black/10 px-2 py-0.5 rounded-full font-mono">{vocab.time}</span>
+                                                            <div className="flex items-center gap-1.5 text-[10px] bg-secondary/50 px-2.5 py-1 rounded-full font-mono text-muted-foreground whitespace-nowrap">
+                                                                <Clock className="w-3 h-3" />
+                                                                {vocab.time}
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    <p className="text-muted-foreground text-sm">{vocab.meaning}</p>
+
+                                                    <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                                                        <p className="text-foreground font-medium text-base">{vocab.meaning}</p>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
 
                                         {/* Locked Content Overlay */}
                                         {!hasFullAccess && metadata.vocabulary && metadata.vocabulary.length > FREE_VOCAB_LIMIT && (
-                                            <div className="mt-6">
+                                            <div className="mt-8">
                                                 {/* Blurred Preview */}
-                                                <div className="grid gap-4 sm:grid-cols-2 blur-sm opacity-40 pointer-events-none select-none">
-                                                    {metadata.vocabulary.slice(FREE_VOCAB_LIMIT, FREE_VOCAB_LIMIT + 2).map((vocab, idx) => (
-                                                        <div key={idx} className="bg-muted/30 p-4 rounded-xl border flex flex-col gap-1">
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="font-bold text-lg text-primary">{vocab.word}</span>
+                                                <div className="grid gap-4 sm:grid-cols-1 blur-sm opacity-50 pointer-events-none select-none grayscale">
+                                                    {metadata.vocabulary.slice(FREE_VOCAB_LIMIT, FREE_VOCAB_LIMIT + 1).map((vocab, idx) => (
+                                                        <div key={idx} className="bg-card p-5 rounded-2xl border flex flex-col gap-3">
+                                                            <div className="flex justify-between items-start">
+                                                                <span className="font-black text-2xl text-primary">{vocab.word}</span>
                                                             </div>
-                                                            <p className="text-muted-foreground text-sm">{vocab.meaning}</p>
+                                                            <p className="text-foreground font-medium">{vocab.meaning}</p>
                                                         </div>
                                                     ))}
                                                 </div>
 
-                                                {/* Lock CTA Card - Separate block, not absolute */}
-                                                <div className="mt-4 text-center p-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl">
-                                                    <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                        <Lock className="w-6 h-6 text-amber-600" />
+                                                {/* Lock CTA Card */}
+                                                <div className="relative -mt-20 z-10 text-center p-8 bg-gradient-to-b from-white/95 to-white/90 dark:from-black/95 dark:to-black/90 backdrop-blur-md border border-amber-500/20 rounded-3xl shadow-2xl">
+                                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl rotate-3 shadow-lg flex items-center justify-center">
+                                                        <Lock className="w-8 h-8 text-white" />
                                                     </div>
-                                                    <p className="font-bold text-lg mb-1">+{metadata.vocabulary.length - FREE_VOCAB_LIMIT} لغت دیگر</p>
-                                                    <p className="text-sm text-muted-foreground mb-4">برای دسترسی کامل خرید کنید</p>
+
+                                                    <h3 className="font-black text-xl mt-6 mb-2">دسترسی به تمام لغات</h3>
+                                                    <p className="text-muted-foreground mb-6 max-w-xs mx-auto">
+                                                        {metadata.vocabulary.length - FREE_VOCAB_LIMIT} لغت کلیدی دیگر در این درس وجود دارد که با تهیه اشتراک یا خرید تکی باز خواهند شد.
+                                                    </p>
+
                                                     <Button
-                                                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg"
+                                                        size="lg"
+                                                        className="w-full max-w-sm bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-xl shadow-orange-500/20 rounded-xl h-12 text-base font-bold"
                                                         onClick={() => navigate(`/payment/${videoId}`)}
                                                     >
-                                                        <Crown className="w-4 h-4 ml-2" />
-                                                        باز کردن همه لغات
+                                                        <Crown className="w-5 h-5 ml-2 animate-pulse" />
+                                                        خرید دسترسی کامل
                                                     </Button>
                                                 </div>
                                             </div>

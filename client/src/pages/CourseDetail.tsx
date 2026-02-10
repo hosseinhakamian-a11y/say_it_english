@@ -11,7 +11,10 @@ import {
     Users,
     Star,
     ShieldCheck,
-    ArrowRight
+    ArrowRight,
+    BookOpen,
+    Clock,
+    Crown
 } from "lucide-react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { SecureVideoPlayer } from "@/components/SecureVideoPlayer";
@@ -153,6 +156,92 @@ export default function CourseDetail() {
                                 })}
                             </div>
                         </div>
+                        {/* Vocabulary Section */}
+                        {course.metadata?.vocabulary && course.metadata.vocabulary.length > 0 && (
+                            <section className="space-y-6">
+                                <h2 className="text-2xl font-bold flex items-center gap-3">
+                                    <BookOpen className="text-primary" />
+                                    لغات و اصطلاحات کلیدی
+                                </h2>
+
+                                <div className="relative">
+                                    <div className="grid gap-4 sm:grid-cols-1">
+                                        {course.metadata.vocabulary.slice(0, hasPurchased ? undefined : 2).map((vocab: any, idx: number) => (
+                                            <div key={idx} className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors group">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-3 flex-wrap">
+                                                            <span className="font-black text-2xl text-primary tracking-tight">{vocab.word}</span>
+                                                            {vocab.pronunciation && (
+                                                                <span className="text-xs text-muted-foreground/80 font-mono bg-muted/50 border px-2 py-1 rounded-md tracking-wider">
+                                                                    {vocab.pronunciation}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {vocab.definition && (
+                                                            <p className="text-sm text-gray-600 dark:text-gray-400 dir-ltr text-left italic">
+                                                                "{vocab.definition}"
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {vocab.time && (
+                                                        <div className="flex items-center gap-1.5 text-[10px] bg-secondary/50 px-2.5 py-1 rounded-full font-mono text-muted-foreground whitespace-nowrap">
+                                                            <Clock className="w-3 h-3" />
+                                                            {vocab.time}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                                                    <p className="text-foreground font-medium text-base">{vocab.meaning}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Locked Content Overlay */}
+                                    {!hasPurchased && course.metadata.vocabulary.length > 2 && (
+                                        <div className="mt-8">
+                                            {/* Blurred Preview */}
+                                            <div className="grid gap-4 sm:grid-cols-1 blur-sm opacity-50 pointer-events-none select-none grayscale">
+                                                {course.metadata.vocabulary.slice(2, 3).map((vocab: any, idx: number) => (
+                                                    <div key={idx} className="bg-card p-5 rounded-2xl border flex flex-col gap-3">
+                                                        <div className="flex justify-between items-start">
+                                                            <span className="font-black text-2xl text-primary">{vocab.word}</span>
+                                                        </div>
+                                                        <p className="text-foreground font-medium">{vocab.meaning}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Lock CTA Card */}
+                                            <div className="relative -mt-20 z-10 text-center p-8 bg-gradient-to-b from-white/95 to-white/90 dark:from-black/95 dark:to-black/90 backdrop-blur-md border border-amber-500/20 rounded-3xl shadow-2xl">
+                                                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl rotate-3 shadow-lg flex items-center justify-center">
+                                                    <Lock className="w-8 h-8 text-white" />
+                                                </div>
+
+                                                <h3 className="font-black text-xl mt-6 mb-2">دسترسی به تمام لغات</h3>
+                                                <p className="text-muted-foreground mb-6 max-w-xs mx-auto">
+                                                    {course.metadata.vocabulary.length - 2} لغت کلیدی دیگر در این درس وجود دارد که با تهیه اشتراک یا خرید تکی باز خواهند شد.
+                                                </p>
+
+                                                <Button
+                                                    size="lg"
+                                                    className="w-full max-w-sm bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-xl shadow-orange-500/20 rounded-xl h-12 text-base font-bold"
+                                                    onClick={() => navigate(`/payment/${course.id}`)}
+                                                >
+                                                    <Crown className="w-5 h-5 ml-2 animate-pulse" />
+                                                    خرید دسترسی کامل
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+                        )}
                         <section className="space-y-6">
                             <h2 className="text-2xl font-bold flex items-center gap-3">
                                 <PlayCircle className="text-primary" />
