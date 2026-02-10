@@ -86,10 +86,6 @@ export default function CourseDetail() {
                                 {course.title}
                             </h1>
 
-                            <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl">
-                                {course.description}
-                            </p>
-
                             <div className="flex flex-wrap gap-6 pt-4">
                                 <div className="flex items-center gap-2 text-sm font-medium">
                                     <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
@@ -108,16 +104,16 @@ export default function CourseDetail() {
 
                         <div className="lg:col-span-5 relative group">
                             <div className="absolute -inset-4 bg-primary/20 rounded-[2.5rem] blur-3xl opacity-30 group-hover:opacity-50 transition-all duration-700" />
-                            <div className="relative rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white">
+                            <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white">
                                 {/* Trial Video Section */}
                                 <VideoPlayer
                                     videoId={course.videoId}
                                     provider={course.videoProvider || 'custom'}
-                                    title="تریال دوره"
+                                    title={course.title}
                                 />
                                 <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
                                     <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-                                    پیش‌نمایش رایگان
+                                    پیش‌نمایش درس
                                 </div>
                             </div>
                         </div>
@@ -131,6 +127,32 @@ export default function CourseDetail() {
 
                     {/* Main Content */}
                     <div className="lg:col-span-8 space-y-12">
+                        {/* Dynamic Content Display with styling */}
+                        <div className="prose prose-lg dark:prose-invert max-w-none prose-tr:border-b prose-thead:bg-muted/50 prose-th:p-4 prose-td:p-4 prose-headings:gradient-text prose-headings:font-black">
+                            {/* Basic display of Markdown content - using a div with white-space pre-wrap for simplicity without adding new libraries */}
+                            <div className="space-y-10">
+                                {course.description?.split('##').map((section: string, idx: number) => {
+                                    if (!section.trim()) return null;
+                                    const [title, ...contentLines] = section.split('\n');
+                                    const content = contentLines.join('\n');
+
+                                    return (
+                                        <motion.div
+                                            key={idx}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            whileInView={{ opacity: 1, y: 0 }}
+                                            viewport={{ once: true }}
+                                            className="bg-card/50 backdrop-blur-sm rounded-3xl p-8 border border-border/40 shadow-sm"
+                                        >
+                                            {idx > 0 && <h2 className="text-2xl font-black mb-6 flex items-center gap-3">{title}</h2>}
+                                            <div className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                                                {idx === 0 ? section : content}
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        </div>
                         <section className="space-y-6">
                             <h2 className="text-2xl font-bold flex items-center gap-3">
                                 <PlayCircle className="text-primary" />
@@ -176,22 +198,22 @@ export default function CourseDetail() {
                         </section>
 
                         <section className="space-y-6">
-                            <h2 className="text-2xl font-bold">درباره این دوره</h2>
-                            <div className="prose prose-lg dark:prose-invert max-w-none text-muted-foreground leading-relaxed">
-                                <p>این دوره با متد انحصاری "Say It English" طراحی شده تا شما را در کوتاه‌ترین زمان ممکن به سطح مکالمه روان برساند.</p>
-                                <ul className="list-none space-y-3 mt-6 p-0">
-                                    {[
-                                        "دسترسی مادام‌العمر به محتوا",
-                                        "پشتیبانی مستقیم توسط مدرس",
-                                        "آپدیت‌های رایگان ماهانه",
-                                        "ارائه فایل‌های مکمل و تمرینی"
-                                    ].map((text, i) => (
-                                        <li key={i} className="flex items-center gap-3">
-                                            <CheckCircle2 className="text-green-500 w-5 h-5" />
-                                            <span className="text-foreground font-medium">{text}</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                            <h2 className="text-2xl font-bold flex items-center gap-3">
+                                <ShieldCheck className="text-primary" />
+                                ویژگی‌های این آموزش
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {[
+                                    "دسترسی مادام‌العمر",
+                                    "پشتیبانی مستقیم مدرس",
+                                    "آپدیت‌های رایگان",
+                                    "فایل‌های مکمل"
+                                ].map((text, i) => (
+                                    <div key={i} className="flex items-center gap-3 bg-muted/30 p-4 rounded-2xl">
+                                        <CheckCircle2 className="text-green-500 w-5 h-5" />
+                                        <span className="font-medium text-sm">{text}</span>
+                                    </div>
+                                ))}
                             </div>
                         </section>
 

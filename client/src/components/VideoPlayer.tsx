@@ -240,15 +240,36 @@ export function VideoPlayer({
     // Instagram Embed
     if (activeProvider === "instagram") {
         return (
-            <div className="relative w-full max-w-[350px] mx-auto aspect-[9/16] bg-black rounded-3xl overflow-hidden border-[4px] border-gray-900 shadow-2xl">
-                <iframe
-                    src={`https://www.instagram.com/reel/${activeVideoId}/embed/`}
-                    className="w-full h-full border-0"
-                    allowTransparency
-                    scrolling="no"
-                    loading="lazy"
-                    style={{ background: 'black' }}
-                />
+            <div className="relative w-full max-w-[340px] mx-auto group">
+                {/* Mobile Frame Decor */}
+                <div className="absolute -inset-1 bg-gradient-to-tr from-purple-600 via-pink-600 to-orange-500 rounded-[3rem] blur-sm opacity-20 group-hover:opacity-40 transition-opacity" />
+
+                <div className="relative bg-black rounded-[2.5rem] overflow-hidden border-[8px] border-gray-900 shadow-2xl flex flex-col aspect-[9/18.5]">
+                    {/* Header with IG Logo style */}
+                    <div className="h-10 bg-white flex items-center px-4 justify-between border-b shrink-0">
+                        <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 rounded bg-gradient-to-tr from-amber-400 via-pink-600 to-purple-600 flex items-center justify-center">
+                                <span className="text-white text-[8px] font-bold italic">IG</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-800">Say It English</span>
+                        </div>
+                        <div className="w-6 h-1 bg-gray-200 rounded-full" />
+                    </div>
+
+                    <div className="flex-grow relative bg-black overflow-hidden">
+                        <iframe
+                            src={`https://www.instagram.com/reel/${activeVideoId}/embed/`}
+                            className="w-full h-full border-0"
+                            allowTransparency
+                            scrolling="no"
+                            loading="lazy"
+                            style={{
+                                background: 'black',
+                                marginTop: '-1px'
+                            }}
+                        />
+                    </div>
+                </div>
             </div>
         );
     }
