@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   PlayCircle, FileText, Lock, Video, Loader2, Gift, Crown,
-  ExternalLink, Headphones, BookOpen, Package, Sparkles, ArrowLeft
+  ExternalLink, Headphones, BookOpen, Package, Sparkles, ArrowLeft, GraduationCap
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -75,7 +75,9 @@ export default function ContentLibrary() {
     if (filter === "all") return true;
     if (filter === "free") return !item.isPremium;
     if (filter === "premium") return item.isPremium && item.type !== "package";
-    if (filter === "package") return item.type === "package" || item.type === "course";
+    if (filter === "package") return item.type === "package";
+    if (filter === "course") return item.type === "course"; // New Course Filter
+    if (filter === "article") return item.type === "article"; // New Article Filter
     return true;
   });
 
@@ -96,9 +98,9 @@ export default function ContentLibrary() {
     switch (type) {
       case "video": return <Video className="w-5 h-5" />;
       case "podcast": return <Headphones className="w-5 h-5" />;
-      case "article": return <BookOpen className="w-5 h-5" />;
-      case "package":
-      case "course": return <Package className="w-5 h-5" />;
+      case "article": return <FileText className="w-5 h-5" />;
+      case "package": return <Package className="w-5 h-5" />;
+      case "course": return <GraduationCap className="w-5 h-5" />;
       default: return <FileText className="w-5 h-5" />;
     }
   };
@@ -108,8 +110,8 @@ export default function ContentLibrary() {
       case "video": return "ویدیو";
       case "podcast": return "پادکست";
       case "article": return "مقاله";
-      case "package":
-      case "course": return "پکیج";
+      case "package": return "پکیج";
+      case "course": return "دوره مجازی";
       default: return "محتوا";
     }
   };
@@ -141,8 +143,10 @@ export default function ContentLibrary() {
                     src={thumb || (
                       item.type === 'video' ? "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500" :
                         item.type === 'podcast' ? "https://images.unsplash.com/photo-1590602847861-f357a9302bbc?w=500" :
-                          item.type === 'package' || item.type === 'course' ? "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=500" :
-                            "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500"
+                          item.type === 'package' ? "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=500" :
+                            item.type === 'course' ? "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500" :
+                              item.type === 'article' ? "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500" :
+                                "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500"
                     )}
                     alt={item.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
@@ -191,8 +195,9 @@ export default function ContentLibrary() {
             <div className="flex items-center gap-2 mb-3">
               <div className={`p-2 rounded-lg ${item.type === 'video' ? 'bg-red-100 text-red-600' :
                 item.type === 'podcast' ? 'bg-purple-100 text-purple-600' :
-                  item.type === 'package' || item.type === 'course' ? 'bg-amber-100 text-amber-600' :
-                    'bg-blue-100 text-blue-600'
+                  item.type === 'course' ? 'bg-indigo-100 text-indigo-600' :
+                    item.type === 'article' ? 'bg-blue-100 text-blue-600' :
+                      'bg-amber-100 text-amber-600'
                 }`}>
                 {getTypeIcon(item.type)}
               </div>
@@ -256,7 +261,7 @@ export default function ContentLibrary() {
               >
                 {item.type === 'video' ? 'مشاهده ویدیو' :
                   item.type === 'podcast' ? 'گوش دادن' :
-                    item.type === 'article' ? 'خواندن مقاله' : 'مشاهده'}
+                    item.type === 'article' ? 'خواندن مقاله' : 'مشاهده دوره'}
                 <ArrowLeft className="mr-2 h-4 w-4" />
               </Button>
             )}
@@ -291,22 +296,30 @@ export default function ContentLibrary() {
 
           {/* New Filter Tabs */}
           <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)} className="w-full md:w-auto">
-            <TabsList className="grid w-full grid-cols-4 md:w-[500px] bg-muted/50 p-1.5 rounded-2xl h-auto">
-              <TabsTrigger value="all" className="rounded-xl py-3 data-[state=active]:shadow-md">
+            <TabsList className="grid w-full grid-cols-3 md:flex md:w-auto bg-muted/50 p-1.5 rounded-2xl h-auto gap-1">
+              <TabsTrigger value="all" className="rounded-xl py-2 px-4 data-[state=active]:shadow-md">
                 <Sparkles className="w-4 h-4 ml-1.5 hidden sm:block" />
                 همه
               </TabsTrigger>
-              <TabsTrigger value="free" className="rounded-xl py-3 data-[state=active]:shadow-md data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+              <TabsTrigger value="course" className="rounded-xl py-2 px-4 data-[state=active]:shadow-md">
+                <GraduationCap className="w-4 h-4 ml-1.5 hidden sm:block" />
+                دوره‌ها
+              </TabsTrigger>
+              <TabsTrigger value="package" className="rounded-xl py-2 px-4 data-[state=active]:shadow-md text-xs sm:text-sm">
+                <Package className="w-4 h-4 ml-1.5 hidden sm:block" />
+                پکیج‌ها
+              </TabsTrigger>
+              <TabsTrigger value="article" className="rounded-xl py-2 px-4 data-[state=active]:shadow-md">
+                <FileText className="w-4 h-4 ml-1.5 hidden sm:block" />
+                مقالات
+              </TabsTrigger>
+              <TabsTrigger value="free" className="rounded-xl py-2 px-4 data-[state=active]:shadow-md data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
                 <Gift className="w-4 h-4 ml-1.5 hidden sm:block" />
                 رایگان
               </TabsTrigger>
-              <TabsTrigger value="premium" className="rounded-xl py-3 data-[state=active]:shadow-md data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700">
+              <TabsTrigger value="premium" className="rounded-xl py-2 px-4 data-[state=active]:shadow-md data-[state=active]:bg-amber-100 data-[state=active]:text-amber-700">
                 <Crown className="w-4 h-4 ml-1.5 hidden sm:block" />
                 پریمیوم
-              </TabsTrigger>
-              <TabsTrigger value="package" className="rounded-xl py-3 data-[state=active]:shadow-md data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
-                <Package className="w-4 h-4 ml-1.5 hidden sm:block" />
-                پکیج‌ها
               </TabsTrigger>
             </TabsList>
           </Tabs>
