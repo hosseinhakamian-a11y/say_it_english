@@ -129,17 +129,27 @@ export default function ContentLibrary() {
           {/* Thumbnail */}
           <div className="relative h-48 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
             <div className="absolute inset-0">
-              <OptimizedImage
-                src={item.thumbnailUrl || (
-                  item.type === 'video' ? "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500" :
-                    item.type === 'podcast' ? "https://images.unsplash.com/photo-1590602847861-f357a9302bbc?w=500" :
-                      item.type === 'package' || item.type === 'course' ? "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=500" :
-                        "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500"
-                )}
-                alt={item.title}
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                containerClassName="w-full h-full"
-              />
+              {(() => {
+                let thumb = item.thumbnailUrl;
+                // Auto-use YouTube thumbnail if no custom one exists and it's a youtube video
+                if (!thumb && item.videoProvider === 'youtube' && item.videoId) {
+                  thumb = `https://img.youtube.com/vi/${item.videoId}/maxresdefault.jpg`;
+                }
+
+                return (
+                  <OptimizedImage
+                    src={thumb || (
+                      item.type === 'video' ? "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500" :
+                        item.type === 'podcast' ? "https://images.unsplash.com/photo-1590602847861-f357a9302bbc?w=500" :
+                          item.type === 'package' || item.type === 'course' ? "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=500" :
+                            "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=500"
+                    )}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    containerClassName="w-full h-full"
+                  />
+                );
+              })()}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
             </div>
 
