@@ -57,6 +57,12 @@ export async function registerRoutes(
     res.json(content);
   });
 
+  app.get("/api/content/:id", async (req, res) => {
+    const item = await storage.getContentById(parseInt(req.params.id));
+    if (!item) return res.status(404).send("Content not found");
+    res.json(item);
+  });
+
   app.post(api.content.create.path, async (req: AuthenticatedRequest, res) => {
     if (!isAdmin(req)) {
       return res.status(403).send("Unauthorized");
@@ -245,13 +251,6 @@ export async function registerRoutes(
     }
     const settings = await storage.updatePaymentSettings(req.body);
     res.json(settings);
-  });
-
-  // ===== Content Endpoints =====
-  
-  app.get(api.content.list.path, async (req, res) => {
-    const contentList = await storage.getContent();
-    res.json(contentList);
   });
 
   /**

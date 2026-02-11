@@ -37,18 +37,29 @@ export default function CourseDetail() {
     const { data: course, isLoading } = useQuery<any>({
         queryKey: [`/api/content/${courseId}`],
         queryFn: async () => {
-            const res = await fetch(`/api/content`);
-            const all = await res.json();
-            return all.find((c: any) => c.id === courseId);
-        }
+            const res = await fetch(`/api/content/${courseId}`);
+            if (!res.ok) {
+                // Fallback to list if ID endpoint fails (for backward compatibility during migration)
+                const listRes = await fetch(`/api/content`);
+                const all = await listRes.json();
+                return all.find((c: any) => c.id === courseId);
+            }
+            return await res.json();
+        },
+        enabled: !!courseId && courseId > 0
     });
 
     const { data: purchases } = useQuery<{ contentId: number }[]>({
         queryKey: ["/api/purchases"],
+        queryFn: async () => {
+            const res = await fetch("/api/purchases", { credentials: "include" });
+            if (!res.ok) return [];
+            return await res.json();
+        },
         enabled: !!user,
     });
 
-    const hasPurchased = purchases?.some(p => p.contentId === courseId) || user?.role === 'admin';
+    const hasPurchased = purchases?.some(p => Number(p.contentId) === Number(courseId)) || user?.role === 'admin';
 
     if (isLoading) {
         return (
