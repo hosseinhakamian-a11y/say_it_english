@@ -225,10 +225,12 @@ export default function Profile() {
                       if (!thumb && provider === 'youtube' && course.videoId) {
                         thumb = `https://img.youtube.com/vi/${course.videoId}/maxresdefault.jpg`;
                       }
-                      const href = course.type === 'course' ? `/course/${course.contentId}` : `/videos/${course.contentId}`;
+                      const contentId = Number(course.contentId || course.id);
+                      // Force correct routing based on content type from DB
+                      const href = course.type === 'video' ? `/videos/${contentId}` : `/course/${contentId}`;
 
                       return (
-                        <Link key={course.contentId} href={href}>
+                        <Link key={`${course.id}-${contentId}`} href={href}>
                           <div className="group cursor-pointer bg-card border rounded-2xl overflow-hidden hover:shadow-lg transition-all border-border/50">
                             <div className="aspect-video relative overflow-hidden">
                               <img
@@ -241,7 +243,10 @@ export default function Profile() {
                               </div>
                             </div>
                             <div className="p-4">
-                              <h3 className="font-bold group-hover:text-primary transition-colors line-clamp-1">{course.title || `دوره #${course.contentId}`}</h3>
+                              <h3 className="font-bold group-hover:text-primary transition-colors line-clamp-1">
+                                {course.title || `محتوا #${contentId}`}
+                                <span className="text-[10px] opacity-30 mr-2">#{contentId}</span>
+                              </h3>
                               <div className="flex items-center justify-between mt-2">
                                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                                   {course.level === 'beginner' ? 'مبتدی' : course.level === 'intermediate' ? 'متوسط' : 'پیشرفته'}

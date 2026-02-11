@@ -111,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await db.query('UPDATE users SET session_token = $1 WHERE id = $2', [newToken, user.id]);
       const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
       res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
-      return res.status(200).json({ id: user.id, username: user.username, role: user.role, name: user.name, avatar: user.avatar });
+      return res.status(200).json({ id: user.id, username: user.username, role: user.role, avatar: user.avatar, firstName: user.first_name, lastName: user.last_name });
     }
 
     if (pathname === '/api/logout' && method === 'POST') {
@@ -123,14 +123,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (pathname === '/api/register' && method === 'POST') {
-      const { username, password, name, phone } = req.body;
+      const { username, password, phone } = req.body;
       const existing = await db.query('SELECT id FROM users WHERE username = $1', [username]);
       if (existing.rows.length > 0) return res.status(400).json({ error: 'نام کاربری تکراری است' });
       const hashedPassword = await hashPassword(password);
       const newToken = randomBytes(32).toString('hex');
       const newUserRes = await db.query(
-        `INSERT INTO users (username, password, name, phone, role, session_token) VALUES ($1, $2, $3, $4, 'user', $5) RETURNING id, username, role`,
-        [username, hashedPassword, name || null, phone || null, newToken]
+        `INSERT INTO users (username, password, phone, role, session_token) VALUES ($1, $2, $3, 'user', $4) RETURNING id, username, role`,
+        [username, hashedPassword, phone || null, newToken]
       );
       res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${604800}; Path=/`);
       return res.status(201).json(newUserRes.rows[0]);
@@ -140,7 +140,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!currentUser) return res.status(401).json(null);
       return res.status(200).json({
         id: currentUser.id, username: currentUser.username, role: currentUser.role,
-        name: currentUser.name, firstName: currentUser.first_name, lastName: currentUser.last_name,
+        firstName: currentUser.first_name, lastName: currentUser.last_name,
         phone: currentUser.phone, avatar: currentUser.avatar,
         level: currentUser.level || null,
         bio: currentUser.bio || null,
