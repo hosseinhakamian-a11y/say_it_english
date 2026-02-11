@@ -374,15 +374,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     
-    // Purchases check
+    // Purchases check (Returns full content details for the dashboard)
     if (pathname === '/api/purchases') {
       if (!currentUser) return res.status(200).json([]);
       const result = await db.query(`
-        SELECT p.content_id as "contentId" FROM purchases p
+        SELECT 
+          c.id, c.title, c.type, c.level, c.thumbnail_url as "thumbnailUrl",
+          p.created_at as "purchasedAt"
+        FROM purchases p
+        JOIN content c ON p.content_id = c.id
         WHERE p.user_id = $1
         UNION
-        SELECT p.content_id as "contentId" FROM payments p 
-        WHERE p.user_id = $1 AND p.status = 'approved'
+        SELECT 
+          c.id, c.title, c.type, c.level, c.thumbnail_url as "thumbnailUrl",
+          pay.created_at as "purchasedAt"
+        FROM payments pay
+        JOIN content c ON pay.content_id = c.id
+        WHERE pay.user_id = $1 AND pay.status = 'approved'
+        ORDER BY "purchasedAt" DESC
       `, [currentUser.id]);
       return res.status(200).json(result.rows);
     }

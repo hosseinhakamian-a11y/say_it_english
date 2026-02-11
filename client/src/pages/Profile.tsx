@@ -3,17 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useBookings } from "@/hooks/use-bookings";
-import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles, Edit } from "lucide-react";
+import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles, Edit, Trophy, PlayCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { SecureVideoPlayer } from "@/components/SecureVideoPlayer";
 import { motion } from "framer-motion";
 import { pageVariants, containerVariants, itemVariants } from "@/lib/animations";
 import { ProfileSkeleton, StatsSkeleton, ListItemSkeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Profile() {
   const { user, logout, isLoading } = useAuth();
   const { data: bookings, isLoading: isLoadingBookings } = useBookings();
   const [, setLocation] = useLocation();
+
+  // Fetch purchased content
+  const { data: purchases, isLoading: isLoadingPurchases } = useQuery<any[]>({
+    queryKey: ['/api/purchases'],
+    queryFn: async () => {
+      const res = await fetch('/api/purchases');
+      if (!res.ok) throw new Error("Failed to fetch purchases");
+      return await res.json();
+    }
+  });
 
   if (isLoading) {
     return (
@@ -45,20 +55,21 @@ export default function Profile() {
 
   const stats = [
     {
-      icon: Calendar,
-      label: "رزروهای فعال",
-      value: bookings?.length || 0,
-      color: "bg-blue-100 text-blue-600",
+      icon: Trophy,
+      label: "سطح تعیین شده",
+      value: user.level === 'advanced' ? 'پیشرفته' : user.level === 'intermediate' ? 'متوسط' : user.level === 'beginner' ? 'مبتدی' : 'نیاز به تعیین سطح',
+      color: "bg-amber-100 text-amber-600",
+      isText: true,
     },
     {
       icon: BookOpen,
-      label: "کلاس‌های من",
-      value: 0,
+      label: "دوره‌های من",
+      value: purchases?.length || 0,
       color: "bg-green-100 text-green-600",
     },
     {
-      icon: UserIcon,
-      label: "وضعیت",
+      icon: Calendar,
+      label: "وضعیت اشتراک",
       value: "فعال",
       color: "bg-orange-100 text-orange-600",
       isText: true,
@@ -114,9 +125,9 @@ export default function Profile() {
                 <p className="font-bold text-lg gradient-text">
                   {user.level === 'advanced' ? 'پیشرفته' : user.level === 'intermediate' ? 'متوسط' : user.level === 'beginner' ? 'مبتدی' : 'تعیین سطح نشده'}
                 </p>
-                {(user as any).placementResult?.avgScore && (
+                {(user as any).placementResult?.avgScore !== undefined && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    امتیاز آزمون: {(user as any).placementResult.avgScore}%
+                    امتیاز آخرین آزمون: {(user as any).placementResult.avgScore}%
                   </p>
                 )}
                 {!user.level && (
@@ -163,7 +174,7 @@ export default function Profile() {
         {/* Main Content */}
         <div className="md:col-span-8 lg:col-span-9 space-y-8">
 
-          {/* Stats Grid with Staggered Animation */}
+          {/* Stats Grid */}
           <motion.div
             variants={containerVariants}
             initial="initial"
@@ -178,7 +189,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className={`text-2xl font-bold ${stat.isText ? 'text-green-600' : ''}`}>
+                    <p className={`text-xl font-bold ${stat.isText ? 'text-primary' : ''}`}>
                       {stat.value}
                     </p>
                   </div>
@@ -187,26 +198,60 @@ export default function Profile() {
             ))}
           </motion.div>
 
-          {/* Test Video Player Section */}
+          {/* Purchased Content Section */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
-            <Card className="rounded-[2rem] border border-border/50 shadow-sm glass-primary">
-              <CardHeader>
+            <Card className="rounded-[2rem] border border-border/50 shadow-sm overflow-hidden">
+              <CardHeader className="bg-muted/30 border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  پخش کننده ویدیوی امن (تست)
+                  <PlayCircle className="w-5 h-5 text-primary" />
+                  دوره‌های خریداری شده
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    این بخش برای تست سیستم استریم امن است. اگر فایل ویدیویی در باکت موجود باشد و در دیتابیس ثبت شده باشد، اینجا پخش می‌شود.
-                  </p>
-                  <SecureVideoPlayer contentId={1} />
-                </div>
+              <CardContent className="p-6">
+                {isLoadingPurchases ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <StatsSkeleton />
+                    <StatsSkeleton />
+                  </div>
+                ) : purchases && purchases.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {purchases.map((course: any) => (
+                      <Link key={course.id} href={`/videos/${course.id}`}>
+                        <div className="group cursor-pointer bg-card border rounded-2xl overflow-hidden hover:shadow-lg transition-all border-border/50">
+                          <div className="aspect-video relative overflow-hidden">
+                            <img
+                              src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'}
+                              alt={course.title}
+                              className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <PlayCircle className="w-12 h-12 text-white" />
+                            </div>
+                          </div>
+                          <div className="p-4">
+                            <h3 className="font-bold group-hover:text-primary transition-colors line-clamp-1">{course.title}</h3>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">{course.level === 'beginner' ? 'مبتدی' : 'متوسط'}</span>
+                              <span className="text-[10px] text-muted-foreground">خریداری شده</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl">
+                    <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p>هنوز دوره‌ای خریداری نکرده‌اید.</p>
+                    <Link href="/content">
+                      <Button variant="link" className="text-primary mt-2">مشاهده دوره‌ها</Button>
+                    </Link>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -218,10 +263,10 @@ export default function Profile() {
             transition={{ delay: 0.4, duration: 0.5 }}
           >
             <Card className="rounded-[2rem] border border-border/50 shadow-sm">
-              <CardHeader>
+              <CardHeader className="border-b bg-muted/30">
                 <CardTitle>رزروهای اخیر</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 {isLoadingBookings ? (
                   <div className="space-y-4">
                     <ListItemSkeleton />
@@ -262,7 +307,7 @@ export default function Profile() {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-center py-12 text-muted-foreground"
+                    className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl"
                   >
                     <Calendar className="w-12 h-12 mx-auto mb-4 opacity-30" />
                     <p>هنوز رزروی ثبت نکرده‌اید.</p>

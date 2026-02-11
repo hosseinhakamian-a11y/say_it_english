@@ -217,7 +217,9 @@ export default function PlacementTest() {
     setShowResult(true);
 
     // Save placement test result to server
-    const avgScore = Object.values(newScores).reduce((a, b) => a + b, 0) / Object.values(newScores).length;
+    const rawAvg = Object.values(newScores).reduce((a, b) => a + b, 0) / Object.values(newScores).length;
+    const avgScore = Math.round(rawAvg);
+
     let level = "beginner";
     if (avgScore > 40 && avgScore <= 70) level = "intermediate";
     if (avgScore > 70) level = "advanced";
@@ -230,7 +232,7 @@ export default function PlacementTest() {
         body: JSON.stringify({
           level,
           scores: newScores,
-          avgScore: Math.round(avgScore),
+          avgScore,
           completedAt: new Date().toISOString(),
         }),
       });
@@ -240,7 +242,9 @@ export default function PlacementTest() {
   };
 
   const getOverallLevel = () => {
-    const avgScore = Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length;
+    const rawAvg = Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length;
+    const avgScore = Math.round(rawAvg);
+
     if (avgScore <= 40) return { level: "مبتدی", text: "Beginner", color: "from-blue-500 to-blue-600" };
     if (avgScore <= 70) return { level: "متوسط", text: "Intermediate", color: "from-amber-500 to-amber-600" };
     return { level: "پیشرفته", text: "Advanced", color: "from-emerald-500 to-emerald-600" };
