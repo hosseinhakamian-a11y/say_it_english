@@ -14,7 +14,12 @@ import {
     ArrowRight,
     BookOpen,
     Clock,
-    Crown
+    Crown,
+    Share2,
+    CheckCircle,
+    Download,
+    Maximize2,
+    Image as ImageIcon
 } from "lucide-react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { SecureVideoPlayer } from "@/components/SecureVideoPlayer";
@@ -149,7 +154,46 @@ export default function CourseDetail() {
                                         >
                                             {idx > 0 && <h2 className="text-2xl font-black mb-6 flex items-center gap-3">{title}</h2>}
                                             <div className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
-                                                {idx === 0 ? section : content}
+                                                {(idx === 0 ? section : content).split(/(!\[.*?\]\(.*?\))/g).map((part, i) => {
+                                                    const match = part.trim().match(/!\[(.*?)\]\((.*?)\)/);
+                                                    if (match) {
+                                                        const [, alt, src] = match;
+                                                        return (
+                                                            <div key={i} className="my-10 flex flex-col items-center gap-5 bg-muted/10 p-6 rounded-[2rem] border-2 border-primary/10 shadow-xl overflow-hidden" dir="ltr">
+                                                                <div className="relative group w-full flex justify-center">
+                                                                    <img
+                                                                        src={src}
+                                                                        alt={alt}
+                                                                        className="rounded-[1.5rem] shadow-2xl max-w-full h-auto cursor-zoom-in group-hover:scale-[1.02] transition-all duration-500"
+                                                                        onClick={() => window.open(src, '_blank')}
+                                                                    />
+                                                                </div>
+                                                                <div className="flex flex-wrap justify-center gap-4 w-full pt-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="lg"
+                                                                        className="rounded-full gap-3 bg-white dark:bg-black border-primary/20 hover:bg-primary/5 shadow-md px-6"
+                                                                        onClick={() => window.open(src, '_blank')}
+                                                                    >
+                                                                        <Maximize2 className="w-5 h-5 text-primary" />
+                                                                        <span className="font-bold text-sm">مشاهده با کیفیت اصلی</span>
+                                                                    </Button>
+                                                                    <a href={src} target="_blank" rel="noopener noreferrer" className="no-underline">
+                                                                        <Button
+                                                                            variant="default"
+                                                                            size="lg"
+                                                                            className="rounded-full gap-3 shadow-lg px-6 hover:scale-105 transition-transform"
+                                                                        >
+                                                                            <Download className="w-5 h-5" />
+                                                                            <span className="font-bold text-sm">دانلود رایگان فایل</span>
+                                                                        </Button>
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return <span key={i}>{part}</span>;
+                                                })}
                                             </div>
                                         </motion.div>
                                     );

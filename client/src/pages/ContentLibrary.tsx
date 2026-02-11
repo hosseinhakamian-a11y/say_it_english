@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   PlayCircle, FileText, Lock, Video, Loader2, Gift, Crown,
-  ExternalLink, Headphones, BookOpen, Package, Sparkles, ArrowLeft, GraduationCap
+  ExternalLink, Headphones, BookOpen, Package, Sparkles, ArrowLeft, GraduationCap,
+  Maximize2, Download, Image as ImageIcon
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -424,7 +425,48 @@ export default function ContentLibrary() {
                 title={selectedContent?.title}
               />
               {selectedContent?.description && (
-                <p className="mt-4 text-muted-foreground">{selectedContent.description}</p>
+                <div className="mt-4 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                  {selectedContent.description.split(/(!\[.*?\]\(.*?\))/g).map((part, i) => {
+                    const match = part.trim().match(/!\[(.*?)\]\((.*?)\)/);
+                    if (match) {
+                      const [, alt, src] = match;
+                      return (
+                        <div key={i} className="my-8 flex flex-col items-center gap-5 bg-muted/10 p-4 rounded-3xl border-2 border-primary/10 shadow-lg overflow-hidden" dir="ltr">
+                          <div className="relative group w-full flex justify-center">
+                            <img
+                              src={src}
+                              alt={alt}
+                              className="rounded-2xl shadow-xl max-w-full h-auto cursor-zoom-in group-hover:scale-[1.02] transition-all duration-500"
+                              onClick={() => window.open(src, '_blank')}
+                            />
+                          </div>
+                          <div className="flex flex-wrap justify-center gap-4 w-full pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-full gap-2 bg-white dark:bg-black border-primary/20 hover:bg-primary/5 shadow-md px-4"
+                              onClick={() => window.open(src, '_blank')}
+                            >
+                              <Maximize2 className="w-4 h-4 text-primary" />
+                              <span className="font-bold text-xs">مشاهده اصلی</span>
+                            </Button>
+                            <a href={src} target="_blank" rel="noopener noreferrer" className="no-underline">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="rounded-full gap-2 shadow-lg px-4 hover:scale-105 transition-transform"
+                              >
+                                <Download className="w-4 h-4" />
+                                <span className="font-bold text-xs">دانلود فایل</span>
+                              </Button>
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return <span key={i}>{part}</span>;
+                  })}
+                </div>
               )}
             </div>
           </DialogContent>

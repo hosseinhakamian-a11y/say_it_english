@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
     Calendar, CheckCircle, Clock, Share2,
     BookOpen, HelpCircle, MessageSquare,
-    ListVideo, Play, Loader2, ArrowLeft, Lock, Crown
+    ListVideo, Play, Loader2, ArrowLeft, Lock, Crown, Download, Maximize2, Image as ImageIcon
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
@@ -186,9 +186,69 @@ export default function VideoDetailPage() {
 
                                 <TabsContent value="description" className="p-6">
                                     <div className="prose prose-lg dark:prose-invert max-w-none dir-rtl">
-                                        <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
-                                            {video.description || "توضیحاتی برای این ویدیو ثبت نشده است."}
-                                        </p>
+                                        <div className="space-y-8">
+                                            {video.description?.split('##').map((section: string, idx: number) => {
+                                                if (!section.trim()) return null;
+                                                const lines = section.trim().split('\n');
+                                                const title = lines[0].trim();
+                                                const content = lines.slice(1).join('\n').trim();
+
+                                                return (
+                                                    <div key={idx} className={idx > 0 ? "pt-4" : ""}>
+                                                        {idx > 0 && (
+                                                            <h3 className="text-xl font-bold mb-4 text-foreground border-b border-primary/20 pb-2">
+                                                                {title}
+                                                            </h3>
+                                                        )}
+                                                        <div className="whitespace-pre-wrap leading-relaxed text-muted-foreground text-base">
+                                                            {(idx === 0 ? section.trim() : content).split(/(!\[.*?\]\(.*?\))/g).map((part, i) => {
+                                                                const match = part.trim().match(/!\[(.*?)\]\((.*?)\)/);
+                                                                if (match) {
+                                                                    const [, alt, src] = match;
+                                                                    return (
+                                                                        <div key={i} className="my-10 flex flex-col items-center gap-5 bg-muted/10 p-6 rounded-[2rem] border-2 border-primary/10 shadow-xl overflow-hidden" dir="ltr">
+                                                                            <div className="relative group w-full flex justify-center">
+                                                                                <img
+                                                                                    src={src}
+                                                                                    alt={alt}
+                                                                                    className="rounded-[1.5rem] shadow-2xl max-w-full h-auto cursor-zoom-in group-hover:scale-[1.02] transition-all duration-500"
+                                                                                    onClick={() => window.open(src, '_blank')}
+                                                                                />
+                                                                            </div>
+                                                                            <div className="flex flex-wrap justify-center gap-4 w-full pt-2">
+                                                                                <Button
+                                                                                    variant="outline"
+                                                                                    size="lg"
+                                                                                    className="rounded-full gap-3 bg-white dark:bg-black border-primary/20 hover:bg-primary/5 shadow-md px-6"
+                                                                                    onClick={() => window.open(src, '_blank')}
+                                                                                >
+                                                                                    <Maximize2 className="w-5 h-5 text-primary" />
+                                                                                    <span className="font-bold text-sm">مشاهده با کیفیت اصلی</span>
+                                                                                </Button>
+                                                                                <a href={src} target="_blank" rel="noopener noreferrer" className="no-underline">
+                                                                                    <Button
+                                                                                        variant="default"
+                                                                                        size="lg"
+                                                                                        className="rounded-full gap-3 shadow-lg px-6 hover:scale-105 transition-transform"
+                                                                                    >
+                                                                                        <Download className="w-5 h-5" />
+                                                                                        <span className="font-bold text-sm">دانلود رایگان فایل</span>
+                                                                                    </Button>
+                                                                                </a>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return <span key={i}>{part}</span>;
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {!video.description && (
+                                                <p className="text-muted-foreground italic">توضیحاتی برای این ویدیو ثبت نشده است.</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </TabsContent>
 
