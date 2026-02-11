@@ -219,29 +219,39 @@ export default function Profile() {
                   </div>
                 ) : purchases && purchases.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {purchases.map((course: any) => (
-                      <Link key={course.id} href={`/videos/${course.id}`}>
-                        <div className="group cursor-pointer bg-card border rounded-2xl overflow-hidden hover:shadow-lg transition-all border-border/50">
-                          <div className="aspect-video relative overflow-hidden">
-                            <img
-                              src={course.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'}
-                              alt={course.title}
-                              className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
-                            />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <PlayCircle className="w-12 h-12 text-white" />
+                    {purchases.map((course: any) => {
+                      let thumb = course.thumbnailUrl;
+                      if (!thumb && course.videoProvider === 'youtube' && course.videoId) {
+                        thumb = `https://img.youtube.com/vi/${course.videoId}/maxresdefault.jpg`;
+                      }
+                      const href = course.type === 'course' ? `/course/${course.contentId}` : `/videos/${course.contentId}`;
+
+                      return (
+                        <Link key={course.contentId} href={href}>
+                          <div className="group cursor-pointer bg-card border rounded-2xl overflow-hidden hover:shadow-lg transition-all border-border/50">
+                            <div className="aspect-video relative overflow-hidden">
+                              <img
+                                src={thumb || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'}
+                                alt={course.title}
+                                className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
+                              />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <PlayCircle className="w-12 h-12 text-white" />
+                              </div>
+                            </div>
+                            <div className="p-4">
+                              <h3 className="font-bold group-hover:text-primary transition-colors line-clamp-1">{course.title || `دوره #${course.contentId}`}</h3>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                  {course.level === 'beginner' ? 'مبتدی' : course.level === 'intermediate' ? 'متوسط' : 'پیشرفته'}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">خریداری شده</span>
+                              </div>
                             </div>
                           </div>
-                          <div className="p-4">
-                            <h3 className="font-bold group-hover:text-primary transition-colors line-clamp-1">{course.title}</h3>
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">{course.level === 'beginner' ? 'مبتدی' : 'متوسط'}</span>
-                              <span className="text-[10px] text-muted-foreground">خریداری شده</span>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl">

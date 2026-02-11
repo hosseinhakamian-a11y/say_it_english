@@ -55,12 +55,12 @@ export interface IStorage {
   
   // Payments
   createPayment(payment: InsertPayment): Promise<Payment>;
-  getPayments(): Promise<Payment[]>;
+  getPayments(): Promise<any[]>;
   updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined>;
   
   // Purchases
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
-  getUserPurchases(userId: number): Promise<Purchase[]>;
+  getUserPurchases(userId: number): Promise<any[]>;
   
   // Payment Settings
   getPaymentSettings(): Promise<{ bankCards: any[]; cryptoWallets: any[] }>;
@@ -183,8 +183,25 @@ export class DatabaseStorage implements IStorage {
     return p;
   }
 
-  async getPayments(): Promise<Payment[]> {
-    return await db.select().from(payments).orderBy(desc(payments.createdAt));
+  async getPayments(): Promise<any[]> {
+    const results = await db
+      .select({
+        payment: payments,
+        username: users.username,
+        phone: users.phone,
+        contentTitle: content.title
+      })
+      .from(payments)
+      .leftJoin(users, eq(payments.userId, users.id))
+      .leftJoin(content, eq(payments.contentId, content.id))
+      .orderBy(desc(payments.createdAt));
+    
+    return results.map(r => ({
+      ...r.payment,
+      username: r.username,
+      phone: r.phone,
+      contentTitle: r.contentTitle
+    }));
   }
 
   async updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined> {
@@ -201,8 +218,28 @@ export class DatabaseStorage implements IStorage {
     return p;
   }
 
-  async getUserPurchases(userId: number): Promise<Purchase[]> {
-    return await db.select().from(purchases).where(eq(purchases.userId, userId));
+  async getUserPurchases(userId: number): Promise<any[]> {
+    const results = await db
+      .select({
+        purchase: purchases,
+        content: content
+      })
+      .from(purchases)
+      .leftJoin(content, eq(purchases.contentId, content.id))
+      .where(eq(purchases.userId, userId));
+    
+    // Use a Map to ensure distinct content
+    const distinctPurchases = new Map();
+    results.forEach(r => {
+      if (!distinctPurchases.has(r.purchase.contentId)) {
+        distinctPurchases.set(r.purchase.contentId, {
+          ...r.purchase,
+          ...r.content
+        });
+      }
+    });
+    
+    return Array.from(distinctPurchases.values());
   }
 
   // ===== Payment Settings =====

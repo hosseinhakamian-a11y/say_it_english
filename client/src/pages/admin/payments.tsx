@@ -26,6 +26,9 @@ interface Payment {
     status: string;
     notes: string | null;
     createdAt: string;
+    username?: string;
+    phone?: string;
+    contentTitle?: string;
 }
 
 export default function AdminPayments() {
@@ -254,10 +257,18 @@ export default function AdminPayments() {
                                                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
                                                         U{payment.userId}
                                                     </div>
-                                                    <span>کاربر #{payment.userId}</span>
+                                                    <div className="flex flex-col">
+                                                        <span>{payment.phone || payment.username || `کاربر #${payment.userId}`}</span>
+                                                        <span className="text-[10px] text-muted-foreground">ID: {payment.userId}</span>
+                                                    </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>دوره #{payment.contentId}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{payment.contentTitle || `دوره #${payment.contentId}`}</span>
+                                                    <span className="text-[10px] text-muted-foreground">ID: {payment.contentId}</span>
+                                                </div>
+                                            </TableCell>
                                             <TableCell className="font-bold text-green-600">
                                                 {formatPrice(payment.amount)}
                                             </TableCell>
