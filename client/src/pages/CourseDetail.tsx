@@ -90,7 +90,7 @@ export default function CourseDetail() {
                                 </div>
                             </div>
 
-                            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight gradient-text">
+                            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight text-foreground">
                                 {course.title}
                             </h1>
 
