@@ -167,7 +167,7 @@ export default function CourseDetail() {
                                 <div className="relative">
                                     <div className="grid gap-4 sm:grid-cols-1">
                                         {course.metadata.vocabulary.slice(0, hasPurchased ? undefined : 2).map((vocab: any, idx: number) => (
-                                            <div key={idx} className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors group">
+                                            <div key={idx} className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors group text-left" dir="ltr">
                                                 <div className="flex justify-between items-start">
                                                     <div className="space-y-1">
                                                         <div className="flex items-center gap-3 flex-wrap">
@@ -194,7 +194,7 @@ export default function CourseDetail() {
 
                                                 <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2" dir="rtl">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
                                                     <p className="text-foreground font-medium text-base">{vocab.meaning}</p>
                                                 </div>
