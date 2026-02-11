@@ -221,7 +221,8 @@ export default function Profile() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {purchases.map((course: any) => {
                       let thumb = course.thumbnailUrl;
-                      if (!thumb && course.videoProvider === 'youtube' && course.videoId) {
+                      const provider = course.videoProvider?.toLowerCase().trim();
+                      if (!thumb && provider === 'youtube' && course.videoId) {
                         thumb = `https://img.youtube.com/vi/${course.videoId}/maxresdefault.jpg`;
                       }
                       const href = course.type === 'course' ? `/course/${course.contentId}` : `/videos/${course.contentId}`;

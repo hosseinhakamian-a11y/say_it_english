@@ -231,10 +231,13 @@ export class DatabaseStorage implements IStorage {
     // Use a Map to ensure distinct content
     const distinctPurchases = new Map();
     results.forEach(r => {
-      if (!distinctPurchases.has(r.purchase.contentId)) {
+      // ONLY include if content exists and user has purchased it
+      if (r.content && !distinctPurchases.has(r.purchase.contentId)) {
         distinctPurchases.set(r.purchase.contentId, {
           ...r.purchase,
-          ...r.content
+          ...r.content,
+          id: r.content.id, // Explicitly use content ID as primary ID for the card
+          contentId: r.purchase.contentId // Ensure contentId is preserved
         });
       }
     });

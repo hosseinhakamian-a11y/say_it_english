@@ -134,8 +134,8 @@ export default function ContentLibrary() {
             <div className="absolute inset-0">
               {(() => {
                 let thumb = item.thumbnailUrl;
-                // Auto-use YouTube thumbnail if no custom one exists and it's a youtube video
-                if (!thumb && item.videoProvider === 'youtube' && item.videoId) {
+                const provider = item.videoProvider?.toLowerCase().trim();
+                if (!thumb && provider === 'youtube' && item.videoId) {
                   thumb = `https://img.youtube.com/vi/${item.videoId}/maxresdefault.jpg`;
                 }
 
