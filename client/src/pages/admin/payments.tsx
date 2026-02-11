@@ -56,6 +56,7 @@ export default function AdminPayments() {
                 title: status === "approved" ? "پرداخت تأیید شد ✅" : "پرداخت رد شد ❌",
             });
             queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
         },
     });
 

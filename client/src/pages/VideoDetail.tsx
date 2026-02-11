@@ -106,7 +106,7 @@ export default function VideoDetailPage() {
     const metadata = (video.metadata || {}) as VideoMetadata;
     const hasLearningMaterials = metadata.vocabulary?.length || metadata.quiz?.length || metadata.phrases?.length;
     const isPremium = video.isPremium;
-    const hasPurchased = purchases?.some(p => p.contentId === videoId) || false;
+    const hasPurchased = purchases?.some(p => p.contentId === videoId) || user?.role === 'admin';
     const hasFullAccess = !isPremium || hasPurchased;
 
     // Free preview limits
