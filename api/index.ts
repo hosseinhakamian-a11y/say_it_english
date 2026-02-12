@@ -5,6 +5,9 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
+// Static imports are now safe because storage-lite uses lazy DB connection
+import { storage } from "../server/storage-lite";
+
 const scryptAsync = promisify(scrypt);
 
 // ============ SMS HELPER ============
@@ -33,7 +36,7 @@ async function comparePasswords(supplied: string, stored: string) {
 
 // ============ MAIN HANDLER ============
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Safe CORS mirroring
+  // CORS configuration
   const origin = req.headers.origin || '*';
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -45,9 +48,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // CRITICAL: Lazy load storage to prevent top-level initialization crashes
-    const { storage } = await import("../server/storage-lite");
-    
     const method = req.method;
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const pathname = url.pathname;
@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ============ HEALTH CHECK ============
     if (pathname === '/api/health') {
-      return res.status(200).json({ status: 'ok', env: process.env.NODE_ENV, hasDb: !!process.env.DATABASE_URL });
+      return res.status(200).json({ status: 'ok', hasDb: !!process.env.DATABASE_URL });
     }
 
     // ---- AUTH CHECK ----
@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ============ AUTH ENDPOINTS ============
     if (pathname === '/api/user' && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
-      const { password: _, otp, otpExpires, ...safeUser } = currentUser;
+      const { password: _, otp: __, otpExpires: ___, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
     }
 
@@ -176,33 +176,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(safeUser);
     }
 
-    // ============ CONTENT & REVIEWS ============
+    // ============ CONTENT ============
     if (pathname === '/api/content' && method === 'GET') {
       const items = await storage.getContent();
       return res.status(200).json(items);
-    }
-
-    if (pathname === '/api/reviews') {
-      if (method === 'GET') {
-        const contentId = parseInt(url.searchParams.get('contentId') || '0');
-        const result = await storage.getReviews(contentId);
-        return res.status(200).json(result);
-      }
-      if (method === 'POST') {
-        if (!currentUser) return res.status(401).json({ error: 'Login required' });
-        await storage.createReview({ userId: currentUser.id, ...(body as any) });
-        return res.status(200).json({ success: true });
-      }
     }
 
     // Fallback
     return res.status(404).json({ error: "Route not found", path: pathname });
 
   } catch (error: any) {
-    console.error("Critical API Error:", error);
+    console.error("API Error Details:", error);
     return res.status(500).json({ 
       error: "Internal Server Error", 
-      message: error.message || "An unknown error occurred"
+      message: error.message || "Unknown error"
     });
   }
 }
