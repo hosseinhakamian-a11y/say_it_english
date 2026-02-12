@@ -181,6 +181,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(user);
     }
 
+    // ============ PROFILE UPDATES ============
+    if (pathname === '/api/profile' && method === 'PATCH') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+
+      const { firstName, lastName, birthDate, bio } = body;
+      
+      // Update basic info
+      await db.update(users).set({ 
+        firstName, 
+        lastName, 
+        birthDate: birthDate ? new Date(birthDate).toISOString() : null, 
+        bio 
+      }).where(eq(users.id, currentUser.id));
+
+      return res.status(200).json({ success: true, message: "پروفایل آپدیت شد" });
+    }
+
+    if (pathname === '/api/profile/password' && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { currentPassword, newPassword } = body;
+
+      // Logic: If user has a password set, verify it first
+      if (currentUser.password) {
+         if (!currentPassword || !(await comparePasswords(currentPassword, currentUser.password))) {
+             return res.status(400).send("رمز عبور فعلی اشتباه است");
+         }
+      }
+
+      // Hash new password
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      await db.update(users).set({ password: hashedPassword }).where(eq(users.id, currentUser.id));
+      return res.status(200).json({ success: true, message: "رمز عبور تغییر کرد" });
+    }
+
     if (pathname === '/api/logout' && method === 'POST') {
       if (currentUser) {
         await db.update(users).set({ sessionToken: null }).where(eq(users.id, currentUser.id));
