@@ -18,10 +18,10 @@ export async function getDb() {
 
   const pool = new Pool({
     connectionString,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
-    max: 1, // Highly recommended for Serverless to avoid connection exhaustion
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    ssl: { rejectUnauthorized: false }, // Force SSL for Supabase/Neon in production
+    max: 1,
+    idleTimeoutMillis: 10000, // Close idle connections faster
+    connectionTimeoutMillis: 10000, // Give more time for cold connections
   });
 
   dbInstance = drizzle(pool, { schema });

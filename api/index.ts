@@ -1,19 +1,26 @@
 
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 
-// Static imports are now safe because storage-lite uses lazy DB connection
-import { storage } from "../server/storage-lite";
-
 const scryptAsync = promisify(scrypt);
 
+// ============ PASSWORD UTILS ============
+async function comparePasswords(supplied: string, stored: string) {
+  if (!supplied || !stored || !stored.includes('.')) return false;
+  const [hashed, salt] = stored.split('.');
+  const hashedBuf = Buffer.from(hashed, 'hex');
+  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
+}
+
 // ============ SMS HELPER ============
-function sendSMS(phone: string, message: string) {
+function sendSMS(phone: string, otp: string) {
   const apiKey = process.env.SMS_API_KEY;
-  if (!apiKey) return;
+  if (!apiKey) {
+    console.warn("SMS_API_KEY missing, OTP would be:", otp);
+    return;
+  }
   
   fetch("https://api.sms.ir/v1/send/verify", {
     method: "POST",
@@ -21,24 +28,18 @@ function sendSMS(phone: string, message: string) {
     body: JSON.stringify({
       mobile: phone,
       templateId: parseInt(process.env.SMS_TEMPLATE_ID || "100000"),
-      parameters: [{ name: "MESSAGE", value: message }]
+      parameters: [{ name: "MESSAGE", value: otp }]
     })
-  }).catch(e => console.error("SMS Error (Background):", e));
-}
-
-// ============ PASSWORD UTILS ============
-async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split('.');
-  const hashedBuf = Buffer.from(hashed, 'hex');
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  }).catch(e => console.error("SMS Error:", e));
 }
 
 // ============ MAIN HANDLER ============
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS configuration
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
+  // CORS Fix: Origin must be dynamic if credentials are used
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
@@ -48,77 +49,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Lazy Load storage ONLY inside the handler to prevent early crashes
+    const { storage } = await import("../server/storage-lite");
+    
     const method = req.method;
-    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
     const pathname = url.pathname;
     const body = req.body || {};
 
-    // ============ HEALTH CHECK ============
+    // 1. Health Check (Independent of heavy logic)
     if (pathname === '/api/health') {
-      return res.status(200).json({ status: 'ok', hasDb: !!process.env.DATABASE_URL });
+      return res.status(200).json({ status: 'ok', time: new Date().toISOString() });
     }
 
-    // ---- AUTH CHECK ----
+    // 2. Get Current User (Session check)
     const cookies = req.headers.cookie || '';
-    const sessionToken = cookies.split(';').find((c: string) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
+    const sessionToken = cookies.split(';').find((c) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
     let currentUser = null;
     if (sessionToken) {
       currentUser = await storage.getUserBySessionToken(sessionToken);
     }
 
-    // ============ AUTH ENDPOINTS ============
+    // --- User Route ---
     if (pathname === '/api/user' && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
       const { password: _, otp: __, otpExpires: ___, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
     }
 
-    if (pathname === '/api/login' && method === 'POST') {
-      const { username, password, rememberMe } = body;
-      const user = await storage.getUserByUsername(username);
-
-      if (!user || !user.password || !(await comparePasswords(password, user.password))) {
-        return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
-      }
-
-      const newToken = randomBytes(32).toString('hex');
-      await storage.updateUserSession(user.id, newToken);
-      await storage.checkAndUpdateStreak(user.id).catch(() => {});
-
-      const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
-      res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
-
-      const { password: _, ...safeUser } = user;
-      return res.status(200).json(safeUser);
-    }
-
-    if (pathname === '/api/register' && method === 'POST') {
-      const { username, password } = body;
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) return res.status(400).json({ error: 'نام کاربری قبلاً انتخاب شده است' });
-
-      const salt = randomBytes(16).toString('hex');
-      const hashed = (await scryptAsync(password, salt, 64)) as Buffer;
-      const hashedPassword = `${hashed.toString('hex')}.${salt}`;
-
-      const newToken = randomBytes(32).toString('hex');
-      const insertUser = {
-        ...body,
-        password: hashedPassword,
-        sessionToken: newToken,
-        role: 'user',
-        level: 'beginner'
-      };
-      
-      const newUser = await storage.createUser(insertUser as any);
-      await storage.checkAndUpdateStreak(newUser.id).catch(() => {});
-
-      res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${604800}; Path=/`);
-      const { password: _, ...safeUser } = newUser;
-      return res.status(201).json(safeUser);
-    }
-
-    // ============ OTP ENDPOINTS ============
+    // --- OTP Request ---
     if (pathname === '/api/auth/otp/request' && method === 'POST') {
       const { phone } = body;
       if (!phone) return res.status(400).json({ error: "شماره موبایل الزامی است" });
@@ -135,8 +94,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           username: `user_${phone}`,
           phone,
           role: isAdmin ? "admin" : "user",
-          firstName: null,
-          lastName: null,
+          firstName: '',
+          lastName: '',
           password: null,
           sessionToken: null
         } as any);
@@ -149,9 +108,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       sendSMS(phone, otp);
-      return res.status(200).json({ message: "OTP sent" });
+      return res.status(200).json({ message: "کد تایید ارسال شد" });
     }
 
+    // --- OTP Verify ---
     if (pathname === '/api/auth/otp/verify' && method === 'POST') {
       const { phone, otp, rememberMe } = body;
       if (!phone || !otp) return res.status(400).json({ error: "اطلاعات ناقص است" });
@@ -176,20 +136,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(safeUser);
     }
 
-    // ============ CONTENT ============
+    // --- Login (Password) ---
+    if (pathname === '/api/login' && method === 'POST') {
+      const { username, password, rememberMe } = body;
+      const user = await storage.getUserByUsername(username);
+
+      if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+        return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
+      }
+
+      const newToken = randomBytes(32).toString('hex');
+      await storage.updateUserSession(user.id, newToken);
+      await storage.checkAndUpdateStreak(user.id).catch(() => {});
+
+      const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+      res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
+
+      const { password: _, ...safeUser } = user;
+      return res.status(200).json(safeUser);
+    }
+
+    // --- Logout ---
+    if (pathname === '/api/logout' && method === 'POST') {
+      if (currentUser) await storage.updateUserSession(currentUser.id, null);
+      res.setHeader('Set-Cookie', 'session=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/');
+      return res.status(200).json({ success: true });
+    }
+
+    // --- Content ---
     if (pathname === '/api/content' && method === 'GET') {
       const items = await storage.getContent();
       return res.status(200).json(items);
     }
 
-    // Fallback
-    return res.status(404).json({ error: "Route not found", path: pathname });
+    return res.status(404).json({ error: 'Route not found' });
 
-  } catch (error: any) {
-    console.error("API Error Details:", error);
+  } catch (err: any) {
+    console.error("Critical Runtime Error:", err);
     return res.status(500).json({ 
-      error: "Internal Server Error", 
-      message: error.message || "Unknown error"
+      error: "خطای داخلی سرور", 
+      message: err.message 
     });
   }
 }
