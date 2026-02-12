@@ -25,51 +25,61 @@ import {
   type Review,
   type InsertReview,
 } from "../shared/schema";
-import { db } from "./db";
+import { getDb } from "./db-lazy";
 import { eq, desc, and } from "drizzle-orm";
 
 export class LiteStorage {
   // ===== Users =====
   async getUser(id: number): Promise<User | undefined> {
+    const db = await getDb();
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    const db = await getDb();
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
 
   async getUserByPhone(phone: string): Promise<User | undefined> {
+    const db = await getDb();
     const [user] = await db.select().from(users).where(eq(users.phone, phone));
     return user;
   }
 
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const db = await getDb();
     const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
     return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    const db = await getDb();
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async updateUser(id: number, updateUser: Partial<User>): Promise<User> {
+    const db = await getDb();
     const [user] = await db.update(users).set(updateUser).where(eq(users.id, id)).returning();
     return user;
   }
 
   async getAllUsers(): Promise<User[]> {
+    const db = await getDb();
     return await db.select().from(users).orderBy(desc(users.createdAt));
   }
 
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
+    const db = await getDb();
     const [user] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
     return user;
   }
 
   async checkAndUpdateStreak(userId: number): Promise<User | undefined> {
+    // This calls getUser internally, which calls getDb(), so it's fine.
+    // The update logic also needs db.
     const user = await this.getUser(userId);
     if (!user) return undefined;
 
@@ -96,6 +106,7 @@ export class LiteStorage {
       newStreak = 1;
     }
 
+    const db = await getDb();
     const [updatedUser] = await db.update(users)
       .set({ 
         streak: newStreak, 
@@ -108,79 +119,95 @@ export class LiteStorage {
   }
 
   async getUserBySessionToken(sessionToken: string): Promise<User | undefined> {
+    const db = await getDb();
     const [user] = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
     return user;
   }
 
   async updateUserSession(userId: number, sessionToken: string | null): Promise<void> {
+    const db = await getDb();
     await db.update(users).set({ sessionToken }).where(eq(users.id, userId));
   }
 
   // ===== Content =====
   async getContent(): Promise<Content[]> {
+    const db = await getDb();
     return await db.select().from(content).orderBy(desc(content.createdAt));
   }
 
   async getContentById(id: number): Promise<Content | undefined> {
+    const db = await getDb();
     const [c] = await db.select().from(content).where(eq(content.id, id));
     return c;
   }
 
   async createContent(insertContent: InsertContent): Promise<Content> {
+    const db = await getDb();
     const [c] = await db.insert(content).values(insertContent).returning();
     return c;
   }
 
   async updateContent(id: number, updateContent: Partial<Content>): Promise<Content | undefined> {
+    const db = await getDb();
     const [c] = await db.update(content).set(updateContent).where(eq(content.id, id)).returning();
     return c;
   }
 
   async deleteContent(id: number): Promise<void> {
+    const db = await getDb();
     await db.delete(content).where(eq(content.id, id));
   }
 
   // ===== Time Slots =====
   async getSlots(): Promise<TimeSlot[]> {
+    const db = await getDb();
     return await db.select().from(timeSlots).orderBy(timeSlots.date);
   }
 
   async createSlot(slot: InsertTimeSlot): Promise<TimeSlot> {
+    const db = await getDb();
     const [s] = await db.insert(timeSlots).values(slot).returning();
     return s;
   }
 
   async deleteSlot(id: number): Promise<void> {
+    const db = await getDb();
     await db.delete(timeSlots).where(eq(timeSlots.id, id));
   }
 
   async bookSlot(id: number): Promise<TimeSlot | undefined> {
+    const db = await getDb();
     const [s] = await db.update(timeSlots).set({ isBooked: true }).where(eq(timeSlots.id, id)).returning();
     return s;
   }
 
   // ===== Bookings =====
   async getBookings(userId: number): Promise<Booking[]> {
+    const db = await getDb();
     return await db.select().from(bookings).where(eq(bookings.userId, userId)).orderBy(desc(bookings.date));
   }
 
   async createBooking(booking: InsertBooking): Promise<Booking> {
+    const db = await getDb();
     const [b] = await db.insert(bookings).values(booking).returning();
     return b;
   }
 
   // ===== Classes =====
   async getClasses(): Promise<Class[]> {
+    const db = await getDb();
     return await db.select().from(classes);
   }
 
   // ===== Payments =====
   async createPayment(payment: InsertPayment): Promise<Payment> {
+    const db = await getDb();
     const [p] = await db.insert(payments).values(payment).returning();
     return p;
   }
 
   async getPayments(): Promise<any[]> {
+    const db = await getDb();
     const results = await db
       .select({
         payment: payments,
@@ -202,6 +229,7 @@ export class LiteStorage {
   }
 
   async updatePaymentStatus(id: number, status: string, notes?: string): Promise<Payment | undefined> {
+    const db = await getDb();
     const [p] = await db.update(payments)
       .set({ status, notes })
       .where(eq(payments.id, id))
@@ -211,11 +239,13 @@ export class LiteStorage {
 
   // ===== Purchases =====
   async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
+    const db = await getDb();
     const [p] = await db.insert(purchases).values(purchase).returning();
     return p;
   }
 
   async getUserPurchases(userId: number): Promise<any[]> {
+    const db = await getDb();
     const results = await db
       .select({
         purchase: purchases,
@@ -242,6 +272,7 @@ export class LiteStorage {
 
   // ===== Payment Settings =====
   async getPaymentSettings(): Promise<{ bankCards: any[]; cryptoWallets: any[] }> {
+    const db = await getDb();
     const settings = await db.select().from(paymentSettings);
     const bankCardsRow = settings.find(s => s.key === "bank_cards");
     const cryptoRow = settings.find(s => s.key === "crypto_wallets");
@@ -252,6 +283,7 @@ export class LiteStorage {
   }
 
   async updatePaymentSettings(settings: { bankCards?: any[]; cryptoWallets?: any[] }): Promise<{ bankCards: any[]; cryptoWallets: any[] }> {
+    const db = await getDb();
     if (settings.bankCards !== undefined) {
       await db.insert(paymentSettings)
         .values({ key: "bank_cards", value: settings.bankCards })
@@ -273,6 +305,7 @@ export class LiteStorage {
 
   // ===== Reviews =====
   async getReviews(contentId: number): Promise<{ reviews: any[], stats: { total: number, avg: number } }> {
+    const db = await getDb();
     const result = await db.select({
       id: reviews.id,
       userId: reviews.userId,
@@ -299,21 +332,25 @@ export class LiteStorage {
   }
 
   async createReview(review: InsertReview): Promise<Review> {
+    const db = await getDb();
     const [r] = await db.insert(reviews).values(review).returning();
     return r;
   }
 
   async updateReview(userId: number, contentId: number, rating: number, comment: string): Promise<void> {
+    const db = await getDb();
     await db.update(reviews)
       .set({ rating, comment, createdAt: new Date() })
       .where(and(eq(reviews.userId, userId), eq(reviews.contentId, contentId)));
   }
 
   async deleteReview(reviewId: number): Promise<void> {
+    const db = await getDb();
     await db.delete(reviews).where(eq(reviews.id, reviewId));
   }
 
   async getReviewById(reviewId: number): Promise<Review | undefined> {
+    const db = await getDb();
     const [r] = await db.select().from(reviews).where(eq(reviews.id, reviewId));
     return r;
   }
