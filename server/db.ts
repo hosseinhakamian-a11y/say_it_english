@@ -6,15 +6,14 @@ const { Pool } = pg;
 const connectionString = process.env.DATABASE_URL || "";
 
 if (!connectionString) {
-  console.error("DATABASE_URL is missing in environment variables!");
+  throw new Error("DATABASE_URL is missing in environment variables!");
 }
 
 export const pool = new Pool({
   connectionString,
-  ssl: { rejectUnauthorized: false }, // Supabase requires SSL always
-  max: 1, // Limit to 1 connection per lambda instance
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  ssl: { rejectUnauthorized: false }, 
+  max: 3, // slightly relaxed for better throughput
+  connectionTimeoutMillis: 10000, // increased timeout
 });
 
 // Logs for connection errors
