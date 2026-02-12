@@ -230,8 +230,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(await db.select().from(content).orderBy(desc(content.createdAt)));
     }
 
-    return res.status(404).json({ error: 'Not Found' });
+    // ... endpoints ...
+
+    // DEBUG: Log for unmatched routes
+    console.log(`[API 404] Method: ${method}, URL: ${req.url}, Path: ${pathname}`);
+    
+    return res.status(404).json({ 
+      error: 'Not Found (No matching route)',
+      debug: {
+        received_method: method,
+        received_url: req.url,
+        parsed_pathname: pathname,
+        host: req.headers.host
+      }
+    });
+
   } catch (err: any) {
+    console.error("[API ERROR]", err);
     return res.status(500).json({ error: "Server Error", message: err.message });
   }
 }
