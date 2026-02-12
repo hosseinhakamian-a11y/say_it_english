@@ -20,9 +20,12 @@ import {
   type InsertPayment,
   type Purchase,
   type InsertPurchase,
+  reviews,
+  type Review,
+  type InsertReview,
 } from "../shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -38,6 +41,8 @@ export interface IStorage {
   updateUser(id: number, user: Partial<User>): Promise<User>;
   getAllUsers(): Promise<User[]>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  getUserBySessionToken(sessionToken: string): Promise<User | undefined>;
+  updateUserSession(userId: number, sessionToken: string | null): Promise<void>;
   
   // Content
   getContent(): Promise<Content[]>;
@@ -66,6 +71,13 @@ export interface IStorage {
   getPaymentSettings(): Promise<{ bankCards: any[]; cryptoWallets: any[] }>;
   updatePaymentSettings(settings: { bankCards?: any[]; cryptoWallets?: any[] }): Promise<{ bankCards: any[]; cryptoWallets: any[] }>;
   
+  // Reviews
+  getReviews(contentId: number): Promise<{ reviews: any[], stats: { total: number, avg: number } }>;
+  createReview(review: InsertReview): Promise<Review>;
+  updateReview(userId: number, contentId: number, rating: number, comment: string): Promise<void>;
+  deleteReview(reviewId: number): Promise<void>;
+  getReviewById(reviewId: number): Promise<Review | undefined>;
+
   sessionStore: session.Store;
 }
 
@@ -117,6 +129,15 @@ export class DatabaseStorage implements IStorage {
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
     const [user] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
     return user;
+  }
+
+  async getUserBySessionToken(sessionToken: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
+    return user;
+  }
+
+  async updateUserSession(userId: number, sessionToken: string | null): Promise<void> {
+    await db.update(users).set({ sessionToken }).where(eq(users.id, userId));
   }
 
   // ===== Content =====
@@ -274,6 +295,53 @@ export class DatabaseStorage implements IStorage {
         });
     }
     return this.getPaymentSettings();
+  }
+
+  // ===== Reviews =====
+  async getReviews(contentId: number): Promise<{ reviews: any[], stats: { total: number, avg: number } }> {
+    const result = await db.select({
+      id: reviews.id,
+      userId: reviews.userId,
+      contentId: reviews.contentId,
+      rating: reviews.rating,
+      comment: reviews.comment,
+      createdAt: reviews.createdAt,
+      user: {
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        avatar: users.avatar
+      }
+    })
+    .from(reviews)
+    .innerJoin(users, eq(reviews.userId, users.id))
+    .where(eq(reviews.contentId, contentId))
+    .orderBy(desc(reviews.createdAt));
+
+    const total = result.length;
+    const avg = total > 0 ? result.reduce((acc, curr) => acc + curr.rating, 0) / total : 0;
+
+    return { reviews: result, stats: { total, avg } };
+  }
+
+  async createReview(review: InsertReview): Promise<Review> {
+    const [r] = await db.insert(reviews).values(review).returning();
+    return r;
+  }
+
+  async updateReview(userId: number, contentId: number, rating: number, comment: string): Promise<void> {
+    await db.update(reviews)
+      .set({ rating, comment, createdAt: new Date() })
+      .where(and(eq(reviews.userId, userId), eq(reviews.contentId, contentId)));
+  }
+
+  async deleteReview(reviewId: number): Promise<void> {
+    await db.delete(reviews).where(eq(reviews.id, reviewId));
+  }
+
+  async getReviewById(reviewId: number): Promise<Review | undefined> {
+    const [r] = await db.select().from(reviews).where(eq(reviews.id, reviewId));
+    return r;
   }
 }
 
