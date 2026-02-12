@@ -159,7 +159,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true });
     }
 
-    // ================== UPLOAD LINK ==================
+    // ============ UPLOAD LINK ============
     if (pathname.includes('/upload-link')) {
       const fileName = url.searchParams.get('fileName');
       const contentType = url.searchParams.get('contentType');
@@ -174,6 +174,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
         return res.status(200).json({ uploadUrl, fileKey });
       }
+    }
+
+    // ============ OTP ROUTES ============
+    if (pathname === '/api/auth/otp/request' && method === 'POST') {
+      const { phone } = req.body;
+      if (!phone) return res.status(400).json({ error: "شماره موبایل الزامی است" });
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+
+      let user = await storage.getUserByPhone(phone);
+      
+      const ADMIN_PHONES = ["09222453571", "09123104254"];
+      const isAdmin = ADMIN_PHONES.includes(phone);
+
+      if (!user) {
+        user = await storage.createUser({
+          username: `user_${phone}`,
+          phone,
+          role: isAdmin ? "admin" : "user",
+          firstName: null,
+          lastName: null,
+          password: null, // No password initially
+          sessionToken: null
+        } as InsertUser);
+      }
+      
+      // Update OTP
+      await storage.updateUser(user.id, { 
+        otp, 
+        otpExpires,
+        role: isAdmin && user.role !== 'admin' ? 'admin' : user.role 
+      });
+
+      sendSMS(phone, otp);
+      return res.status(200).json({ message: "OTP sent" });
+    }
+
+    if (pathname === '/api/auth/otp/verify' && method === 'POST') {
+      const { phone, otp, rememberMe } = req.body;
+      if (!phone || !otp) return res.status(400).json({ error: "اطلاعات ناقص است" });
+
+      const user = await storage.getUserByPhone(phone);
+      if (!user) return res.status(404).json({ error: "کاربر یافت نشد" });
+
+      if (user.otp !== otp || !user.otpExpires || new Date(user.otpExpires) < new Date()) {
+        return res.status(400).json({ error: "کد تایید نامعتبر یا منقضی شده است" });
+      }
+
+      // Clear OTP
+      await storage.updateUser(user.id, { otp: null, otpExpires: null });
+
+      // Create Session
+      const newToken = randomBytes(32).toString('hex');
+      await storage.updateUserSession(user.id, newToken);
+      await storage.checkAndUpdateStreak(user.id).catch(() => {});
+
+      const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+      res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
+      
+      const { password: _, otp: __, otpExpires: ___, ...safeUser } = user;
+      return res.status(200).json(safeUser);
     }
 
     // ================== REVIEWS ROUTES ==================

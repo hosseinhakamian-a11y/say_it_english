@@ -87,10 +87,15 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true,
-    });
+    try {
+      this.sessionStore = new PostgresSessionStore({
+        pool,
+        createTableIfMissing: true,
+      });
+    } catch (error) {
+      console.warn("Session store initialization failed, falling back to MemoryStore (safe for API routes):", error);
+      this.sessionStore = new session.MemoryStore();
+    }
   }
 
   // ===== Users =====
