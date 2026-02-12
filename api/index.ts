@@ -253,10 +253,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (pathname.includes('/content') && method === 'GET') {
       try {
-        console.log("Fetching content from DB...");
-        const data = await db.select().from(content).orderBy(desc(content.createdAt));
-        console.log("Content fetched successfully, count:", data.length);
-        return res.status(200).json(data);
+        console.log("Fetching content from DB (Raw SQL)...");
+        // Using raw SQL to bypass any Drizzle ORM mapping issues on Vercel
+        const result = await pool.query(`
+          SELECT 
+            id, title, description, type, level, 
+            content_url as "contentUrl", 
+            video_id as "videoId", 
+            video_provider as "videoProvider", 
+            is_premium as "isPremium", 
+            price, 
+            thumbnail_url as "thumbnailUrl", 
+            metadata, 
+            created_at as "createdAt"
+          FROM content 
+          ORDER BY created_at DESC
+        `);
+        
+        console.log("Content fetched successfully, count:", result.rows.length);
+        return res.status(200).json(result.rows);
       } catch (err: any) {
         console.error("Error fetching content:", err);
         return res.status(500).json({ error: "Failed to fetch content", details: err.message });
