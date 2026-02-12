@@ -7,26 +7,27 @@ const { Pool } = pg;
 const connectionString = "postgresql://postgres.eomhzporbyhebawkmxyq:ManaPalm2025@aws-1-eu-north-1.pooler.supabase.com:6543/postgres";
 
 const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
+  connectionString,
+  ssl: { rejectUnauthorized: false },
 });
 
 const db = drizzle(pool);
 
 async function main() {
-    console.log("Adding new video: I can't be bothered...");
+  console.log("Adding new video: I can't be bothered...");
 
-    try {
-        const result = await pool.query(`
+  try {
+    const result = await pool.query(`
       INSERT INTO content (
         title, 
-        video_url, 
+        content_url, 
         video_id, 
         video_provider,
         description, 
         is_premium, 
-        thumbnail,
+        thumbnail_url,
         type,
+        level,
         created_at,
         metadata
       ) VALUES (
@@ -38,18 +39,19 @@ async function main() {
         false,
         'https://img.youtube.com/vi/tpzkWe3rEow/hqdefault.jpg',
         'video',
+        'intermediate',
         NOW(),
         '{"words": [{"word": "bothered", "meaning": "اذیت شدن", "pronunciation": "/bɒðəd/"}], "quiz": []}'
       )
       RETURNING id, title;
     `);
 
-        console.log("✅ Success! Added video:", result.rows[0]);
-    } catch (err) {
-        console.error("❌ Error adding video:", err);
-    } finally {
-        await pool.end();
-    }
+    console.log("✅ Success! Added video:", result.rows[0]);
+  } catch (err) {
+    console.error("❌ Error adding video:", err);
+  } finally {
+    await pool.end();
+  }
 }
 
 main();
