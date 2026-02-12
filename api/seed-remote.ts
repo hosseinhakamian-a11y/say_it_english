@@ -1,11 +1,30 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { pool } from '../server/db';
+import { Pool } from 'pg';
+
+// Create a local isolated pool to avoid any dependency issues with server/db.ts
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 1, // Minimize connections for this administrative task
+  connectionTimeoutMillis: 10000,
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   const client = await pool.connect();
+  
   try {
-    // 1. Create Table if not exists (Manual DDL to bypass local db:push failure)
-    // Matches shared/schema.ts definition
+    console.log("Starting remote seed...");
+    
+    // 1. Create Table if not exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS content (
         id SERIAL PRIMARY KEY,
@@ -30,10 +49,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    console.log("Table 'content' ensured.");
 
-    // 2. Check for duplicate to prevent double-inserting
+    // 2. Check overlap
     const check = await client.query("SELECT count(*) FROM content WHERE video_id = $1", ['tpzkWe3rEow']);
     if (parseInt(check.rows[0].count) > 0) {
+      console.log("Content already exists.");
       return res.status(200).json({ message: "Content already exists, skipping insert." });
     }
 
@@ -67,11 +88,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }'
       )
     `);
+    console.log("Data inserted.");
 
-    return res.status(200).json({ message: "Content table ensured and seed data inserted successfully! Go refresh your homepage." });
+    return res.status(200).json({ message: "Database seeded successfully!" });
 
   } catch (err: any) {
-    return res.status(500).json({ error: err.message, stack: err.stack, hint: "Check if table schema matches exactly" });
+    console.error("Seed error:", err);
+    return res.status(500).json({ error: err.message, stack: err.stack });
   } finally {
     client.release();
   }
