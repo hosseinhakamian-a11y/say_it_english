@@ -123,24 +123,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ status: 'ok', hasDb: !!process.env.DATABASE_URL });
     }
     
-    // Allow matching both "/api/user" and "/user" (in case of rewrites stripping prefix)
-    const match = (p: string) => pathname === p || pathname === p.replace('/api', '');
+    // Match helper (updated to be partial match if needed)
+    const match = (p: string) => pathname === p || pathname === p.replace('/api', '') || pathname.endsWith(p);
 
     const cookies = req.headers.cookie || '';
     const sessionToken = cookies.split(';').find((c) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
+    
     let currentUser = null;
-    if (sessionToken && sessionToken.length > 10) { 
-      const results = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
-      currentUser = results[0];
+    try {
+        if (sessionToken && sessionToken.length > 10) { 
+          const results = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
+          currentUser = results[0];
+        }
+    } catch (e) {
+        console.warn("[SESSION CHECK ERROR] ignoring...", e);
     }
 
-    if (match('/api/user') && method === 'GET') {
+    // --- ROUTING ---
+
+    if (pathname.includes('/health')) {
+      return res.status(200).json({ status: 'ok', hasDb: !!process.env.DATABASE_URL });
+    }
+
+    if (pathname.includes('/user') && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
       const { password: _, otp: __, otpExpires: ___, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
     }
 
-    if (match('/api/auth/otp/request') && method === 'POST') {
+    if (pathname.includes('/otp/request') && method === 'POST') {
       const { phone } = body;
       if (!phone) return res.status(400).json({ error: "شماره موبایل الزامی است" });
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -169,7 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: "کد ارسال شد" });
     }
 
-    if (match('/api/auth/otp/verify') && method === 'POST') {
+    if (pathname.includes('/otp/verify') && method === 'POST') {
       const { phone, otp, rememberMe } = body;
       const results = await db.select().from(users).where(eq(users.phone, phone));
       const user = results[0];
@@ -184,7 +195,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(safeUser);
     }
 
-    if (match('/api/login') && method === 'POST') {
+    if (pathname.includes('/login') && method === 'POST') {
       const { username, password, rememberMe } = body;
       const results = await db.select().from(users).where(eq(users.username, username));
       const user = results[0];
@@ -199,12 +210,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ============ PROFILE UPDATES ============
-    if (match('/api/profile') && method === 'PATCH') {
+    if (pathname.includes('/profile/password') && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { currentPassword, newPassword } = body;
+
+      if (currentUser.password) {
+         if (!currentPassword || !(await comparePasswords(currentPassword, currentUser.password))) {
+             return res.status(400).send("رمز عبور فعلی اشتباه است");
+         }
+      }
+
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      await db.update(users).set({ password: hashedPassword }).where(eq(users.id, currentUser.id));
+      return res.status(200).json({ success: true, message: "رمز عبور تغییر کرد" });
+    }
+
+    if (pathname.includes('/profile') && method === 'PATCH') {
       if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
 
       const { firstName, lastName, birthDate, bio } = body;
       
-      // Update basic info
       await db.update(users).set({ 
         firstName, 
         lastName, 
@@ -215,27 +243,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, message: "پروفایل آپدیت شد" });
     }
 
-    if (match('/api/profile/password') && method === 'POST') {
-      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
-      const { currentPassword, newPassword } = body;
-
-      // Logic: If user has a password set, verify it first
-      if (currentUser.password) {
-         if (!currentPassword || !(await comparePasswords(currentPassword, currentUser.password))) {
-             return res.status(400).send("رمز عبور فعلی اشتباه است");
-         }
-      }
-
-      // Hash new password
-      const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
-      const hashedPassword = `${buf.toString("hex")}.${salt}`;
-
-      await db.update(users).set({ password: hashedPassword }).where(eq(users.id, currentUser.id));
-      return res.status(200).json({ success: true, message: "رمز عبور تغییر کرد" });
-    }
-
-    if (match('/api/logout') && method === 'POST') {
+    if (pathname.includes('/logout') && method === 'POST') {
       if (currentUser) {
         await db.update(users).set({ sessionToken: null }).where(eq(users.id, currentUser.id));
       }
@@ -243,8 +251,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true });
     }
 
-    if (match('/api/content') && method === 'GET') {
-      return res.status(200).json(await db.select().from(content).orderBy(desc(content.createdAt)));
+    if (pathname.includes('/content') && method === 'GET') {
+      const data = await db.select().from(content).orderBy(desc(content.createdAt));
+      return res.status(200).json(data);
     }
 
     // ... endpoints ...
