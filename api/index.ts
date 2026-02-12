@@ -4,12 +4,29 @@ import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { eq, desc } from "drizzle-orm";
 
 const scryptAsync = promisify(scrypt);
 
+// ============ GLOBAL POOL (Isolated) ============
+// Defines a robust connection pool globally to be reused across requests
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 3, 
+  connectionTimeoutMillis: 10000,
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+// Initialize Drizzle with the pool
+const db = drizzle(pool);
+
 // ============ LOCAL SCHEMA DEFINITION ============
+// Manually defined to match DB structure and avoid circular dependencies
 const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -30,27 +47,18 @@ const content = pgTable("content", {
   title: text("title").notNull(),
   type: text("type").notNull(),
   description: text("description"),
-  url: text("url"),
-  thumbnail: text("thumbnail"),
+  contentUrl: text("content_url"),
+  videoId: text("video_id"),
+  videoProvider: text("video_provider"),
+  arvanVideoId: text("arvan_video_id"),
+  arvanVideoProvider: text("arvan_video_provider"),
+  fileKey: text("file_key"),
+  isPremium: boolean("is_premium"),
+  price: integer("price"),
+  thumbnailUrl: text("thumbnail_url"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-// ============ LAZY DB CONNECTION ============
-let dbInstance: any = null;
-async function getDb() {
-  if (dbInstance) return dbInstance;
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is missing");
-  
-  const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-    max: 1,
-    connectionTimeoutMillis: 10000,
-  });
-  dbInstance = drizzle(pool);
-  return dbInstance;
-}
 
 // ============ SMS HELPER (Async) ============
 async function sendSMS(phone: string, message: string) {
@@ -99,33 +107,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const db = await getDb();
     const method = req.method;
     const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
-    // Vercel sometimes passes full URL or rewritten path. Let's normalize.
     let pathname = url.pathname;
 
-    // If pathname is just "/", but original req.url has path (common in rewrites)
+    // Normalization logic for Vercel rewrites
     if (pathname === '/' && req.url && req.url.includes('/api/')) {
-        pathname = req.url.split('?')[0]; // simple path extraction
+        pathname = req.url.split('?')[0]; 
     }
-    
-    // Normalize trailing slash
     if (pathname.endsWith('/') && pathname.length > 1) pathname = pathname.slice(0, -1);
 
     const body = req.body || {};
 
-    // DEBUG LOG
     console.log(`[ROUTER] Processing: ${pathname} (Method: ${method})`);
 
-    // Match exact routes
-    if (pathname === '/api/health') {
+    // Health check
+    if (pathname === '/api/health' || pathname.includes('/health')) {
       return res.status(200).json({ status: 'ok', hasDb: !!process.env.DATABASE_URL });
     }
-    
-    // Match helper (updated to be partial match if needed)
-    const match = (p: string) => pathname === p || pathname === p.replace('/api', '') || pathname.endsWith(p);
 
+    // Check Session
     const cookies = req.headers.cookie || '';
     const sessionToken = cookies.split(';').find((c) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
     
@@ -139,23 +140,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.warn("[SESSION CHECK ERROR] ignoring...", e);
     }
 
-    // --- ROUTING ---
-
-    if (pathname.includes('/health')) {
-      return res.status(200).json({ status: 'ok', hasDb: !!process.env.DATABASE_URL });
+    // --- CONTENT (UPDATED TO RAW SQL) ---
+    if (pathname.includes('/content') && method === 'GET') {
+      try {
+        console.log("Fetching content via Raw SQL...");
+        const result = await pool.query(`
+          SELECT 
+            id, title, description, type, level, 
+            content_url as "contentUrl", 
+            video_id as "videoId", 
+            video_provider as "videoProvider", 
+            arvan_video_id as "arvanVideoId",
+            arvan_video_provider as "arvanVideoProvider",
+            file_key as "fileKey",
+            is_premium as "isPremium", 
+            price, 
+            thumbnail_url as "thumbnailUrl", 
+            metadata, 
+            created_at as "createdAt"
+          FROM content 
+          ORDER BY created_at DESC
+        `);
+        return res.status(200).json(result.rows);
+      } catch (err: any) {
+        console.error("Error fetching content:", err);
+        return res.status(500).json({ error: "Failed to fetch content", details: err.message });
+      }
     }
 
+    // --- USER PROFILE ---
     if (pathname.includes('/user') && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
       const { password: _, otp: __, otpExpires: ___, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
     }
 
+    // --- AUTH ROUTES ---
     if (pathname.includes('/otp/request') && method === 'POST') {
       const { phone } = body;
       if (!phone) return res.status(400).json({ error: "شماره موبایل الزامی است" });
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+      
       const results = await db.select().from(users).where(eq(users.phone, phone));
       let user = results[0];
       const ADMIN_PHONES = ["09222453571", "09123104254"];
@@ -173,7 +199,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await db.update(users).set({ 
         otp, 
         otpExpires,
-        role: isAdmin && user.role !== 'admin' ? 'admin' : user.role 
+        role: isAdmin && user.role !== 'admin' ? 'admin' : user.role // Only upgrade to admin if not already
       }).where(eq(users.id, user.id));
 
       await sendSMS(phone, otp);
@@ -209,40 +235,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(user);
     }
 
-    // ============ PROFILE UPDATES ============
-    if (pathname.includes('/profile/password') && method === 'POST') {
-      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
-      const { currentPassword, newPassword } = body;
-
-      if (currentUser.password) {
-         if (!currentPassword || !(await comparePasswords(currentPassword, currentUser.password))) {
-             return res.status(400).send("رمز عبور فعلی اشتباه است");
-         }
-      }
-
-      const salt = randomBytes(16).toString("hex");
-      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
-      const hashedPassword = `${buf.toString("hex")}.${salt}`;
-
-      await db.update(users).set({ password: hashedPassword }).where(eq(users.id, currentUser.id));
-      return res.status(200).json({ success: true, message: "رمز عبور تغییر کرد" });
-    }
-
-    if (pathname.includes('/profile') && method === 'PATCH') {
-      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
-
-      const { firstName, lastName, birthDate, bio } = body;
-      
-      await db.update(users).set({ 
-        firstName, 
-        lastName, 
-        birthDate: birthDate ? new Date(birthDate).toISOString() : null, 
-        bio 
-      }).where(eq(users.id, currentUser.id));
-
-      return res.status(200).json({ success: true, message: "پروفایل آپدیت شد" });
-    }
-
     if (pathname.includes('/logout') && method === 'POST') {
       if (currentUser) {
         await db.update(users).set({ sessionToken: null }).where(eq(users.id, currentUser.id));
@@ -251,47 +243,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true });
     }
 
-    if (pathname.includes('/content') && method === 'GET') {
-      try {
-        console.log("Fetching content from DB (Raw SQL)...");
-        // Using raw SQL to bypass any Drizzle ORM mapping issues on Vercel
-        const result = await pool.query(`
-          SELECT 
-            id, title, description, type, level, 
-            content_url as "contentUrl", 
-            video_id as "videoId", 
-            video_provider as "videoProvider", 
-            is_premium as "isPremium", 
-            price, 
-            thumbnail_url as "thumbnailUrl", 
-            metadata, 
-            created_at as "createdAt"
-          FROM content 
-          ORDER BY created_at DESC
-        `);
-        
-        console.log("Content fetched successfully, count:", result.rows.length);
-        return res.status(200).json(result.rows);
-      } catch (err: any) {
-        console.error("Error fetching content:", err);
-        return res.status(500).json({ error: "Failed to fetch content", details: err.message });
-      }
-    }
-
-    // ... endpoints ...
-
-    // DEBUG: Log for unmatched routes
+    // Default 404
     console.log(`[API 404] Method: ${method}, URL: ${req.url}, Path: ${pathname}`);
-    
-    return res.status(404).json({ 
-      error: 'Not Found (No matching route)',
-      debug: {
-        received_method: method,
-        received_url: req.url,
-        parsed_pathname: pathname,
-        host: req.headers.host
-      }
-    });
+    return res.status(404).json({ error: 'Not Found' });
 
   } catch (err: any) {
     console.error("[API ERROR]", err);
