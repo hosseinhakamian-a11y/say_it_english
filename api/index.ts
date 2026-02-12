@@ -102,28 +102,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const db = await getDb();
     const method = req.method;
     const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
-    const pathname = url.pathname;
+    // Vercel sometimes passes full URL or rewritten path. Let's normalize.
+    let pathname = url.pathname;
+
+    // If pathname is just "/", but original req.url has path (common in rewrites)
+    if (pathname === '/' && req.url && req.url.includes('/api/')) {
+        pathname = req.url.split('?')[0]; // simple path extraction
+    }
+    
+    // Normalize trailing slash
+    if (pathname.endsWith('/') && pathname.length > 1) pathname = pathname.slice(0, -1);
+
     const body = req.body || {};
 
+    // DEBUG LOG
+    console.log(`[ROUTER] Processing: ${pathname} (Method: ${method})`);
+
+    // Match exact routes
     if (pathname === '/api/health') {
       return res.status(200).json({ status: 'ok', hasDb: !!process.env.DATABASE_URL });
     }
+    
+    // Allow matching both "/api/user" and "/user" (in case of rewrites stripping prefix)
+    const match = (p: string) => pathname === p || pathname === p.replace('/api', '');
 
     const cookies = req.headers.cookie || '';
     const sessionToken = cookies.split(';').find((c) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
     let currentUser = null;
-    if (sessionToken && sessionToken.length > 10) { // Only query if token looks valid
+    if (sessionToken && sessionToken.length > 10) { 
       const results = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
       currentUser = results[0];
     }
 
-    if (pathname === '/api/user' && method === 'GET') {
+    if (match('/api/user') && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
       const { password: _, otp: __, otpExpires: ___, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
     }
 
-    if (pathname === '/api/auth/otp/request' && method === 'POST') {
+    if (match('/api/auth/otp/request') && method === 'POST') {
       const { phone } = body;
       if (!phone) return res.status(400).json({ error: "شماره موبایل الزامی است" });
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -152,7 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: "کد ارسال شد" });
     }
 
-    if (pathname === '/api/auth/otp/verify' && method === 'POST') {
+    if (match('/api/auth/otp/verify') && method === 'POST') {
       const { phone, otp, rememberMe } = body;
       const results = await db.select().from(users).where(eq(users.phone, phone));
       const user = results[0];
@@ -167,7 +184,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(safeUser);
     }
 
-    if (pathname === '/api/login' && method === 'POST') {
+    if (match('/api/login') && method === 'POST') {
       const { username, password, rememberMe } = body;
       const results = await db.select().from(users).where(eq(users.username, username));
       const user = results[0];
@@ -182,7 +199,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ============ PROFILE UPDATES ============
-    if (pathname === '/api/profile' && method === 'PATCH') {
+    if (match('/api/profile') && method === 'PATCH') {
       if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
 
       const { firstName, lastName, birthDate, bio } = body;
@@ -198,7 +215,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, message: "پروفایل آپدیت شد" });
     }
 
-    if (pathname === '/api/profile/password' && method === 'POST') {
+    if (match('/api/profile/password') && method === 'POST') {
       if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
       const { currentPassword, newPassword } = body;
 
@@ -218,7 +235,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, message: "رمز عبور تغییر کرد" });
     }
 
-    if (pathname === '/api/logout' && method === 'POST') {
+    if (match('/api/logout') && method === 'POST') {
       if (currentUser) {
         await db.update(users).set({ sessionToken: null }).where(eq(users.id, currentUser.id));
       }
@@ -226,7 +243,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true });
     }
 
-    if (pathname === '/api/content' && method === 'GET') {
+    if (match('/api/content') && method === 'GET') {
       return res.status(200).json(await db.select().from(content).orderBy(desc(content.createdAt)));
     }
 
