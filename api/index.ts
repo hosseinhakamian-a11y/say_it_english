@@ -252,8 +252,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (pathname.includes('/content') && method === 'GET') {
-      const data = await db.select().from(content).orderBy(desc(content.createdAt));
-      return res.status(200).json(data);
+      try {
+        console.log("Fetching content from DB...");
+        const data = await db.select().from(content).orderBy(desc(content.createdAt));
+        console.log("Content fetched successfully, count:", data.length);
+        return res.status(200).json(data);
+      } catch (err: any) {
+        console.error("Error fetching content:", err);
+        return res.status(500).json({ error: "Failed to fetch content", details: err.message });
+      }
     }
 
     // ... endpoints ...
