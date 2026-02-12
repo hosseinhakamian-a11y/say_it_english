@@ -299,20 +299,25 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>کد تایید</FormLabel>
                             <FormControl>
-                              <div className="relative flex justify-between gap-2 dir-ltr" dir="ltr">
+                              <div
+                                className="relative flex justify-between gap-2 dir-ltr h-16 cursor-text"
+                                dir="ltr"
+                                onClick={() => document.getElementById("otp-input-hidden")?.focus()}
+                              >
                                 {[0, 1, 2, 3, 4, 5].map((index) => (
                                   <div
                                     key={index}
-                                    className={`w-12 h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-200 ${(field.value || "")[index]
-                                        ? "border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(var(--primary),0.1)]"
-                                        : "border-muted-foreground/20 bg-muted/10"
+                                    className={`w-12 h-full rounded-xl border-2 flex items-center justify-center text-2xl font-bold pointer-events-none transition-all duration-200 ${(field.value || "")[index]
+                                      ? "border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(var(--primary),0.1)]"
+                                      : "border-muted-foreground/20 bg-muted/10"
                                       } ${(field.value || "").length === index ? "border-primary ring-4 ring-primary/10 scale-105" : ""}`}
                                   >
                                     {(field.value || "")[index] || ""}
                                   </div>
                                 ))}
-                                <Input
-                                  className="absolute inset-0 opacity-0 cursor-default"
+                                <input
+                                  id="otp-input-hidden"
+                                  className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-text appearance-none"
                                   autoFocus
                                   {...field}
                                   value={field.value || ""}
