@@ -299,7 +299,20 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>کد تایید</FormLabel>
                             <FormControl>
-                              <Input className="h-12 rounded-xl text-center text-2xl tracking-[1em]" placeholder="••••••" {...field} dir="ltr" maxLength={6} />
+                              <Input
+                                className="h-14 rounded-xl text-center text-3xl font-bold tracking-[0.5em]"
+                                placeholder="      "
+                                {...field}
+                                dir="ltr"
+                                maxLength={6}
+                                autoComplete="one-time-code"
+                                inputMode="numeric"
+                                pattern="\d*"
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, "");
+                                  field.onChange(val);
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

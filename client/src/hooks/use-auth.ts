@@ -100,7 +100,7 @@ export function useAuth() {
       return await res.json();
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(["/api/user"], data.user);
+      queryClient.setQueryData(["/api/user"], data);
       setLocation("/");
     },
   });
