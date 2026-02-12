@@ -24,8 +24,6 @@ const users = pgTable("users", {
   sessionToken: text("session_token"),
   otp: text("otp"),
   otpExpires: timestamp("otp_expires"),
-  streak: integer("streak").default(0),
-  lastSeenAt: timestamp("last_seen_at"),
 });
 
 const content = pgTable("content", {
@@ -178,6 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const newToken = randomBytes(32).toString('hex');
       await db.update(users).set({ sessionToken: newToken }).where(eq(users.id, user.id));
+      // await storage.checkAndUpdateStreak(user.id).catch(() => {});
 
       const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
       res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
