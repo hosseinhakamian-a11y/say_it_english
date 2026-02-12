@@ -345,7 +345,7 @@ export default function AuthPage() {
                                   <input
                                     key={index}
                                     ref={otpRefs[index]}
-                                    className={`w-12 h-16 text-center text-4xl font-black rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-black shadow-sm ${otpValues[index]
+                                    className={`w-12 h-16 text-center text-4xl font-black font-[Vazirmatn] rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-black shadow-sm ${otpValues[index]
                                         ? "border-primary bg-primary/5 ring-2 ring-primary/10"
                                         : "border-muted/30 bg-muted/20"
                                       } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
