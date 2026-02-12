@@ -299,14 +299,20 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>کد تایید</FormLabel>
                             <FormControl>
-                              <div className="flex justify-between gap-2" dir="ltr">
+                              <div className="flex justify-between gap-2" dir="ltr" onPaste={(e) => {
+                                e.preventDefault();
+                                const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                                field.onChange(paste);
+                                const lastIdx = Math.min(paste.length, 5);
+                                document.getElementById(`otp-pin-${lastIdx}`)?.focus();
+                              }}>
                                 {[0, 1, 2, 3, 4, 5].map((index) => (
-                                  <Input
+                                  <input
                                     key={index}
                                     id={`otp-pin-${index}`}
-                                    className={`w-12 h-16 text-center text-3xl font-bold rounded-xl border-2 transition-all duration-200 ${(field.value || "")[index]
-                                        ? "border-primary bg-primary/5 text-primary shadow-[0_4px_12px_rgba(var(--primary),0.1)]"
-                                        : "border-muted-foreground/20 bg-muted/5 shadow-inner"
+                                    className={`w-12 h-16 text-center text-3xl font-black rounded-xl border-2 transition-all duration-200 outline-none p-0 text-black ${(field.value || "")[index]
+                                      ? "border-primary bg-primary/5 shadow-[0_4px_12px_rgba(var(--primary),0.1)]"
+                                      : "border-muted-foreground/20 bg-muted/5 shadow-inner"
                                       } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
                                     maxLength={1}
                                     inputMode="numeric"
@@ -315,23 +321,23 @@ export default function AuthPage() {
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/\D/g, "").slice(-1);
                                       if (!val) return;
-                                      const current = (field.value || "").split("");
+                                      const current = (field.value || "      ").split("");
                                       current[index] = val;
-                                      const final = current.join("").slice(0, 6);
+                                      const final = current.join("").trim().slice(0, 6);
                                       field.onChange(final);
                                       if (index < 5) document.getElementById(`otp-pin-${index + 1}`)?.focus();
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Backspace") {
                                         if (!(field.value || "")[index] && index > 0) {
-                                          const current = (field.value || "").split("");
+                                          const current = (field.value || "      ").split("");
                                           current[index - 1] = "";
-                                          field.onChange(current.join(""));
+                                          field.onChange(current.join("").trim());
                                           document.getElementById(`otp-pin-${index - 1}`)?.focus();
                                         } else {
-                                          const current = (field.value || "").split("");
+                                          const current = (field.value || "      ").split("");
                                           current[index] = "";
-                                          field.onChange(current.join(""));
+                                          field.onChange(current.join("").trim());
                                         }
                                       }
                                     }}
