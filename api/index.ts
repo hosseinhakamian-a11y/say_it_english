@@ -4,10 +4,39 @@ import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { eq, desc, and } from "drizzle-orm";
-import * as schema from "../shared/schema";
+import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { eq, desc } from "drizzle-orm";
 
 const scryptAsync = promisify(scrypt);
+
+// ============ LOCAL SCHEMA DEFINITION ============
+// Defining tables here locally to avoid "Module Not Found" issues in Vercel
+const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  phone: text("phone").unique(),
+  password: text("password"),
+  role: text("role").default("user"),
+  firstName: text("firstName"),
+  lastName: text("lastName"),
+  avatar: text("avatar"),
+  level: text("level").default("beginner"),
+  sessionToken: text("sessionToken"),
+  otp: text("otp"),
+  otpExpires: timestamp("otpExpires"),
+  streak: integer("streak").default(0),
+  lastSeenAt: timestamp("lastSeenAt"),
+});
+
+const content = pgTable("content", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  type: text("type").notNull(),
+  description: text("description"),
+  url: text("url"),
+  thumbnail: text("thumbnail"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
 
 // ============ LAZY DB CONNECTION ============
 let dbInstance: any = null;
@@ -22,7 +51,7 @@ async function getDb() {
     max: 1,
     connectionTimeoutMillis: 10000,
   });
-  dbInstance = drizzle(pool, { schema });
+  dbInstance = drizzle(pool);
   return dbInstance;
 }
 
@@ -62,7 +91,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const db = await getDb();
-    const { users, content } = schema;
     
     const method = req.method;
     const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
@@ -78,7 +106,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sessionToken = cookies.split(';').find((c) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
     let currentUser = null;
     if (sessionToken) {
-      [currentUser] = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
+      const results = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
+      currentUser = results[0];
     }
 
     if (pathname === '/api/user' && method === 'GET') {
@@ -94,16 +123,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
 
-      let [user] = await db.select().from(users).where(eq(users.phone, phone));
+      const results = await db.select().from(users).where(eq(users.phone, phone));
+      let user = results[0];
+      
       const ADMIN_PHONES = ["09222453571", "09123104254"];
       const isAdmin = ADMIN_PHONES.includes(phone);
 
       if (!user) {
-        [user] = await db.insert(users).values({
+        const insertResults = await db.insert(users).values({
           username: `user_${phone}`,
           phone,
           role: isAdmin ? "admin" : "user",
         }).returning();
+        user = insertResults[0];
       }
       
       await db.update(users).set({ 
@@ -118,7 +150,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (pathname === '/api/auth/otp/verify' && method === 'POST') {
       const { phone, otp, rememberMe } = body;
-      const [user] = await db.select().from(users).where(eq(users.phone, phone));
+      const results = await db.select().from(users).where(eq(users.phone, phone));
+      const user = results[0];
       
       if (!user || user.otp !== otp || !user.otpExpires || new Date(user.otpExpires) < new Date()) {
         return res.status(400).json({ error: "کد تایید نامعتبر یا منقضی شده است" });
@@ -136,7 +169,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (pathname === '/api/login' && method === 'POST') {
       const { username, password, rememberMe } = body;
-      const [user] = await db.select().from(users).where(eq(users.username, username));
+      const results = await db.select().from(users).where(eq(users.username, username));
+      const user = results[0];
 
       if (!user || !user.password || !(await comparePasswords(password, user.password))) {
         return res.status(401).json({ error: 'اطلاعات نادرست است' });
@@ -151,8 +185,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (pathname === '/api/content' && method === 'GET') {
-      const items = await db.select().from(content).orderBy(desc(content.createdAt));
-      return res.status(200).json(items);
+      return res.status(200).json(await db.select().from(content).orderBy(desc(content.createdAt)));
     }
 
     return res.status(404).json({ error: 'Not Found' });
