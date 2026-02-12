@@ -4,7 +4,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "../server/storage";
+import { storage } from "../server/storage-lite";
 import { InsertUser } from "../shared/schema";
 
 const scryptAsync = promisify(scrypt);
