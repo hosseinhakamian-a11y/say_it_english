@@ -299,36 +299,44 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>کد تایید</FormLabel>
                             <FormControl>
-                              <div
-                                className="relative flex justify-between gap-2 dir-ltr h-16 cursor-text"
-                                dir="ltr"
-                                onClick={() => document.getElementById("otp-input-hidden")?.focus()}
-                              >
+                              <div className="flex justify-between gap-2" dir="ltr">
                                 {[0, 1, 2, 3, 4, 5].map((index) => (
-                                  <div
+                                  <Input
                                     key={index}
-                                    className={`w-12 h-full rounded-xl border-2 flex items-center justify-center text-2xl font-bold pointer-events-none transition-all duration-200 ${(field.value || "")[index]
-                                      ? "border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(var(--primary),0.1)]"
-                                      : "border-muted-foreground/20 bg-muted/10"
-                                      } ${(field.value || "").length === index ? "border-primary ring-4 ring-primary/10 scale-105" : ""}`}
-                                  >
-                                    {(field.value || "")[index] || ""}
-                                  </div>
+                                    id={`otp-pin-${index}`}
+                                    className={`w-12 h-16 text-center text-3xl font-bold rounded-xl border-2 transition-all duration-200 ${(field.value || "")[index]
+                                        ? "border-primary bg-primary/5 text-primary shadow-[0_4px_12px_rgba(var(--primary),0.1)]"
+                                        : "border-muted-foreground/20 bg-muted/5 shadow-inner"
+                                      } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
+                                    maxLength={1}
+                                    inputMode="numeric"
+                                    autoFocus={index === 0}
+                                    value={(field.value || "")[index] || ""}
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/\D/g, "").slice(-1);
+                                      if (!val) return;
+                                      const current = (field.value || "").split("");
+                                      current[index] = val;
+                                      const final = current.join("").slice(0, 6);
+                                      field.onChange(final);
+                                      if (index < 5) document.getElementById(`otp-pin-${index + 1}`)?.focus();
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Backspace") {
+                                        if (!(field.value || "")[index] && index > 0) {
+                                          const current = (field.value || "").split("");
+                                          current[index - 1] = "";
+                                          field.onChange(current.join(""));
+                                          document.getElementById(`otp-pin-${index - 1}`)?.focus();
+                                        } else {
+                                          const current = (field.value || "").split("");
+                                          current[index] = "";
+                                          field.onChange(current.join(""));
+                                        }
+                                      }
+                                    }}
+                                  />
                                 ))}
-                                <input
-                                  id="otp-input-hidden"
-                                  className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-text appearance-none"
-                                  autoFocus
-                                  {...field}
-                                  value={field.value || ""}
-                                  maxLength={6}
-                                  inputMode="numeric"
-                                  autoComplete="one-time-code"
-                                  onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                                    field.onChange(val);
-                                  }}
-                                />
                               </div>
                             </FormControl>
                             <FormMessage />
