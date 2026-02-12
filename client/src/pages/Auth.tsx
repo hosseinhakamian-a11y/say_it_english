@@ -30,7 +30,7 @@ const phoneSchema = z.object({
 });
 
 const otpSchema = z.object({
-  otp: z.string().length(6, "کد تایید باید ۶ رقم باشد"),
+  otp: z.string().regex(/^\d{6}$/, "کد تایید باید ۶ رقم باشد"),
 });
 
 export default function AuthPage() {
@@ -273,60 +273,73 @@ export default function AuthPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="flex justify-between gap-2" dir="ltr">
-                                {[0, 1, 2, 3, 4, 5].map((index) => (
-                                  <input
-                                    key={index}
-                                    ref={otpRefs[index]}
-                                    className={`w-12 h-16 text-center text-4xl font-black rounded-2xl border-2 transition-all duration-300 outline-none p-0 text-black shadow-sm ${(field.value || "")[index] && (field.value || "")[index] !== " "
-                                        ? "border-primary bg-primary/5 shadow-[0_8px_20px_-8px_rgba(var(--primary),0.3)] ring-2 ring-primary/10"
-                                        : "border-muted/30 bg-muted/20"
-                                      } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105 active:scale-95`}
-                                    maxLength={1}
-                                    type="text"
-                                    inputMode="numeric"
-                                    autoFocus={index === 0}
-                                    value={(field.value || "").split("")[index] || ""}
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/\D/g, "").slice(-1);
-                                      if (!val) {
-                                        // If user typed non-digit or cleared, just keep it same
-                                        return;
-                                      }
-
-                                      let currentStr = field.value || "      ";
-                                      if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
-                                      const currentArr = currentStr.split("");
-                                      currentArr[index] = val;
-                                      const finalStr = currentArr.join("");
-                                      field.onChange(finalStr);
-
-                                      if (index < 5) {
-                                        otpRefs[index + 1].current?.focus();
-                                      }
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Backspace") {
+                              <div className="flex justify-between gap-2" dir="ltr" onPaste={(e) => {
+                                e.preventDefault();
+                                const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                                let currentStr = field.value || "      ";
+                                if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
+                                const currentArr = currentStr.split("");
+                                paste.split("").forEach((char, i) => {
+                                  if (i < 6) currentArr[i] = char;
+                                });
+                                field.onChange(currentArr.join(""));
+                                const lastIdx = Math.min(paste.length, 5);
+                                otpRefs[lastIdx]?.current?.focus();
+                              }}>
+                                {[0, 1, 2, 3, 4, 5].map((index) => {
+                                  const char = (field.value || "      ")[index];
+                                  return (
+                                    <input
+                                      key={index}
+                                      ref={otpRefs[index]}
+                                      className={`w-12 h-16 text-center text-4xl font-black rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-black shadow-sm ${char && char !== " "
+                                          ? "border-primary bg-primary/5 ring-2 ring-primary/10"
+                                          : "border-muted/30 bg-muted/20"
+                                        } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
+                                      maxLength={1}
+                                      type="text"
+                                      inputMode="numeric"
+                                      autoFocus={index === 0}
+                                      value={char === " " ? "" : char}
+                                      onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, "").slice(-1);
                                         let currentStr = field.value || "      ";
                                         if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
                                         const currentArr = currentStr.split("");
 
-                                        if ((!currentArr[index] || currentArr[index] === " ") && index > 0) {
-                                          currentArr[index - 1] = " ";
+                                        if (val) {
+                                          currentArr[index] = val;
                                           field.onChange(currentArr.join(""));
-                                          otpRefs[index - 1].current?.focus();
-                                        } else {
-                                          currentArr[index] = " ";
-                                          field.onChange(currentArr.join(""));
+                                          if (index < 5) otpRefs[index + 1].current?.focus();
                                         }
-                                      } else if (e.key === "ArrowLeft" && index > 0) {
-                                        otpRefs[index - 1].current?.focus();
-                                      } else if (e.key === "ArrowRight" && index < 5) {
-                                        otpRefs[index + 1].current?.focus();
-                                      }
-                                    }}
-                                  />
-                                ))}
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Backspace") {
+                                          e.preventDefault();
+                                          let currentStr = field.value || "      ";
+                                          if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
+                                          const currentArr = currentStr.split("");
+
+                                          if (currentArr[index] !== " ") {
+                                            currentArr[index] = " ";
+                                            field.onChange(currentArr.join(""));
+                                          } else if (index > 0) {
+                                            currentArr[index - 1] = " ";
+                                            field.onChange(currentArr.join(""));
+                                            otpRefs[index - 1].current?.focus();
+                                          }
+                                        } else if (e.key === "ArrowLeft" && index > 0) {
+                                          e.preventDefault();
+                                          otpRefs[index - 1].current?.focus();
+                                        } else if (e.key === "ArrowRight" && index < 5) {
+                                          e.preventDefault();
+                                          otpRefs[index + 1].current?.focus();
+                                        }
+                                      }}
+                                      onFocus={(e) => e.target.select()}
+                                    />
+                                  );
+                                })}
                               </div>
                             </FormControl>
                             <FormMessage className="text-center mt-4" />
