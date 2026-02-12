@@ -299,21 +299,32 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>کد تایید</FormLabel>
                             <FormControl>
-                              <Input
-                                className="h-16 rounded-2xl text-center text-4xl font-black tracking-widest bg-muted/30 border-2 focus:border-primary transition-all"
-                                placeholder="******"
-                                {...field}
-                                value={typeof field.value === 'string' ? field.value : ''}
-                                dir="ltr"
-                                maxLength={6}
-                                autoFocus
-                                autoComplete="one-time-code"
-                                inputMode="numeric"
-                                onChange={(e) => {
-                                  const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                                  field.onChange(val);
-                                }}
-                              />
+                              <div className="relative flex justify-between gap-2 dir-ltr" dir="ltr">
+                                {[0, 1, 2, 3, 4, 5].map((index) => (
+                                  <div
+                                    key={index}
+                                    className={`w-12 h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-all duration-200 ${(field.value || "")[index]
+                                        ? "border-primary bg-primary/5 text-primary shadow-[0_0_15px_rgba(var(--primary),0.1)]"
+                                        : "border-muted-foreground/20 bg-muted/10"
+                                      } ${(field.value || "").length === index ? "border-primary ring-4 ring-primary/10 scale-105" : ""}`}
+                                  >
+                                    {(field.value || "")[index] || ""}
+                                  </div>
+                                ))}
+                                <Input
+                                  className="absolute inset-0 opacity-0 cursor-default"
+                                  autoFocus
+                                  {...field}
+                                  value={field.value || ""}
+                                  maxLength={6}
+                                  inputMode="numeric"
+                                  autoComplete="one-time-code"
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                    field.onChange(val);
+                                  }}
+                                />
+                              </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
