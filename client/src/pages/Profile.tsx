@@ -213,12 +213,18 @@ export default function Profile() {
               </CardHeader>
               <CardContent className="p-6">
                 {isLoadingPurchases ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <StatsSkeleton />
                     <StatsSkeleton />
                     <StatsSkeleton />
                   </div>
                 ) : purchases && purchases.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <motion.div
+                    variants={containerVariants}
+                    initial="initial"
+                    animate="animate"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
                     {purchases.map((course: any) => {
                       let thumb = course.thumbnailUrl;
                       const provider = course.videoProvider?.toLowerCase().trim();
@@ -231,36 +237,55 @@ export default function Profile() {
 
                       return (
                         <Link key={`${course.id}-${contentId}`} href={href}>
-                          <div className="group cursor-pointer bg-card border rounded-2xl overflow-hidden hover:shadow-lg transition-all border-border/50">
-                            <div className="aspect-video relative overflow-hidden">
+                          <motion.div
+                            variants={itemVariants}
+                            whileHover={{ y: -5 }}
+                            className="group cursor-pointer bg-card border rounded-2xl overflow-hidden hover:shadow-xl transition-all border-border/50 flex flex-col h-full"
+                          >
+                            <div className="aspect-video relative overflow-hidden bg-muted">
                               <img
                                 src={thumb || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'}
                                 alt={course.title}
-                                className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
+                                className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-700"
                               />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <PlayCircle className="w-12 h-12 text-white" />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]">
+                                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/50">
+                                  <PlayCircle className="w-6 h-6 text-white ml-0.5" />
+                                </div>
                               </div>
+                              {course.isPremium && (
+                                <div className="absolute top-2 right-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  ویژه
+                                </div>
+                              )}
                             </div>
-                            <div className="p-4">
-                              <h3 className="font-bold group-hover:text-primary transition-colors line-clamp-1">
+                            <div className="p-4 flex flex-col flex-grow">
+                              <h3 className="font-bold text-lg group-hover:text-primary transition-colors line-clamp-1 mb-2">
                                 {course.title || `محتوا #${contentId}`}
-                                <span className="text-[10px] opacity-30 mr-2">#{contentId}</span>
                               </h3>
-                              <div className="flex items-center justify-between mt-2">
-                                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                                  {course.level === 'beginner' ? 'مبتدی' : course.level === 'intermediate' ? 'متوسط' : 'پیشرفته'}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">خریداری شده</span>
+
+                              <div className="mt-auto pt-4 flex items-center justify-between border-t border-border/30">
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] text-muted-foreground">سطح</span>
+                                  <span className={`text-xs font-medium ${course.level === 'advanced' ? 'text-red-500' :
+                                    course.level === 'intermediate' ? 'text-blue-500' : 'text-green-500'
+                                    }`}>
+                                    {course.level === 'beginner' ? 'مبتدی' : course.level === 'intermediate' ? 'متوسط' : 'پیشرفته'}
+                                  </span>
+                                </div>
+                                <Button size="sm" variant="secondary" className="h-8 rounded-lg text-xs group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                  مشاهده دوره
+                                </Button>
                               </div>
                             </div>
-                          </div>
+                          </motion.div>
                         </Link>
                       );
                     })}
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl">
+                  <div className="text-center py-12 text-muted-foreground bg-muted/20 rounded-2xl border border-dashed border-border">
                     <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-20" />
                     <p>هنوز دوره‌ای خریداری نکرده‌اید.</p>
                     <Link href="/content">
