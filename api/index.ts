@@ -114,7 +114,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (pathname === '/api/user' && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
-      const { password: _, otp, otpExpires, ...safeUser } = currentUser;
+      
+      // Update streak
+      const updatedUser = await storage.checkAndUpdateStreak(currentUser.id);
+      const userToSend = updatedUser || currentUser;
+      
+      const { password: _, otp, otpExpires, ...safeUser } = userToSend;
       return res.status(200).json(safeUser);
     }
 
@@ -240,13 +245,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await storage.bookSlot(timeSlotId);
       
       const booking = await storage.createBooking({
-        userId: currentUser ? currentUser.id : 0, // 0 or null for guest? Schema says userId integer... assumes logged in usually or 0
+        userId: currentUser ? currentUser.id : 0, 
         timeSlotId,
         type,
-        date: new Date(slot.date), // Ensure date object
+        date: new Date(slot.date), 
         phone,
-        notes,
-        status: 'confirmed'
+        notes
       });
       
       // Send SMS
@@ -301,9 +305,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           contentId: contentId || null,
           amount,
           trackingCode,
-          paymentMethod: paymentMethod || 'card',
-          notes: planId ? `Plan: ${planId}` : null,
-          status: 'pending'
+          paymentMethod: paymentMethod || 'card'
         });
         return res.status(201).json(payment);
       }

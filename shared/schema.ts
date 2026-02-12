@@ -19,6 +19,8 @@ export const users = pgTable("users", {
   birthDate: text("birth_date"), // Store as YYYY-MM-DD string
   avatar: text("avatar"), // URL to avatar image
   bio: text("bio"), // Short bio/description
+  streak: integer("streak").default(0),
+  lastSeenAt: timestamp("last_seen_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

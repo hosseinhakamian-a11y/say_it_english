@@ -41,6 +41,8 @@ export interface IStorage {
   updateUser(id: number, user: Partial<User>): Promise<User>;
   getAllUsers(): Promise<User[]>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  checkAndUpdateStreak(userId: number): Promise<User | undefined>;
+  
   getUserBySessionToken(sessionToken: string): Promise<User | undefined>;
   updateUserSession(userId: number, sessionToken: string | null): Promise<void>;
   
@@ -129,6 +131,47 @@ export class DatabaseStorage implements IStorage {
   async updateUserRole(id: number, role: string): Promise<User | undefined> {
     const [user] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
     return user;
+  }
+
+  async checkAndUpdateStreak(userId: number): Promise<User | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+
+    const today = new Date();
+    const lastSeen = user.lastSeenAt ? new Date(user.lastSeenAt) : null;
+    
+    // Reset time parts for comparison
+    const todayStr = today.toDateString();
+    const lastSeenStr = lastSeen ? lastSeen.toDateString() : null;
+
+    if (todayStr === lastSeenStr) {
+      // Already visited today, just return user
+      return user;
+    }
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+
+    let newStreak = user.streak || 0;
+
+    if (lastSeenStr === yesterdayStr) {
+      // Visited yesterday, increment streak
+      newStreak += 1;
+    } else {
+      // Missed a day (or first time), reset to 1
+      newStreak = 1;
+    }
+
+    const [updatedUser] = await db.update(users)
+      .set({ 
+        streak: newStreak, 
+        lastSeenAt: today 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+      
+    return updatedUser;
   }
 
   async getUserBySessionToken(sessionToken: string): Promise<User | undefined> {

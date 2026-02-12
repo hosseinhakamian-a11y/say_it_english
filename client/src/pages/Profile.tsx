@@ -68,9 +68,9 @@ export default function Profile() {
       color: "bg-green-100 text-green-600",
     },
     {
-      icon: Calendar,
-      label: "وضعیت اشتراک",
-      value: "فعال",
+      icon: Sparkles,
+      label: "زنجیره یادگیری",
+      value: `${(user as any).streak || 0} روز`,
       color: "bg-orange-100 text-orange-600",
       isText: true,
     },
@@ -109,7 +109,14 @@ export default function Profile() {
               </div>
             </div>
             <CardContent className="pt-0 pb-8 px-6">
-              <h2 className="text-xl font-bold mb-1">{user.username}</h2>
+              <h2 className="text-xl font-bold mb-1 flex items-center justify-center gap-2">
+                {user.username}
+                {(user as any).streak > 0 && (
+                  <span className="flex items-center text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full border border-orange-200" title="روزهای متوالی یادگیری">
+                    🔥 {(user as any).streak}
+                  </span>
+                )}
+              </h2>
               <p className="text-muted-foreground mb-6 text-sm">{user.role === 'admin' ? 'مدرس' : 'دانش‌آموز'}</p>
 
               <motion.div
