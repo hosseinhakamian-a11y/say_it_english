@@ -17,15 +17,15 @@ const users = pgTable("users", {
   phone: text("phone").unique(),
   password: text("password"),
   role: text("role").default("user"),
-  firstName: text("firstName"),
-  lastName: text("lastName"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   avatar: text("avatar"),
   level: text("level").default("beginner"),
-  sessionToken: text("sessionToken"),
+  sessionToken: text("session_token"),
   otp: text("otp"),
-  otpExpires: timestamp("otpExpires"),
+  otpExpires: timestamp("otp_expires"),
   streak: integer("streak").default(0),
-  lastSeenAt: timestamp("lastSeenAt"),
+  lastSeenAt: timestamp("last_seen_at"),
 });
 
 const content = pgTable("content", {
@@ -35,7 +35,7 @@ const content = pgTable("content", {
   description: text("description"),
   url: text("url"),
   thumbnail: text("thumbnail"),
-  createdAt: timestamp("createdAt").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // ============ LAZY DB CONNECTION ============
