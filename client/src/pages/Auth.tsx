@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,13 +30,14 @@ const phoneSchema = z.object({
 });
 
 const otpSchema = z.object({
-  otp: z.string().regex(/^\d{6}$/, "کد تایید باید ۶ رقم باشد"),
+  otp: z.string().length(6, "کد تایید باید ۶ رقم باشد").regex(/^\d+$/, "فقط عدد وارد کنید"),
 });
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, login, register, isLoggingIn, isRegistering, loginError, registerError, verifyOtp, isVerifyingOtp } = useAuth();
 
+  // Independent refs for each input
   const otpRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -52,6 +53,9 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const { toast } = useToast();
+
+  // Local state for OTP digits to avoid conflict with form state padding
+  const [otpValues, setOtpValues] = useState<string[]>(["", "", "", "", "", ""]);
 
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
@@ -73,6 +77,12 @@ export default function AuthPage() {
     defaultValues: { otp: "" },
   });
 
+  // Sync local OTP state with form state
+  useEffect(() => {
+    const finalOtp = otpValues.join("");
+    otpForm.setValue("otp", finalOtp, { shouldValidate: finalOtp.length === 6 });
+  }, [otpValues, otpForm]);
+
   const handleRequestOtp = async (data: { phone: string, rememberMe: boolean }) => {
     setIsSendingOtp(true);
     setRememberMe(data.rememberMe);
@@ -86,6 +96,8 @@ export default function AuthPage() {
       if (!res.ok) throw new Error(result.message || "خطا در ارسال کد");
       setPhone(data.phone);
       setOtpStep("verify");
+      // Reset OTP inputs
+      setOtpValues(["", "", "", "", "", ""]);
       toast({ title: "کد تایید ارسال شد ✅" });
     } catch (err: any) {
       toast({ title: "خطا", description: err.message, variant: "destructive" });
@@ -103,6 +115,61 @@ export default function AuthPage() {
         },
       }
     );
+  };
+
+  // OTP Input Handlers
+  const handleOtpChange = (index: number, value: string) => {
+    const newVal = value.replace(/\D/g, "").slice(-1);
+
+    if (newVal) {
+      const newOtpValues = [...otpValues];
+      newOtpValues[index] = newVal;
+      setOtpValues(newOtpValues);
+
+      // Auto focus next
+      if (index < 5) {
+        otpRefs[index + 1].current?.focus();
+      }
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      e.preventDefault(); // Prevent default browser backspace behavior to handle focus manually
+      const newOtpValues = [...otpValues];
+
+      if (newOtpValues[index]) {
+        // If current box has value, just clear it
+        newOtpValues[index] = "";
+        setOtpValues(newOtpValues);
+      } else if (index > 0) {
+        // If empty, move back and clear previous
+        newOtpValues[index - 1] = "";
+        setOtpValues(newOtpValues);
+        otpRefs[index - 1].current?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
+      otpRefs[index - 1].current?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      e.preventDefault();
+      otpRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!paste) return;
+
+    const newOtpValues = [...otpValues];
+    paste.split("").forEach((char, i) => {
+      if (i < 6) newOtpValues[i] = char;
+    });
+    setOtpValues(newOtpValues);
+
+    const lastIdx = Math.min(paste.length - 1, 5);
+    otpRefs[lastIdx]?.current?.focus();
   };
 
   if (user) {
@@ -270,76 +337,28 @@ export default function AuthPage() {
                       <FormField
                         control={otpForm.control}
                         name="otp"
-                        render={({ field }) => (
+                        render={() => (
                           <FormItem>
                             <FormControl>
-                              <div className="flex justify-between gap-2" dir="ltr" onPaste={(e) => {
-                                e.preventDefault();
-                                const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-                                let currentStr = field.value || "      ";
-                                if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
-                                const currentArr = currentStr.split("");
-                                paste.split("").forEach((char, i) => {
-                                  if (i < 6) currentArr[i] = char;
-                                });
-                                field.onChange(currentArr.join(""));
-                                const lastIdx = Math.min(paste.length, 5);
-                                otpRefs[lastIdx]?.current?.focus();
-                              }}>
-                                {[0, 1, 2, 3, 4, 5].map((index) => {
-                                  const char = (field.value || "      ")[index];
-                                  return (
-                                    <input
-                                      key={index}
-                                      ref={otpRefs[index]}
-                                      className={`w-12 h-16 text-center text-4xl font-black rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-black shadow-sm ${char && char !== " "
-                                          ? "border-primary bg-primary/5 ring-2 ring-primary/10"
-                                          : "border-muted/30 bg-muted/20"
-                                        } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
-                                      maxLength={1}
-                                      type="text"
-                                      inputMode="numeric"
-                                      autoFocus={index === 0}
-                                      value={char === " " ? "" : char}
-                                      onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, "").slice(-1);
-                                        let currentStr = field.value || "      ";
-                                        if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
-                                        const currentArr = currentStr.split("");
-
-                                        if (val) {
-                                          currentArr[index] = val;
-                                          field.onChange(currentArr.join(""));
-                                          if (index < 5) otpRefs[index + 1].current?.focus();
-                                        }
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Backspace") {
-                                          e.preventDefault();
-                                          let currentStr = field.value || "      ";
-                                          if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
-                                          const currentArr = currentStr.split("");
-
-                                          if (currentArr[index] !== " ") {
-                                            currentArr[index] = " ";
-                                            field.onChange(currentArr.join(""));
-                                          } else if (index > 0) {
-                                            currentArr[index - 1] = " ";
-                                            field.onChange(currentArr.join(""));
-                                            otpRefs[index - 1].current?.focus();
-                                          }
-                                        } else if (e.key === "ArrowLeft" && index > 0) {
-                                          e.preventDefault();
-                                          otpRefs[index - 1].current?.focus();
-                                        } else if (e.key === "ArrowRight" && index < 5) {
-                                          e.preventDefault();
-                                          otpRefs[index + 1].current?.focus();
-                                        }
-                                      }}
-                                      onFocus={(e) => e.target.select()}
-                                    />
-                                  );
-                                })}
+                              <div className="flex justify-between gap-2" dir="ltr" onPaste={handleOtpPaste}>
+                                {[0, 1, 2, 3, 4, 5].map((index) => (
+                                  <input
+                                    key={index}
+                                    ref={otpRefs[index]}
+                                    className={`w-12 h-16 text-center text-4xl font-black rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-black shadow-sm ${otpValues[index]
+                                        ? "border-primary bg-primary/5 ring-2 ring-primary/10"
+                                        : "border-muted/30 bg-muted/20"
+                                      } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
+                                    maxLength={1}
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoFocus={index === 0}
+                                    value={otpValues[index]}
+                                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                    onFocus={(e) => e.target.select()}
+                                  />
+                                ))}
                               </div>
                             </FormControl>
                             <FormMessage className="text-center mt-4" />
