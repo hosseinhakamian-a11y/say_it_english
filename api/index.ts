@@ -24,20 +24,20 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 // ============ SMS HELPER ============
-async function sendSMS(phone: string, message: string) {
-  try {
-    const apiKey = process.env.SMS_API_KEY;
-    if (!apiKey) return;
-    await fetch("https://api.sms.ir/v1/send/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-API-KEY": apiKey },
-      body: JSON.stringify({
-        mobile: phone,
-        templateId: parseInt(process.env.SMS_TEMPLATE_ID || "100000"),
-        parameters: [{ name: "MESSAGE", value: message }]
-      })
-    });
-  } catch (e) { console.error("SMS Error:", e); }
+function sendSMS(phone: string, message: string) {
+  // Fire and forget (don't await) to prevent blocking response
+  const apiKey = process.env.SMS_API_KEY;
+  if (!apiKey) return;
+  
+  fetch("https://api.sms.ir/v1/send/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-API-KEY": apiKey },
+    body: JSON.stringify({
+      mobile: phone,
+      templateId: parseInt(process.env.SMS_TEMPLATE_ID || "100000"),
+      parameters: [{ name: "MESSAGE", value: message }]
+    })
+  }).catch(e => console.error("SMS Error (Background):", e));
 }
 
 // ============ MAIN HANDLER ============
@@ -73,6 +73,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const newToken = randomBytes(32).toString('hex');
       await storage.updateUserSession(user.id, newToken);
+
+      // Check streak on login
+      await storage.checkAndUpdateStreak(user.id).catch(e => console.error("Streak Error:", e));
       
       const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
       res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
@@ -107,6 +110,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       const newUser = await storage.createUser(insertUser);
       
+      // Update streak for new user? Maybe logic says only on re-visit? Let's initialize it.
+      await storage.checkAndUpdateStreak(newUser.id).catch(() => {});
+
       res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${604800}; Path=/`);
       const { password: _, ...safeUser } = newUser;
       return res.status(201).json(safeUser);
@@ -114,12 +120,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (pathname === '/api/user' && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
-      
-      // Update streak
-      const updatedUser = await storage.checkAndUpdateStreak(currentUser.id);
-      const userToSend = updatedUser || currentUser;
-      
-      const { password: _, otp, otpExpires, ...safeUser } = userToSend;
+      // Removed checkAndUpdateStreak from here to improve performance
+      const { password: _, otp, otpExpires, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
     }
 

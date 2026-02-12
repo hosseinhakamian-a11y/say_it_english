@@ -46,11 +46,20 @@ export function useAuth() {
         credentials: "include",
         body: JSON.stringify(data),
       });
-      if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "ثبت نام با خطا مواجه شد");
+      
+      let resData;
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        resData = await res.json();
+      } else {
+        // If not JSON (likely HTML error page), throw generic error
+        if (!res.ok) throw new Error("خطای ارتباط با سرور. لطفاً دقایقی دیگر تلاش کنید.");
       }
-      return await res.json();
+
+      if (!res.ok) {
+        throw new Error(resData?.error || "ثبت نام با خطا مواجه شد");
+      }
+      return resData;
     },
     onSuccess: (user) => {
       queryClient.setQueryData(["/api/user"], user);
