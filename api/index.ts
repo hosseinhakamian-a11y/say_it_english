@@ -61,6 +61,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const url = new URL(req.url || '/', `http://${req.headers.host}`);
     const pathname = url.pathname;
 
+    // ============ HEALTH CHECK ============
+    if (pathname === '/api/health') {
+      return res.status(200).json({ 
+        status: 'ok', 
+        env: process.env.NODE_ENV,
+        hasDbUrl: !!process.env.DATABASE_URL 
+      });
+    }
+
     // ---- AUTH CHECK ----
     const cookies = req.headers.cookie || '';
     const sessionToken = cookies.split(';').find((c: string) => c.trim().startsWith('session='))?.split('=')[1]?.trim();

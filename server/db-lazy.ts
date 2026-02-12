@@ -1,6 +1,6 @@
 
 import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+import { Pool } from "pg";
 import * as schema from "../shared/schema";
 
 let dbInstance: any = null;
@@ -8,7 +8,6 @@ let dbInstance: any = null;
 export async function getDb() {
   if (dbInstance) return dbInstance;
 
-  const { Pool } = pg;
   const connectionString = process.env.DATABASE_URL;
 
   // In Vercel, env vars should be available. If not, this throws inside the handler,
