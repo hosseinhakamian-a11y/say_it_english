@@ -112,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cookies = req.headers.cookie || '';
     const sessionToken = cookies.split(';').find((c) => c.trim().startsWith('session='))?.split('=')[1]?.trim();
     let currentUser = null;
-    if (sessionToken) {
+    if (sessionToken && sessionToken.length > 10) { // Only query if token looks valid
       const results = await db.select().from(users).where(eq(users.sessionToken, sessionToken));
       currentUser = results[0];
     }
@@ -179,6 +179,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const maxAge = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
       res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}; Path=/`);
       return res.status(200).json(user);
+    }
+
+    if (pathname === '/api/logout' && method === 'POST') {
+      if (currentUser) {
+        await db.update(users).set({ sessionToken: null }).where(eq(users.id, currentUser.id));
+      }
+      res.setHeader('Set-Cookie', 'session=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+      return res.status(200).json({ success: true });
     }
 
     if (pathname === '/api/content' && method === 'GET') {

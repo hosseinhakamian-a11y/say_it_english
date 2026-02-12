@@ -300,9 +300,10 @@ export default function AuthPage() {
                             <FormLabel>کد تایید</FormLabel>
                             <FormControl>
                               <Input
-                                className="h-14 rounded-xl text-center text-3xl font-bold tracking-[0.5em]"
-                                placeholder="      "
+                                className="h-14 rounded-xl text-center text-3xl font-bold tracking-[0.5em] bg-muted/20"
+                                placeholder="------"
                                 {...field}
+                                value={field.value || ""}
                                 dir="ltr"
                                 maxLength={6}
                                 autoComplete="one-time-code"
