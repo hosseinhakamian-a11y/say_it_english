@@ -152,7 +152,8 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Insert Schemas
+// Insert Schemas (Commented out temporarily to debug Vercel runtime issue)
+/*
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertContentSchema = createInsertSchema(content).omit({ id: true, createdAt: true });
 export const insertTimeSlotSchema = createInsertSchema(timeSlots).omit({ id: true, createdAt: true, isBooked: true });
@@ -162,23 +163,24 @@ export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id:
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, status: true, notes: true });
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: true, createdAt: true });
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, isApproved: true });
+*/
 
 // Types
 export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+// export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Content = typeof content.$inferSelect;
-export type InsertContent = z.infer<typeof insertContentSchema>;
+// export type InsertContent = z.infer<typeof insertContentSchema>;
 export type TimeSlot = typeof timeSlots.$inferSelect;
-export type InsertTimeSlot = z.infer<typeof insertTimeSlotSchema>;
+// export type InsertTimeSlot = z.infer<typeof insertTimeSlotSchema>;
 export type Booking = typeof bookings.$inferSelect;
-export type InsertBooking = z.infer<typeof insertBookingSchema>;
+// export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type Class = typeof classes.$inferSelect;
-export type InsertClass = z.infer<typeof insertClassSchema>;
+// export type InsertClass = z.infer<typeof insertClassSchema>;
 export type Enrollment = typeof enrollments.$inferSelect;
-export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
+// export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
 export type Payment = typeof payments.$inferSelect;
-export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+// export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Purchase = typeof purchases.$inferSelect;
-export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
+// export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
 export type Review = typeof reviews.$inferSelect;
-export type InsertReview = z.infer<typeof insertReviewSchema>;
+// export type InsertReview = z.infer<typeof insertReviewSchema>;

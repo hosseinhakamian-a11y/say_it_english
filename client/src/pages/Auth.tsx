@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { insertUserSchema } from "@shared/schema";
+// import { insertUserSchema } from "@shared/schema"; // REMOVED dependency
 import { Loader2, AlertCircle, Sparkles, Smartphone } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SiGoogle } from "react-icons/si";
@@ -22,6 +22,13 @@ const loginSchema = z.object({
   username: z.string().min(1, "نام کاربری الزامی است"),
   password: z.string().min(1, "رمز عبور الزامی است"),
   rememberMe: z.boolean().default(false),
+});
+
+// Manual replacement for insertUserSchema to remove drizzle-zod dependency
+const registerSchema = z.object({
+  username: z.string().min(3, "نام کاربری حداقل ۳ حرف باشد"),
+  password: z.string().min(6, "رمز عبور حداقل ۶ حرف باشد"),
+  role: z.string().default("student"),
 });
 
 const phoneSchema = z.object({
@@ -63,7 +70,7 @@ export default function AuthPage() {
   });
 
   const registerForm = useForm({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(registerSchema),
     defaultValues: { username: "", password: "", role: "student" },
   });
 
@@ -346,8 +353,8 @@ export default function AuthPage() {
                                     key={index}
                                     ref={otpRefs[index]}
                                     className={`w-12 h-16 text-center text-4xl font-black font-[Vazirmatn] rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-black shadow-sm ${otpValues[index]
-                                        ? "border-primary bg-primary/5 ring-2 ring-primary/10"
-                                        : "border-muted/30 bg-muted/20"
+                                      ? "border-primary bg-primary/5 ring-2 ring-primary/10"
+                                      : "border-muted/30 bg-muted/20"
                                       } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
                                     maxLength={1}
                                     type="text"
