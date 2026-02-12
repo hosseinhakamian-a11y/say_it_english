@@ -300,17 +300,17 @@ export default function AuthPage() {
                             <FormLabel>کد تایید</FormLabel>
                             <FormControl>
                               <Input
-                                className="h-14 rounded-xl text-center text-3xl font-bold tracking-[0.5em] bg-muted/20"
-                                placeholder="------"
+                                className="h-16 rounded-2xl text-center text-4xl font-black tracking-widest bg-muted/30 border-2 focus:border-primary transition-all"
+                                placeholder="******"
                                 {...field}
-                                value={field.value || ""}
+                                value={typeof field.value === 'string' ? field.value : ''}
                                 dir="ltr"
                                 maxLength={6}
+                                autoFocus
                                 autoComplete="one-time-code"
                                 inputMode="numeric"
-                                pattern="\d*"
                                 onChange={(e) => {
-                                  const val = e.target.value.replace(/\D/g, "");
+                                  const val = e.target.value.replace(/\D/g, "").slice(0, 6);
                                   field.onChange(val);
                                 }}
                               />
