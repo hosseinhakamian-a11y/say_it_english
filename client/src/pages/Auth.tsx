@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,13 +9,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { insertUserSchema } from "@shared/schema";
-import { Loader2, AlertCircle, Phone, Mail, Lock, Smartphone, Sparkles } from "lucide-react";
+import { Loader2, AlertCircle, Sparkles, Smartphone } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SiGoogle } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { pageVariants, scaleUpVariants } from "@/lib/animations";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useLocation } from "wouter";
 
 const loginSchema = z.object({
   username: z.string().min(1, "نام کاربری الزامی است"),
@@ -32,16 +33,19 @@ const otpSchema = z.object({
   otp: z.string().length(6, "کد تایید باید ۶ رقم باشد"),
 });
 
-import { useLocation } from "wouter";
-
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { user, login, register, isLoggingIn, isRegistering, loginError, registerError, verifyOtp, isVerifyingOtp, verifyOtpError } = useAuth();
+  const { user, login, register, isLoggingIn, isRegistering, loginError, registerError, verifyOtp, isVerifyingOtp } = useAuth();
 
-  if (user) {
-    window.location.href = "/";
-    return null;
-  }
+  const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null)
+  ];
+
   const [mode, setMode] = useState<"login" | "register" | "otp">("login");
   const [otpStep, setOtpStep] = useState<"request" | "verify">("request");
   const [phone, setPhone] = useState("");
@@ -69,11 +73,6 @@ export default function AuthPage() {
     defaultValues: { otp: "" },
   });
 
-  const passwordForm = useForm({
-    resolver: zodResolver(z.object({ password: z.string().min(6, "حداقل ۶ کاراکتر") })),
-    defaultValues: { password: "" },
-  });
-
   const handleRequestOtp = async (data: { phone: string, rememberMe: boolean }) => {
     setIsSendingOtp(true);
     setRememberMe(data.rememberMe);
@@ -84,16 +83,12 @@ export default function AuthPage() {
         body: JSON.stringify(data),
       });
       const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.message || JSON.stringify(result));
-      }
-
+      if (!res.ok) throw new Error(result.message || "خطا در ارسال کد");
       setPhone(data.phone);
       setOtpStep("verify");
-      toast({ title: "کد تایید با موفقیت ارسال شد ✅" });
+      toast({ title: "کد تایید ارسال شد ✅" });
     } catch (err: any) {
-      toast({ title: "خطای سیستمی", description: err.message, variant: "destructive" });
+      toast({ title: "خطا", description: err.message, variant: "destructive" });
     } finally {
       setIsSendingOtp(false);
     }
@@ -104,28 +99,16 @@ export default function AuthPage() {
       { phone, otp: data.otp, rememberMe },
       {
         onError: (err: any) => {
-          toast({ title: "کد نامعتبر", description: err.message, variant: "destructive" });
+          toast({ title: "خطا", description: err.message, variant: "destructive" });
         },
       }
     );
   };
 
-  const handleSetPassword = async (data: { password: string }) => {
-    try {
-      const res = await fetch("/api/user/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      toast({ title: "کلمه عبور با موفقیت تنظیم شد ✅" });
-      passwordForm.reset();
-    } catch (err: any) {
-      toast({ title: "خطا", description: err.message, variant: "destructive" });
-    }
-  };
-
-  if (user) return null;
+  if (user) {
+    window.location.href = "/";
+    return null;
+  }
 
   return (
     <motion.div
@@ -135,27 +118,28 @@ export default function AuthPage() {
       className="min-h-[80vh] flex items-center justify-center py-12 px-4 bg-gradient-to-br from-primary/5 to-muted/20"
     >
       <motion.div variants={scaleUpVariants} initial="initial" animate="animate">
-        <Card className="w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border-0 glass">
-          <div className="bg-gradient-to-br from-primary to-primary/80 p-8 text-center text-primary-foreground">
+        <Card className="w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0 bg-white/80 backdrop-blur-xl">
+          <div className="bg-gradient-to-br from-primary to-primary-600 p-8 text-center text-primary-foreground relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 to-transparent opacity-50" />
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-              className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm"
+              className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md relative z-10"
             >
               <Sparkles className="w-8 h-8" />
             </motion.div>
-            <h1 className="text-2xl font-bold">خوش آمدید</h1>
-            <p className="text-primary-foreground/80 mt-2">به جامعه یادگیری زبان بپیوندید</p>
+            <h1 className="text-3xl font-black relative z-10">خوش آمدید</h1>
+            <p className="text-primary-foreground/80 mt-2 font-medium relative z-10">به جامعه زبان‌شناس بپیوندید</p>
           </div>
 
           <CardContent className="p-8">
             <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
-              <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted rounded-xl p-1">
-                <TabsTrigger value="login" className="rounded-lg">ورود</TabsTrigger>
-                <TabsTrigger value="register" className="rounded-lg">ثبت نام</TabsTrigger>
-                <TabsTrigger value="otp" className="rounded-lg flex gap-1 items-center">
-                  <Smartphone className="w-4 h-4" />
+              <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 rounded-2xl p-1.5 h-14">
+                <TabsTrigger value="login" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">ورود</TabsTrigger>
+                <TabsTrigger value="register" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">عضویت</TabsTrigger>
+                <TabsTrigger value="otp" className="rounded-xl flex gap-2 items-center data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Smartphone className="w-4 h-4 text-primary" />
                   پیامک
                 </TabsTrigger>
               </TabsList>
@@ -164,19 +148,18 @@ export default function AuthPage() {
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit((data) => login(data))} className="space-y-4">
                     {loginError && (
-                      <Alert variant="destructive" className="rounded-xl">
+                      <Alert variant="destructive" className="rounded-2xl border-0 bg-red-50 text-red-600">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{loginError.message}</AlertDescription>
+                        <AlertDescription className="font-medium">{loginError.message}</AlertDescription>
                       </Alert>
                     )}
-
                     <FormField
                       control={loginForm.control}
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>نام کاربری</FormLabel>
-                          <FormControl><Input className="h-12 rounded-xl" placeholder="نام کاربری یا موبایل" {...field} /></FormControl>
+                          <FormLabel className="text-muted-foreground mr-1">نام کاربری</FormLabel>
+                          <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="نام کاربری یا موبایل" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -186,27 +169,23 @@ export default function AuthPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>رمز عبور</FormLabel>
-                          <FormControl><Input type="password" className="h-12 rounded-xl" placeholder="••••••••" {...field} /></FormControl>
+                          <FormLabel className="text-muted-foreground mr-1">رمز عبور</FormLabel>
+                          <FormControl><Input type="password" className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="••••••••" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={loginForm.control}
                       name="rememberMe"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-2 space-y-0 px-1">
-                          <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} className="ml-2" />
-                          </FormControl>
-                          <FormLabel className="text-sm font-medium cursor-pointer">مرا به خاطر بسپار</FormLabel>
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0 p-1">
+                          <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} className="ml-2 rounded-md" /></FormControl>
+                          <FormLabel className="text-sm font-semibold text-muted-foreground cursor-pointer">مرا همواره لاگین نگه دار</FormLabel>
                         </FormItem>
                       )}
                     />
-
-                    <Button type="submit" className="w-full h-12 rounded-xl text-lg mt-2" disabled={isLoggingIn}>
+                    <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 transition-all shadow-lg shadow-primary/20 mt-4" disabled={isLoggingIn}>
                       {isLoggingIn ? <Loader2 className="animate-spin" /> : "ورود به حساب"}
                     </Button>
                   </form>
@@ -215,21 +194,20 @@ export default function AuthPage() {
 
               <TabsContent value="register">
                 <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit((data) => register(data))} className="space-y-6">
+                  <form onSubmit={registerForm.handleSubmit((data) => register(data))} className="space-y-4">
                     {registerError && (
-                      <Alert variant="destructive" className="rounded-xl">
+                      <Alert variant="destructive" className="rounded-2xl border-0 bg-red-50 text-red-600">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{registerError.message}</AlertDescription>
+                        <AlertDescription className="font-medium">{registerError.message}</AlertDescription>
                       </Alert>
                     )}
-
                     <FormField
                       control={registerForm.control}
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>نام کاربری</FormLabel>
-                          <FormControl><Input className="h-12 rounded-xl" placeholder="یک نام کاربری انتخاب کنید" {...field} /></FormControl>
+                          <FormLabel className="text-muted-foreground mr-1">نام کاربری</FormLabel>
+                          <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="انتخاب نام آیدی" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -239,15 +217,14 @@ export default function AuthPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>رمز عبور</FormLabel>
-                          <FormControl><Input type="password" className="h-12 rounded-xl" placeholder="حداقل ۶ کاراکتر" {...field} /></FormControl>
+                          <FormLabel className="text-muted-foreground mr-1">رمز عبور</FormLabel>
+                          <FormControl><Input type="password" className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="حداقل ۶ کاراکتر" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isRegistering}>
-                      {isRegistering ? <Loader2 className="animate-spin" /> : "ایجاد حساب کاربری"}
+                    <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 shadow-lg shadow-primary/20 mt-4" disabled={isRegistering}>
+                      {isRegistering ? <Loader2 className="animate-spin" /> : "عضویت سریع"}
                     </Button>
                   </form>
                 </Form>
@@ -262,8 +239,8 @@ export default function AuthPage() {
                         name="phone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>شماره موبایل</FormLabel>
-                            <FormControl><Input className="h-12 rounded-xl" placeholder="09123456789" {...field} dir="ltr" /></FormControl>
+                            <FormLabel className="text-muted-foreground mr-1">شماره موبایل</FormLabel>
+                            <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary text-center text-xl tracking-widest font-bold" placeholder="09123456789" {...field} dir="ltr" /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -272,85 +249,92 @@ export default function AuthPage() {
                         control={phoneForm.control}
                         name="rememberMe"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-2 space-y-0 px-1">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} className="ml-2" />
-                            </FormControl>
-                            <FormLabel className="text-sm font-medium cursor-pointer">مرا به خاطر بسپار</FormLabel>
+                          <FormItem className="flex flex-row items-center space-x-2 space-y-0 p-1">
+                            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} className="ml-2 rounded-md" /></FormControl>
+                            <FormLabel className="text-sm font-semibold text-muted-foreground cursor-pointer">مرا همواره لاگین نگه دار</FormLabel>
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full h-12 rounded-xl text-lg mt-2" disabled={isSendingOtp}>
-                        {isSendingOtp ? <Loader2 className="animate-spin" /> : "ارسال کد تایید"}
+                      <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 shadow-lg shadow-primary/20 mt-4" disabled={isSendingOtp}>
+                        {isSendingOtp ? <Loader2 className="animate-spin" /> : "ارسال کد ورود"}
                       </Button>
                     </form>
                   </Form>
                 ) : (
                   <Form {...otpForm}>
                     <form onSubmit={otpForm.handleSubmit(handleVerifyOtp)} className="space-y-6">
-                      <div className="text-center mb-4">
-                        <p className="text-sm text-muted-foreground italic">کد ۶ رقمی به شماره {phone} ارسال شد</p>
-                        <Button variant="link" size="sm" onClick={() => setOtpStep("request")} className="p-0 h-auto">ویرایش شماره</Button>
+                      <div className="text-center mb-6">
+                        <p className="text-muted-foreground font-medium">کد ۶ رقمی به شماره <span className="text-primary font-bold">{phone}</span> ارسال شد</p>
+                        <Button variant="link" size="sm" onClick={() => setOtpStep("request")} className="p-0 h-auto text-primary font-bold mt-1 underline">ویرایش شماره</Button>
                       </div>
                       <FormField
                         control={otpForm.control}
                         name="otp"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>کد تایید</FormLabel>
                             <FormControl>
-                              <div className="flex justify-between gap-2" dir="ltr" onPaste={(e) => {
-                                e.preventDefault();
-                                const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-                                field.onChange(paste);
-                                const lastIdx = Math.min(paste.length, 5);
-                                document.getElementById(`otp-pin-${lastIdx}`)?.focus();
-                              }}>
+                              <div className="flex justify-between gap-2" dir="ltr">
                                 {[0, 1, 2, 3, 4, 5].map((index) => (
                                   <input
                                     key={index}
-                                    id={`otp-pin-${index}`}
-                                    className={`w-12 h-16 text-center text-3xl font-black rounded-xl border-2 transition-all duration-200 outline-none p-0 text-black ${(field.value || "")[index]
-                                      ? "border-primary bg-primary/5 shadow-[0_4px_12px_rgba(var(--primary),0.1)]"
-                                      : "border-muted-foreground/20 bg-muted/5 shadow-inner"
-                                      } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
+                                    ref={otpRefs[index]}
+                                    className={`w-12 h-16 text-center text-4xl font-black rounded-2xl border-2 transition-all duration-300 outline-none p-0 text-black shadow-sm ${(field.value || "")[index] && (field.value || "")[index] !== " "
+                                        ? "border-primary bg-primary/5 shadow-[0_8px_20px_-8px_rgba(var(--primary),0.3)] ring-2 ring-primary/10"
+                                        : "border-muted/30 bg-muted/20"
+                                      } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105 active:scale-95`}
                                     maxLength={1}
+                                    type="text"
                                     inputMode="numeric"
                                     autoFocus={index === 0}
-                                    value={(field.value || "")[index] || ""}
+                                    value={(field.value || "").split("")[index] || ""}
                                     onChange={(e) => {
                                       const val = e.target.value.replace(/\D/g, "").slice(-1);
-                                      if (!val) return;
-                                      const current = (field.value || "      ").split("");
-                                      current[index] = val;
-                                      const final = current.join("").trim().slice(0, 6);
-                                      field.onChange(final);
-                                      if (index < 5) document.getElementById(`otp-pin-${index + 1}`)?.focus();
+                                      if (!val) {
+                                        // If user typed non-digit or cleared, just keep it same
+                                        return;
+                                      }
+
+                                      let currentStr = field.value || "      ";
+                                      if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
+                                      const currentArr = currentStr.split("");
+                                      currentArr[index] = val;
+                                      const finalStr = currentArr.join("");
+                                      field.onChange(finalStr);
+
+                                      if (index < 5) {
+                                        otpRefs[index + 1].current?.focus();
+                                      }
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Backspace") {
-                                        if (!(field.value || "")[index] && index > 0) {
-                                          const current = (field.value || "      ").split("");
-                                          current[index - 1] = "";
-                                          field.onChange(current.join("").trim());
-                                          document.getElementById(`otp-pin-${index - 1}`)?.focus();
+                                        let currentStr = field.value || "      ";
+                                        if (currentStr.length < 6) currentStr = currentStr.padEnd(6, " ");
+                                        const currentArr = currentStr.split("");
+
+                                        if ((!currentArr[index] || currentArr[index] === " ") && index > 0) {
+                                          currentArr[index - 1] = " ";
+                                          field.onChange(currentArr.join(""));
+                                          otpRefs[index - 1].current?.focus();
                                         } else {
-                                          const current = (field.value || "      ").split("");
-                                          current[index] = "";
-                                          field.onChange(current.join("").trim());
+                                          currentArr[index] = " ";
+                                          field.onChange(currentArr.join(""));
                                         }
+                                      } else if (e.key === "ArrowLeft" && index > 0) {
+                                        otpRefs[index - 1].current?.focus();
+                                      } else if (e.key === "ArrowRight" && index < 5) {
+                                        otpRefs[index + 1].current?.focus();
                                       }
                                     }}
                                   />
                                 ))}
                               </div>
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage className="text-center mt-4" />
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full h-12 rounded-xl text-lg" disabled={isVerifyingOtp}>
-                        {isVerifyingOtp ? <Loader2 className="animate-spin" /> : "تایید و ورود"}
+                      <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 shadow-lg shadow-primary/20" disabled={isVerifyingOtp}>
+                        {isVerifyingOtp ? <Loader2 className="animate-spin" /> : "تایید کد و ورود"}
                       </Button>
                     </form>
                   </Form>
@@ -358,18 +342,18 @@ export default function AuthPage() {
               </TabsContent>
             </Tabs>
 
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">یا استفاده از</span></div>
+            <div className="relative my-10">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-muted" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-4 text-muted-foreground font-semibold">یا ادامه با</span></div>
             </div>
 
             <Button
               variant="outline"
-              className="w-full h-12 rounded-xl flex items-center justify-center gap-2 btn-press"
+              className="w-full h-14 rounded-2xl flex items-center justify-center gap-3 border-muted/30 hover:bg-muted/10 transition-all font-bold text-lg"
               onClick={() => window.location.href = "/api/auth/google"}
             >
               <SiGoogle className="w-5 h-5 text-red-500" />
-              ورود با حساب گوگل
+              حساب کاربری گوگل
             </Button>
           </CardContent>
         </Card>
