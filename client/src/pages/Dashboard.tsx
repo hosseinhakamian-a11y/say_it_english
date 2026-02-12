@@ -1,186 +1,242 @@
+import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { SEO } from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
-    Crown, Clock, CheckCircle2, XCircle, BookOpen,
-    CreditCard, ArrowRight, Loader2, User
+    Flame,
+    Trophy,
+    Clock,
+    PlayCircle,
+    BookOpen,
+    Target,
+    ChevronLeft,
+    Settings,
+    LogOut
 } from "lucide-react";
+import { api } from "@shared/routes";
 
 export default function Dashboard() {
-    const [, navigate] = useLocation();
+    const { user, logout } = useAuth();
 
-    const { data: user, isLoading: userLoading } = useQuery({
-        queryKey: ["/api/user"],
-        queryFn: async () => {
-            const res = await fetch("/api/user", { credentials: "include" });
-            if (!res.ok) return null;
-            return res.json();
-        }
-    });
-
-    const { data: purchases } = useQuery<{ contentId: number }[]>({
-        queryKey: ["/api/purchases"],
-        queryFn: async () => {
-            const res = await fetch("/api/purchases", { credentials: "include" });
-            return res.json();
-        },
-        enabled: !!user
-    });
-
-    // Note: For full implementation, we'd also fetch user's pending payments
-    // For now, we'll show a placeholder or use query param
-
-    if (userLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-        );
-    }
+    // Mock recent activity (until we have real progress tracking)
+    const recentActivities = [
+        { title: "I can't be bothered", type: "video", progress: 80, date: "امروز" },
+        { title: "اصطلاحات نسل زد", type: "video", progress: 20, date: "دیروز" },
+    ];
 
     if (!user) {
         return (
-            <div className="container mx-auto px-4 py-20 text-center">
-                <h1 className="text-2xl font-bold mb-4">لطفاً وارد شوید</h1>
-                <Button onClick={() => navigate("/auth")}>ورود / ثبت‌نام</Button>
+            <div className="flex items-center justify-center min-h-[80vh]">
+                <Link href="/auth">
+                    <Button size="lg" className="rounded-2xl">لطفاً ابتدا وارد شوید</Button>
+                </Link>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-muted/30 py-12">
-            <SEO title="داشبورد من" description="مدیریت اشتراک و دسترسی‌ها" />
+        <div className="min-h-screen bg-gray-50/50 py-8 pb-20">
+            <div className="container mx-auto px-4 max-w-6xl">
 
-            <div className="container mx-auto px-4 max-w-5xl">
-                {/* Welcome */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
-                >
-                    <h1 className="text-3xl font-bold mb-2">
-                        سلام، <span className="text-primary">{user.name || user.username}</span> 👋
-                    </h1>
-                    <p className="text-muted-foreground">خوش آمدید به داشبورد شخصی شما</p>
-                </motion.div>
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                    <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16 border-2 border-primary shadow-lg">
+                            <AvatarImage src={user.avatar || ""} />
+                            <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                                {user.username.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">سلام، {user.firstName || user.username}! 👋</h1>
+                            <p className="text-gray-500">خوش آمدید، بیایید یادگیری را ادامه دهیم.</p>
+                        </div>
+                    </div>
 
-                <div className="grid md:grid-cols-3 gap-6">
-                    {/* Stats Cards */}
-                    <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium opacity-90">وضعیت اشتراک</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-3">
-                                <Crown className="w-8 h-8" />
-                                <div>
-                                    <p className="text-2xl font-bold">
-                                        {purchases && purchases.length > 0 ? "فعال" : "ندارید"}
-                                    </p>
-                                    <p className="text-xs opacity-80">
-                                        {purchases && purchases.length > 0 ? "دسترسی به محتوای پریمیوم" : "هنوز اشتراکی ندارید"}
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">محتوای دسترسی</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-3">
-                                <BookOpen className="w-8 h-8 text-blue-500" />
-                                <div>
-                                    <p className="text-2xl font-bold">{purchases?.length || 0}</p>
-                                    <p className="text-xs text-muted-foreground">دوره/محتوا</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">پرداخت‌ها</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-3">
-                                <CreditCard className="w-8 h-8 text-green-500" />
-                                <div>
-                                    <p className="text-2xl font-bold">-</p>
-                                    <p className="text-xs text-muted-foreground">تراکنش موفق</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <Link href="/profile">
+                            <Button variant="outline" className="rounded-xl gap-2 flex-1 md:flex-none">
+                                <Settings className="w-4 h-4" />
+                                تنظیمات
+                            </Button>
+                        </Link>
+                        <Button variant="ghost" className="rounded-xl text-red-500 hover:text-red-700 hover:bg-red-50 gap-2 flex-1 md:flex-none" onClick={() => logout()}>
+                            <LogOut className="w-4 h-4" />
+                            خروج
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Payment Pending Notice */}
-                {new URLSearchParams(window.location.search).get("payment") === "pending" && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mt-8"
-                    >
-                        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-                            <CardContent className="flex items-center gap-4 p-6">
-                                <Clock className="w-10 h-10 text-amber-600" />
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-amber-800 dark:text-amber-200">پرداخت شما در انتظار تایید است</h3>
-                                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                                        پس از بررسی توسط پشتیبانی، دسترسی شما فعال خواهد شد. معمولاً کمتر از ۲ ساعت طول می‌کشد.
-                                    </p>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <motion.div whileHover={{ y: -5 }} className="col-span-1">
+                        <Card className="rounded-2xl border-none shadow-md bg-gradient-to-br from-orange-50 to-orange-100/50 border-b-4 border-orange-400">
+                            <CardContent className="p-6 flex flex-col items-center text-center">
+                                <div className="bg-orange-500/10 p-3 rounded-full mb-3">
+                                    <Flame className="w-8 h-8 text-orange-600 fill-orange-600 animate-pulse" />
                                 </div>
+                                <span className="text-3xl font-black text-gray-900">{user.streak || 0}</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">روز پشت‌سرهم</span>
                             </CardContent>
                         </Card>
                     </motion.div>
-                )}
 
-                {/* Actions */}
-                <div className="mt-8 grid md:grid-cols-2 gap-6">
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/content")}>
-                        <CardContent className="flex items-center justify-between p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
-                                    <BookOpen className="w-6 h-6 text-blue-600" />
+                    <motion.div whileHover={{ y: -5 }} className="col-span-1">
+                        <Card className="rounded-2xl border-none shadow-md bg-gradient-to-br from-blue-50 to-blue-100/50 border-b-4 border-blue-400">
+                            <CardContent className="p-6 flex flex-col items-center text-center">
+                                <div className="bg-blue-500/10 p-3 rounded-full mb-3">
+                                    <Trophy className="w-8 h-8 text-blue-600" />
                                 </div>
-                                <div>
-                                    <h3 className="font-bold">محتوای آموزشی</h3>
-                                    <p className="text-sm text-muted-foreground">مشاهده دروس و ویدیوها</p>
-                                </div>
-                            </div>
-                            <ArrowRight className="w-5 h-5 text-muted-foreground rotate-180" />
-                        </CardContent>
-                    </Card>
+                                <span className="text-3xl font-black text-gray-900">{user.level === 'beginner' ? 'LVL 1' : user.level === 'intermediate' ? 'LVL 2' : 'LVL 3'}</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">سطح فعلی</span>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
 
-                    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/pricing")}>
-                        <CardContent className="flex items-center justify-between p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-amber-100 dark:bg-amber-900/30 p-3 rounded-xl">
-                                    <Crown className="w-6 h-6 text-amber-600" />
+                    <motion.div whileHover={{ y: -5 }} className="col-span-1">
+                        <Card className="rounded-2xl border-none shadow-md bg-gradient-to-br from-green-50 to-green-100/50 border-b-4 border-green-400">
+                            <CardContent className="p-6 flex flex-col items-center text-center">
+                                <div className="bg-green-500/10 p-3 rounded-full mb-3">
+                                    <Target className="w-8 h-8 text-green-600" />
                                 </div>
-                                <div>
-                                    <h3 className="font-bold">ارتقا اشتراک</h3>
-                                    <p className="text-sm text-muted-foreground">مشاهده پلن‌ها و قیمت‌ها</p>
+                                <span className="text-3xl font-black text-gray-900">0</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">دوره تکمیل شده</span>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+
+                    <motion.div whileHover={{ y: -5 }} className="col-span-1">
+                        <Card className="rounded-2xl border-none shadow-md bg-gradient-to-br from-purple-50 to-purple-100/50 border-b-4 border-purple-400">
+                            <CardContent className="p-6 flex flex-col items-center text-center">
+                                <div className="bg-purple-500/10 p-3 rounded-full mb-3">
+                                    <Clock className="w-8 h-8 text-purple-600" />
                                 </div>
-                            </div>
-                            <ArrowRight className="w-5 h-5 text-muted-foreground rotate-180" />
-                        </CardContent>
-                    </Card>
+                                <span className="text-3xl font-black text-gray-900">0h</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">زمان یادگیری</span>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
                 </div>
 
-                {/* Profile Link */}
-                <div className="mt-8 text-center">
-                    <Button variant="ghost" onClick={() => navigate("/profile")} className="gap-2">
-                        <User className="w-4 h-4" />
-                        مشاهده و ویرایش پروفایل
-                    </Button>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Main Content Area */}
+                    <div className="lg:col-span-2 space-y-8">
+
+                        {/* Continue Learning */}
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    <PlayCircle className="w-6 h-6 text-primary" />
+                                    ادامه یادگیری
+                                </h2>
+                                <Link href="/videos">
+                                    <Button variant="link" className="text-primary p-0 h-auto font-bold">مشاهده همه</Button>
+                                </Link>
+                            </div>
+
+                            <div className="grid gap-4">
+                                {recentActivities.map((activity, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                    >
+                                        <Card className="rounded-2xl border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer group overflow-hidden">
+                                            <div className="flex h-24">
+                                                <div className="w-32 bg-gray-200 relative">
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+                                                        <PlayCircle className="w-8 h-8 text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 p-4 flex flex-col justify-between">
+                                                    <div className="flex justify-between items-start">
+                                                        <h3 className="font-bold text-gray-900 line-clamp-1">{activity.title}</h3>
+                                                        <span className="text-xs text-gray-400">{activity.date}</span>
+                                                    </div>
+
+                                                    <div className="w-full">
+                                                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                                            <span>{activity.progress}% تکمیل شده</span>
+                                                        </div>
+                                                        <Progress value={activity.progress} className="h-2" indicatorClassName="bg-primary" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Recommended */}
+                        <div>
+                            <h2 className="text-xl font-bold flex items-center gap-2 mb-4">
+                                <BookOpen className="w-6 h-6 text-amber-500" />
+                                پیشنهاد ویژه برای شما
+                            </h2>
+                            <Card className="rounded-2xl bg-gradient-to-r from-primary/90 to-primary text-white border-none shadow-lg overflow-hidden relative">
+                                <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                                    <div>
+                                        <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 mb-3">سطح متوسط</Badge>
+                                        <h3 className="text-2xl font-black mb-2">تسلط بر اصطلاحات ۳۰۰۰ دلاری!</h3>
+                                        <p className="text-primary-foreground/90 max-w-sm mb-6">
+                                            در این دوره فشرده، اصطلاحات تجاری و پول‌ساز دنیای بیزنس را یاد می‌گیرید.
+                                        </p>
+                                        <Button variant="secondary" className="rounded-xl font-bold px-6">شروع یادگیری</Button>
+                                    </div>
+                                    <div className="w-32 h-32 bg-white/20 rounded-2xl rotate-3 flex items-center justify-center shadow-xl backdrop-blur-sm">
+                                        <Trophy className="w-16 h-16 text-white" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                    </div>
+
+                    {/* Sidebar Area */}
+                    <div className="lg:col-span-1">
+                        {/* Profile Completion */}
+                        <Card className="rounded-2xl border-none shadow-sm mb-6 sticky top-24">
+                            <CardHeader>
+                                <CardTitle className="text-lg">وضعیت پروفایل</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="relative pt-2">
+                                    <div className="flex justify-between text-sm font-medium mb-2">
+                                        <span className="text-gray-600">تکمیل اطلاعات</span>
+                                        <span className="text-primary">65%</span>
+                                    </div>
+                                    <Progress value={65} className="h-3 rounded-full" />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs">✓</div>
+                                        <span>تایید ایمیل و موبایل</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs">✓</div>
+                                        <span>تعیین سطح اولیه</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-sm text-gray-400">
+                                        <div className="w-6 h-6 rounded-full border border-dashed border-gray-300 flex items-center justify-center text-xs"></div>
+                                        <span>افزودن عکس پروفایل</span>
+                                    </div>
+                                </div>
+
+                                <Link href="/profile">
+                                    <Button variant="outline" className="w-full rounded-xl border-dashed">تکمیل پروفایل</Button>
+                                </Link>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </div>
