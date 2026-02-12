@@ -1,7 +1,27 @@
 import { AdminLayout } from "./layout";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertContentSchema, type InsertContent } from "@shared/schema";
+import { z } from "zod";
+// import { insertContentSchema, type InsertContent } from "@shared/schema";
+
+const insertContentSchema = z.object({
+    title: z.string().min(1, "عنوان الزامی است"),
+    description: z.string().optional(),
+    type: z.string().default("video"),
+    level: z.string().default("beginner"),
+    videoProvider: z.string().optional(),
+    videoId: z.string().optional(),
+    arvanVideoProvider: z.string().optional(),
+    arvanVideoId: z.string().optional(),
+    fileKey: z.string().optional(),
+    contentUrl: z.string().optional(),
+    thumbnailUrl: z.string().optional(),
+    isPremium: z.boolean().default(false),
+    price: z.number().default(0),
+    metadata: z.any().optional(),
+});
+
+type InsertContent = z.infer<typeof insertContentSchema>;
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
