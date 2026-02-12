@@ -1,23 +1,22 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from '../server/db';
-import { content } from '../shared/schema';
+import { pool } from '../server/db';
+// import { content } from '../shared/schema'; // Commented out to isolate schema issues
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    console.log("Attempting Drizzle Query...");
+    console.log("Attempting Pool Query from server/db...");
     
-    // Try to count content items using Drizzle
-    const results = await db.select().from(content).limit(5);
+    // Run a raw query using the imported pool
+    const result = await pool.query('SELECT NOW()');
 
     return res.status(200).json({
-      status: "SUCCESS ✅",
-      message: "Drizzle is working!",
-      count: results.length,
-      sample: results[0] ? results[0].title : "No items"
+      status: "POOL IMPORT WORKS ✅",
+      message: "server/db.ts is fine, issue is likely in shared/schema.ts",
+      time: result.rows[0].now
     });
 
   } catch (err: any) {
-    console.error("Drizzle Error:", err);
+    console.error("Pool Error:", err);
     return res.status(500).json({
       status: "FAILED ❌",
       error_message: err.message,
