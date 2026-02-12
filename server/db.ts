@@ -11,10 +11,15 @@ if (!connectionString) {
 
 export const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
+  ssl: { rejectUnauthorized: false }, // Supabase requires SSL always
   max: 1, // Limit to 1 connection per lambda instance
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+});
+
+// Logs for connection errors
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
 });
 
 export const db = drizzle(pool, { schema });
