@@ -54,8 +54,8 @@ async function getDb() {
 
 // ============ SMS HELPER (Async) ============
 async function sendSMS(phone: string, message: string) {
-  const apiKey = process.env.SMS_API_KEY;
-  const templateId = process.env.SMS_TEMPLATE_ID;
+  const apiKey = process.env.SMS_IR_API_KEY;
+  const templateId = process.env.SMS_IR_TEMPLATE_ID;
   
   if (!apiKey || !templateId) {
     console.warn("SMS Config missing");
