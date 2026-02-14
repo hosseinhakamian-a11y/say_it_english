@@ -4,21 +4,30 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+.light {
   /* HSL Color Palette - Trustworthy Blue/Teal Theme */
   --background: 210 20% 98%;
   --foreground: 222 47% 11%;
 
-  --primary: 183 100% 28%; /* Deep Teal */
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  --primary: 183 100% 28%;
+  /* Deep Teal */
   --primary-foreground: 210 40% 98%;
 
-  --secondary: 35 90% 60%; /* Warm Orange/Gold Accent */
+  --secondary: 35 90% 60%;
+  /* Warm Orange/Gold Accent */
   --secondary-foreground: 222 47% 11%;
 
   --muted: 210 40% 96%;
   --muted-foreground: 215 16% 47%;
 
-  --accent: 183 60% 94%; /* Light Teal Background */
+  --accent: 183 60% 94%;
+  /* Light Teal Background */
   --accent-foreground: 183 100% 28%;
 
   --destructive: 0 84% 60%;
@@ -29,21 +38,55 @@
   --ring: 183 100% 28%;
 
   --radius: 0.75rem;
-  
   --font-persian: 'Vazirmatn', sans-serif;
+}
+
+.dark {
+  --background: 222 47% 8%;
+  --foreground: 210 20% 95%;
+
+  --card: 222 47% 11%;
+  --card-foreground: 210 20% 95%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 20% 95%;
+
+  --primary: 183 80% 45%;
+  --primary-foreground: 222 47% 8%;
+
+  --secondary: 35 70% 50%;
+  --secondary-foreground: 210 20% 95%;
+
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 183 50% 15%;
+  --accent-foreground: 183 80% 65%;
+
+  --destructive: 0 63% 50%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 183 80% 45%;
 }
 
 @layer base {
   html {
-    direction: rtl; /* Enforce RTL for Persian */
+    direction: rtl;
+    /* Enforce RTL for Persian */
   }
-  
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-persian);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-persian);
     @apply font-bold tracking-tight;
   }
@@ -53,9 +96,11 @@
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   @apply bg-transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
 }
@@ -78,6 +123,7 @@
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -85,11 +131,11 @@
 
 /* Glass Effect Utilities */
 .glass {
-  @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+  @apply bg-card/70 backdrop-blur-xl border border-border/20 shadow-xl;
 }
 
 .glass-dark {
-  @apply bg-black/30 backdrop-blur-xl border border-white/10 shadow-xl;
+  @apply bg-background/30 backdrop-blur-xl border border-border/10 shadow-xl;
 }
 
 .glass-primary {

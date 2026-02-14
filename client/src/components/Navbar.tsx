@@ -2,6 +2,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Menu, X, User, LogOut, LayoutDashboard, Crown, Trophy, Target } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { SmartSearch } from "@/components/SmartSearch";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -133,7 +135,9 @@ export function Navbar() {
           </div>
 
           {/* Desktop User Menu */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
+            <SmartSearch />
+            <ThemeToggle />
             {isLoading ? (
               <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
             ) : user ? (

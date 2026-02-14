@@ -1,0 +1,30 @@
+{
+    "name": "Say It English - یادگیری زبان انگلیسی",
+    "short_name": "Say It English",
+    "description": "پلتفرم آنلاین و تعاملی یادگیری زبان انگلیسی",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0c1524",
+    "theme_color": "#008b8b",
+    "orientation": "portrait-primary",
+    "dir": "rtl",
+    "lang": "fa",
+    "categories": [
+        "education",
+        "language"
+    ],
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

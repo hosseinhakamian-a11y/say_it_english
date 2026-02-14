@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,9 +10,10 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 import { HelmetProvider } from "react-helmet-async";
+import { ThemeProvider } from "@/hooks/use-theme";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
 
 // Lazy load pages
-// ... (rest of imports remains same)
 const Home = lazy(() => import("@/pages/Home"));
 const PlacementTest = lazy(() => import("@/pages/PlacementTest"));
 const ContentLibrary = lazy(() => import("@/pages/ContentLibrary"));
@@ -111,19 +112,28 @@ function Router() {
 }
 
 function App() {
+  // Register Service Worker for PWA
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => { });
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <HelmetProvider>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </QueryClientProvider>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+              <Toaster />
+              <OnboardingWizard />
+              <Router />
+            </TooltipProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
       </HelmetProvider>
     </ErrorBoundary>
   );
 }
 
 export default App;
-
