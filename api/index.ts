@@ -6,8 +6,83 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { eq, desc } from "drizzle-orm";
+import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
+
+// ============ INPUT VALIDATION SCHEMAS ============
+const phoneSchema = z.object({
+  phone: z.string().regex(/^09\d{9}$/, "شماره موبایل نامعتبر است"),
+  rememberMe: z.boolean().optional(),
+});
+
+const otpVerifySchema = z.object({
+  phone: z.string().regex(/^09\d{9}$/),
+  otp: z.string().length(6).regex(/^\d+$/),
+  rememberMe: z.boolean().optional(),
+});
+
+const loginSchema = z.object({
+  username: z.string().min(3).max(50),
+  password: z.string().min(1),
+  rememberMe: z.boolean().optional(),
+});
+
+const registerSchema = z.object({
+  username: z.string().min(3).max(50),
+  password: z.string().min(6),
+  firstName: z.string().max(50).optional(),
+  lastName: z.string().max(50).optional(),
+  phone: z.string().regex(/^09\d{9}$/).optional(),
+});
+
+const profileUpdateSchema = z.object({
+  firstName: z.string().max(50).optional(),
+  lastName: z.string().max(50).optional(),
+  birthDate: z.string().optional(),
+  bio: z.string().max(500).optional(),
+  level: z.string().optional(),
+});
+
+const passwordChangeSchema = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(6),
+});
+
+const paymentSubmitSchema = z.object({
+  contentId: z.number().optional(),
+  amount: z.number().optional(),
+  trackingCode: z.string().optional(),
+  transactionHash: z.string().optional(),
+});
+
+// ============ RATE LIMITER ============
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string, maxAttempts: number = 5, windowMs: number = 60000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  
+  if (entry.count >= maxAttempts) {
+    return false;
+  }
+  
+  entry.count++;
+  return true;
+}
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of rateLimitMap.entries()) {
+    if (now > val.resetAt) rateLimitMap.delete(key);
+  }
+}, 300000);
 
 // ============ GLOBAL POOL (Isolated) ============
 // Defines a robust connection pool globally to be reused across requests
@@ -255,7 +330,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // --- PROFILE UPDATE ---
     if (pathname.includes('/profile') && method === 'PATCH') {
       if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
-      const { firstName, lastName, birthDate, bio, level } = body;
+      const parsed = profileUpdateSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "ورودی نامعتبر", details: parsed.error.flatten() });
+      const { firstName, lastName, birthDate, bio, level } = parsed.data;
       
       await db.update(users).set({
           firstName,
@@ -271,12 +348,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // --- PASSWORD UPDATE ---
     if (pathname.includes('/profile/password') && method === 'POST') {
       if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
-      const { currentPassword, newPassword } = body;
+      const parsed = passwordChangeSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "رمز عبور جدید حداقل ۶ کاراکتر باشد" });
+      const { currentPassword, newPassword } = parsed.data;
       
       // If user has existing password, verify it
       if (currentUser.password) {
            if (!currentPassword || !(await comparePasswords(currentPassword, currentUser.password))) {
-               return res.status(400).json("رمز عبور فعلی اشتباه است"); // Return string as client expects text() sometimes or json
+               return res.status(400).json("رمز عبور فعلی اشتباه است");
            }
       }
       
@@ -299,7 +378,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // --- SUBMIT PAYMENT ---
     if (pathname.includes('/payments') && method === 'POST') {
       if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
-      const { contentId, amount, trackingCode, transactionHash } = body;
+      const parsed = paymentSubmitSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "اطلاعات پرداخت نامعتبر" });
+      const { contentId, amount, trackingCode, transactionHash } = parsed.data;
       
       const insertResults = await db.insert(payments).values({
           userId: currentUser.id,
@@ -350,8 +431,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // --- AUTH ROUTES ---
     if (pathname.includes('/otp/request') && method === 'POST') {
-      const { phone } = body;
-      if (!phone) return res.status(400).json({ error: "شماره موبایل الزامی است" });
+      const parsed = phoneSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "شماره موبایل نامعتبر است" });
+      const { phone } = parsed.data;
+      
+      // Rate limit OTP requests
+      const ip = (req.headers['x-forwarded-for'] as string || 'unknown').split(',')[0].trim();
+      if (!checkRateLimit(`otp:${ip}`, 5, 120000)) {
+        return res.status(429).json({ error: "تعداد درخواست‌ها بیش از حد مجاز. ۲ دقیقه صبر کنید." });
+      }
+      
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
       
@@ -372,7 +461,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await db.update(users).set({ 
         otp, 
         otpExpires,
-        role: isAdmin && user.role !== 'admin' ? 'admin' : user.role // Only upgrade to admin if not already
+        role: isAdmin && user.role !== 'admin' ? 'admin' : user.role
       }).where(eq(users.id, user.id));
 
       await sendSMS(phone, otp);
@@ -380,7 +469,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (pathname.includes('/otp/verify') && method === 'POST') {
-      const { phone, otp, rememberMe } = body;
+      const parsed = otpVerifySchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "کد تایید باید ۶ رقم باشد" });
+      const { phone, otp, rememberMe } = parsed.data;
+      
+      // Rate limit OTP verification
+      const ip = (req.headers['x-forwarded-for'] as string || 'unknown').split(',')[0].trim();
+      if (!checkRateLimit(`verify:${ip}`, 10, 120000)) {
+        return res.status(429).json({ error: "تعداد تلاش‌ها بیش از حد مجاز. ۲ دقیقه صبر کنید." });
+      }
+      
       const results = await db.select().from(users).where(eq(users.phone, phone));
       const user = results[0];
       if (!user || user.otp !== otp || !user.otpExpires || new Date(user.otpExpires) < new Date()) {
@@ -395,7 +493,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (pathname.includes('/register') && method === 'POST') {
-      const { username, password, firstName, lastName, phone } = body;
+      const parsed = registerSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "اطلاعات ثبت‌نام نامعتبر", details: parsed.error.flatten() });
+      const { username, password, firstName, lastName, phone } = parsed.data;
       
       // Check existing
       const existing = await db.select().from(users).where(eq(users.username, username));
@@ -433,7 +533,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (pathname.includes('/login') && method === 'POST') {
-      const { username, password, rememberMe } = body;
+      const parsed = loginSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "نام کاربری یا رمز عبور نامعتبر" });
+      const { username, password, rememberMe } = parsed.data;
+      
+      // Rate limit login attempts
+      const ip = (req.headers['x-forwarded-for'] as string || 'unknown').split(',')[0].trim();
+      if (!checkRateLimit(`login:${ip}`, 10, 120000)) {
+        return res.status(429).json({ error: "تعداد تلاش‌ها بیش از حد مجاز. ۲ دقیقه صبر کنید." });
+      }
+      
       const results = await db.select().from(users).where(eq(users.username, username));
       const user = results[0];
       if (!user || !user.password || !(await comparePasswords(password, user.password))) {
