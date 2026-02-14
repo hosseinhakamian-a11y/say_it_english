@@ -101,10 +101,8 @@ export default function Profile() {
                   transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
                 >
                   <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-primary-foreground text-3xl font-bold">
-                      {user.firstName && user.lastName
-                        ? (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase()
-                        : user.username.slice(0, 2).toUpperCase()}
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-primary-foreground text-xl font-bold px-2">
+                      {user.firstName || user.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </motion.div>

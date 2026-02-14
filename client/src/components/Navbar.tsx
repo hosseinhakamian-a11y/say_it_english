@@ -25,9 +25,7 @@ export function Navbar() {
 
   const getUserInitials = () => {
     if (!user) return "??";
-    if (user.firstName && user.lastName) {
-      return (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase();
-    }
+    if (user.firstName) return user.firstName;
     return user.username.slice(0, 2).toUpperCase();
   };
 
@@ -65,7 +63,7 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
                     <Avatar className="h-9 w-9 border-2 border-primary/20 shadow-sm">
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold text-xs">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold text-[10px] px-1">
                         {getUserInitials()}
                       </AvatarFallback>
                     </Avatar>
@@ -142,7 +140,7 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm transition-transform group-hover:scale-105">
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold text-xs px-1">
                         {getUserInitials()}
                       </AvatarFallback>
                     </Avatar>
