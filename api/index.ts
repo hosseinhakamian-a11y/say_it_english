@@ -37,6 +37,7 @@ const users = pgTable("users", {
   lastName: text("last_name"),
   avatar: text("avatar"),
   bio: text("bio"),
+  birthDate: text("birth_date"),
   level: text("level").default("beginner"),
   streak: integer("streak").default(0),
   lastSeenAt: timestamp("last_seen_at"),
@@ -223,6 +224,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const { password: _, otp: __, otpExpires: ___, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
+    }
+
+    // --- PROFILE UPDATE ---
+    if (pathname.includes('/profile') && method === 'PATCH') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { firstName, lastName, birthDate, bio, level } = body;
+      
+      await db.update(users).set({
+          firstName,
+          lastName,
+          birthDate,
+          bio,
+          level
+      }).where(eq(users.id, currentUser.id));
+      
+      return res.status(200).json({ success: true });
+    }
+
+    // --- PASSWORD UPDATE ---
+    if (pathname.includes('/profile/password') && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { currentPassword, newPassword } = body;
+      
+      // If user has existing password, verify it
+      if (currentUser.password) {
+           if (!currentPassword || !(await comparePasswords(currentPassword, currentUser.password))) {
+               return res.status(400).json("رمز عبور فعلی اشتباه است"); // Return string as client expects text() sometimes or json
+           }
+      }
+      
+      // Hash new password
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+      
+      await db.update(users).set({ password: hashedPassword }).where(eq(users.id, currentUser.id));
+      return res.status(200).json({ success: true });
     }
 
     // --- AUTH ROUTES ---

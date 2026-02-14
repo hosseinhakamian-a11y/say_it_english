@@ -20,8 +20,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Just in case these are missing too
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS level TEXT DEFAULT 'beginner';`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date TEXT;`);
 
-    return res.status(200).json({ message: "Migration successful! Columns added: streak, bio, last_seen_at, level, avatar." });
+    return res.status(200).json({ message: "Migration successful! Columns added: streak, bio, last_seen_at, level, avatar, birth_date." });
 
   } catch (err: any) {
     return res.status(500).json({ error: err.message, stack: err.stack });
