@@ -19,6 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { InteractiveQuiz } from "@/components/InteractiveQuiz";
+import { Flashcards } from "@/components/Flashcards";
+import { useState } from "react";
 
 interface VideoMetadata {
     vocabulary?: {
@@ -39,6 +41,7 @@ export default function VideoDetailPage() {
     // All hooks MUST be called before any conditional returns (React Rules of Hooks)
     const { user } = useAuth();
     const [, navigate] = useLocation();
+    const [viewMode, setViewMode] = useState<'list' | 'flashcards'>('list');
 
     // Fetch single video details
     const { data: video, isLoading } = useQuery({
@@ -267,43 +270,68 @@ export default function VideoDetailPage() {
                                 </TabsContent>
 
                                 <TabsContent value="vocab" className="p-6">
+                                    <div className="flex justify-center mb-8 bg-muted/30 p-1 rounded-xl w-fit mx-auto">
+                                        <Button
+                                            variant={viewMode === 'list' ? 'default' : 'ghost'}
+                                            size="sm"
+                                            className="rounded-lg px-4"
+                                            onClick={() => setViewMode('list')}
+                                        >
+                                            لیست لغات
+                                        </Button>
+                                        <Button
+                                            variant={viewMode === 'flashcards' ? 'default' : 'ghost'}
+                                            size="sm"
+                                            className="rounded-lg px-4"
+                                            onClick={() => setViewMode('flashcards')}
+                                        >
+                                            تمرین با فلش‌کارت
+                                        </Button>
+                                    </div>
+
                                     <div className="relative">
-                                        <div className="grid gap-4 sm:grid-cols-1">
-                                            {metadata.vocabulary?.slice(0, hasFullAccess ? undefined : FREE_VOCAB_LIMIT).map((vocab, idx) => (
-                                                <div key={idx} className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors group text-left" dir="ltr">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-center gap-3 flex-wrap">
-                                                                <span className="font-black text-2xl text-primary tracking-tight">{vocab.word}</span>
-                                                                {vocab.pronunciation && (
-                                                                    <span className="text-xs text-muted-foreground/80 font-mono bg-muted/50 border px-2 py-1 rounded-md tracking-wider">
-                                                                        {vocab.pronunciation}
-                                                                    </span>
+                                        {viewMode === 'list' ? (
+                                            <div className="grid gap-4 sm:grid-cols-1">
+                                                {metadata.vocabulary?.slice(0, hasFullAccess ? undefined : FREE_VOCAB_LIMIT).map((vocab, idx) => (
+                                                    <div key={idx} className="bg-card p-5 rounded-2xl border border-border/60 shadow-sm flex flex-col gap-3 hover:border-primary/20 transition-colors group text-left" dir="ltr">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-3 flex-wrap">
+                                                                    <span className="font-black text-2xl text-primary tracking-tight">{vocab.word}</span>
+                                                                    {vocab.pronunciation && (
+                                                                        <span className="text-xs text-muted-foreground/80 font-mono bg-muted/50 border px-2 py-1 rounded-md tracking-wider">
+                                                                            {vocab.pronunciation}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {vocab.definition && (
+                                                                    <p className="text-sm text-gray-600 dark:text-gray-400 dir-ltr text-left italic">
+                                                                        "{vocab.definition}"
+                                                                    </p>
                                                                 )}
                                                             </div>
-                                                            {vocab.definition && (
-                                                                <p className="text-sm text-gray-600 dark:text-gray-400 dir-ltr text-left italic">
-                                                                    "{vocab.definition}"
-                                                                </p>
+                                                            {vocab.time && (
+                                                                <div className="flex items-center gap-1.5 text-[10px] bg-secondary/50 px-2.5 py-1 rounded-full font-mono text-muted-foreground whitespace-nowrap">
+                                                                    <Clock className="w-3 h-3" />
+                                                                    {vocab.time}
+                                                                </div>
                                                             )}
                                                         </div>
-                                                        {vocab.time && (
-                                                            <div className="flex items-center gap-1.5 text-[10px] bg-secondary/50 px-2.5 py-1 rounded-full font-mono text-muted-foreground whitespace-nowrap">
-                                                                <Clock className="w-3 h-3" />
-                                                                {vocab.time}
-                                                            </div>
-                                                        )}
-                                                    </div>
 
-                                                    <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                                                        <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-                                                    <div className="flex items-center gap-2" dir="rtl">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
-                                                        <p className="text-foreground font-medium text-base">{vocab.meaning}</p>
+                                                        <div className="flex items-center gap-2" dir="rtl">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                                                            <p className="text-foreground font-medium text-base">{vocab.meaning}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <Flashcards
+                                                items={metadata.vocabulary?.slice(0, hasFullAccess ? undefined : FREE_VOCAB_LIMIT) || []}
+                                            />
+                                        )}
 
                                         {/* Locked Content Overlay */}
                                         {!hasFullAccess && metadata.vocabulary && metadata.vocabulary.length > FREE_VOCAB_LIMIT && (
