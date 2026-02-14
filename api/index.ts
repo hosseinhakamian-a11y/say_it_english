@@ -171,9 +171,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // --- USER PROFILE ---
+    // --- USER PROFILE & STREAK LOGIC ---
     if (pathname.includes('/user') && method === 'GET') {
       if (!currentUser) return res.status(401).json(null);
+
+      // Calculate Streak
+      const now = new Date();
+      const lastSeen = currentUser.lastSeenAt ? new Date(currentUser.lastSeenAt) : null;
+      let newStreak = currentUser.streak || 0;
+      let shouldUpdate = false;
+
+      if (!lastSeen) {
+        // First time ever
+        newStreak = 1;
+        shouldUpdate = true;
+      } else {
+        const diffTime = Math.abs(now.getTime() - lastSeen.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Check if same day (ignoring time) to avoid spamming updates
+        const isSameDay = now.getDate() === lastSeen.getDate() && 
+                          now.getMonth() === lastSeen.getMonth() && 
+                          now.getFullYear() === lastSeen.getFullYear();
+
+        if (!isSameDay) {
+          if (diffDays <= 2) {
+             // Consecutive day (roughly) -> Increment
+             newStreak += 1;
+          } else {
+             // Missed a day -> Reset
+             newStreak = 1;
+          }
+          shouldUpdate = true;
+        }
+      }
+
+      if (shouldUpdate) {
+        // Update DB in background (fire and forget mostly, but we await to be safe)
+        try {
+          await db.update(users).set({ 
+            streak: newStreak, 
+            lastSeenAt: now 
+          }).where(eq(users.id, currentUser.id));
+          // Update local object to return fresh data
+          currentUser.streak = newStreak;
+          currentUser.lastSeenAt = now;
+        } catch (e) {
+          console.error("Failed to update streak", e);
+        }
+      }
+
       const { password: _, otp: __, otpExpires: ___, ...safeUser } = currentUser;
       return res.status(200).json(safeUser);
     }

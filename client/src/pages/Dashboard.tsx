@@ -19,15 +19,14 @@ import {
     LogOut
 } from "lucide-react";
 import { api } from "@shared/routes";
+import { useContent } from "@/hooks/use-content";
 
 export default function Dashboard() {
     const { user, logout } = useAuth();
+    const { data: content, isLoading: contentLoading } = useContent(); // Fetch real content
 
-    // Mock recent activity (until we have real progress tracking)
-    const recentActivities = [
-        { title: "I can't be bothered", type: "video", progress: 80, date: "امروز" },
-        { title: "اصطلاحات نسل زد", type: "video", progress: 20, date: "دیروز" },
-    ];
+    // Use first 3 items as "Recommended/Continue Watching" fallback
+    const recentActivities = content?.slice(0, 3) || [];
 
     if (!user) {
         return (
@@ -104,8 +103,8 @@ export default function Dashboard() {
                                 <div className="bg-green-500/10 p-3 rounded-full mb-3">
                                     <Target className="w-8 h-8 text-green-600" />
                                 </div>
-                                <span className="text-3xl font-black text-gray-900">0</span>
-                                <span className="text-sm font-medium text-gray-600 mt-1">دوره تکمیل شده</span>
+                                <span className="text-3xl font-black text-gray-900">{content?.length || 0}</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">درس موجود</span>
                             </CardContent>
                         </Card>
                     </motion.div>
@@ -116,7 +115,7 @@ export default function Dashboard() {
                                 <div className="bg-purple-500/10 p-3 rounded-full mb-3">
                                     <Clock className="w-8 h-8 text-purple-600" />
                                 </div>
-                                <span className="text-3xl font-black text-gray-900">0h</span>
+                                <span className="text-3xl font-black text-gray-900">∞</span>
                                 <span className="text-sm font-medium text-gray-600 mt-1">زمان یادگیری</span>
                             </CardContent>
                         </Card>
@@ -127,12 +126,12 @@ export default function Dashboard() {
                     {/* Main Content Area */}
                     <div className="lg:col-span-2 space-y-8">
 
-                        {/* Continue Learning */}
+                        {/* Continue Learning - Now using REAL Data */}
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     <PlayCircle className="w-6 h-6 text-primary" />
-                                    ادامه یادگیری
+                                    ادامه یادگیری (جدیدترین درس‌ها)
                                 </h2>
                                 <Link href="/videos">
                                     <Button variant="link" className="text-primary p-0 h-auto font-bold">مشاهده همه</Button>
@@ -140,37 +139,52 @@ export default function Dashboard() {
                             </div>
 
                             <div className="grid gap-4">
-                                {recentActivities.map((activity, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: i * 0.1 }}
-                                    >
-                                        <Card className="rounded-2xl border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer group overflow-hidden">
-                                            <div className="flex h-24">
-                                                <div className="w-32 bg-gray-200 relative">
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
-                                                        <PlayCircle className="w-8 h-8 text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all" />
-                                                    </div>
-                                                </div>
-                                                <div className="flex-1 p-4 flex flex-col justify-between">
-                                                    <div className="flex justify-between items-start">
-                                                        <h3 className="font-bold text-gray-900 line-clamp-1">{activity.title}</h3>
-                                                        <span className="text-xs text-gray-400">{activity.date}</span>
-                                                    </div>
-
-                                                    <div className="w-full">
-                                                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                                            <span>{activity.progress}% تکمیل شده</span>
+                                {contentLoading ? (
+                                    <div className="bg-white p-4 h-24 rounded-2xl animate-pulse"></div>
+                                ) : recentActivities.length > 0 ? (
+                                    recentActivities.map((item: any, i: number) => (
+                                        <motion.div
+                                            key={item.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.1 }}
+                                        >
+                                            <Link href={`/videos/${item.id}`}>
+                                                <Card className="rounded-2xl border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer group overflow-hidden">
+                                                    <div className="flex h-24">
+                                                        <div className="w-32 bg-gray-200 relative aspect-video">
+                                                            {item.thumbnailUrl ? (
+                                                                <img src={item.thumbnailUrl} alt={item.title} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                                                    <PlayCircle className="w-8 h-8 text-white opacity-80" />
+                                                                </div>
+                                                            )}
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+                                                                <PlayCircle className="w-8 h-8 text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                                                            </div>
                                                         </div>
-                                                        <Progress value={activity.progress} className="h-2" indicatorClassName="bg-primary" />
+                                                        <div className="flex-1 p-4 flex flex-col justify-between">
+                                                            <div className="flex justify-between items-start">
+                                                                <h3 className="font-bold text-gray-900 line-clamp-1">{item.title}</h3>
+                                                                <Badge variant="outline" className="text-xs">{item.level}</Badge>
+                                                            </div>
+
+                                                            <div className="w-full flex justify-between items-center text-xs text-gray-500 mt-2">
+                                                                <span>{item.type === 'video' ? 'ویدیو آموزشی' : 'مقاله'}</span>
+                                                                <span className="text-primary font-bold">نمایش درس →</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    </motion.div>
-                                ))}
+                                                </Card>
+                                            </Link>
+                                        </motion.div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 text-gray-400 bg-white rounded-2xl">
+                                        هیچ درسی یافت نشد. به زودی اضافه می‌شود!
+                                    </div>
+                                )}
                             </div>
                         </div>
 
