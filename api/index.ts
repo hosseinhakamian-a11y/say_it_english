@@ -224,6 +224,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(safeUser);
     }
 
+    if (pathname.includes('/register') && method === 'POST') {
+      const { username, password, firstName, lastName, phone } = body;
+      
+      // Check existing
+      const existing = await db.select().from(users).where(eq(users.username, username));
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "این نام کاربری قبلاً ثبت شده است" });
+      }
+
+      // Hash password
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      // Insert new user
+      const results = await db.insert(users).values({
+        username,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        phone,
+        role: 'user',
+        level: 'beginner',
+        streak: 0,
+      }).returning();
+      
+      const user = results[0];
+      
+      // Create Session
+      const newToken = randomBytes(32).toString('hex');
+      await db.update(users).set({ sessionToken: newToken }).where(eq(users.id, user.id));
+      
+      res.setHeader('Set-Cookie', `session=${newToken}; HttpOnly; Secure; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}; Path=/`);
+      
+      const { password: _, otp: __, otpExpires: ___, ...safeUser } = user;
+      return res.status(200).json(safeUser);
+    }
+
     if (pathname.includes('/login') && method === 'POST') {
       const { username, password, rememberMe } = body;
       const results = await db.select().from(users).where(eq(users.username, username));
