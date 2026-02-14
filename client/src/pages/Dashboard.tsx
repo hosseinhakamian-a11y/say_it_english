@@ -47,12 +47,16 @@ export default function Dashboard() {
                     <div className="flex items-center gap-4">
                         <Avatar className="h-16 w-16 border-2 border-primary shadow-lg">
                             <AvatarImage src={user.avatar || ""} />
-                            <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                                {user.username.charAt(0).toUpperCase()}
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white text-2xl font-bold">
+                                {user.firstName && user.lastName
+                                    ? (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase()
+                                    : user.username.charAt(0).toUpperCase()}
                             </AvatarFallback>
                         </Avatar>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">سلام، {user.firstName || user.username}! 👋</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">
+                                سلام، {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.firstName || user.username)}! 👋
+                            </h1>
                             <p className="text-gray-500">خوش آمدید، بیایید یادگیری را ادامه دهیم.</p>
                         </div>
                     </div>

@@ -101,16 +101,25 @@ export default function Profile() {
                   transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
                 >
                   <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-bold">
-                      {user.username.slice(0, 2).toUpperCase()}
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-primary-foreground text-3xl font-bold">
+                      {user.firstName && user.lastName
+                        ? (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase()
+                        : user.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </motion.div>
               </div>
             </div>
             <CardContent className="pt-0 pb-8 px-6">
-              <h2 className="text-xl font-bold mb-1 flex items-center justify-center gap-2">
-                {user.username}
+              <h2 className="text-xl font-bold mb-1 flex flex-col items-center justify-center gap-0">
+                {user.firstName && user.lastName ? (
+                  <>
+                    <span>{user.firstName} {user.lastName}</span>
+                    <span className="text-xs font-normal text-muted-foreground mt-0.5">{user.username}</span>
+                  </>
+                ) : (
+                  <span>{user.username}</span>
+                )}
                 {(user as any).streak > 0 && (
                   <span className="flex items-center text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full border border-orange-200" title="روزهای متوالی یادگیری">
                     🔥 {(user as any).streak}

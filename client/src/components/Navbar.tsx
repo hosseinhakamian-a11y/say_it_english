@@ -16,6 +16,21 @@ export function Navbar() {
   const [location] = useLocation();
   const { user, logout, isLoading } = useAuth();
 
+  const getDisplayName = () => {
+    if (!user) return "";
+    if (user.firstName && user.lastName) return `${user.firstName} ${user.lastName}`;
+    if (user.firstName) return user.firstName;
+    return user.username;
+  };
+
+  const getUserInitials = () => {
+    if (!user) return "??";
+    if (user.firstName && user.lastName) {
+      return (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase();
+    }
+    return user.username.slice(0, 2).toUpperCase();
+  };
+
   const navItems = [
     { label: "خانه", path: "/" },
     { label: "تعیین سطح", path: "/placement" },
@@ -49,15 +64,19 @@ export function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
-                    <Avatar className="h-9 w-9 border-2 border-primary/10">
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
-                        {user.username.slice(0, 2).toUpperCase()}
+                    <Avatar className="h-9 w-9 border-2 border-primary/20 shadow-sm">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold text-xs">
+                        {getUserInitials()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 shadow-xl border" align="start" sideOffset={8}>
+                <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 shadow-xl border rounded-2xl" align="start" sideOffset={8}>
                   <div dir="rtl">
+                    <div className="px-4 py-3 border-b mb-1">
+                      <p className="text-sm font-bold text-gray-900 truncate">{getDisplayName()}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{user.username}</p>
+                    </div>
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
                         <LayoutDashboard className="h-4 w-4" />
@@ -122,15 +141,19 @@ export function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 border-2 border-primary/10">
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                        {user.username.slice(0, 2).toUpperCase()}
+                    <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm transition-transform group-hover:scale-105">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold">
+                        {getUserInitials()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-white dark:bg-gray-900 shadow-xl border" align="end" sideOffset={8}>
+                <DropdownMenuContent className="w-64 bg-white dark:bg-gray-900 shadow-xl border rounded-2xl" align="end" sideOffset={8}>
                   <div dir="rtl">
+                    <div className="px-4 py-3 border-b mb-2 bg-muted/20">
+                      <p className="text-sm font-bold text-gray-900 truncate">{getDisplayName()}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.username}</p>
+                    </div>
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
                         <LayoutDashboard className="h-4 w-4" />
