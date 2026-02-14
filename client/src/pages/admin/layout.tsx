@@ -12,6 +12,8 @@ import {
     X,
     Sparkles,
     Wallet,
+    Crown,
+    Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +31,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         { name: "مدیریت کاربران", href: "/admin/users", icon: Users },
         { name: "مدیریت پرداخت‌ها", href: "/admin/payments", icon: CreditCard },
         { name: "تنظیمات پرداخت", href: "/admin/payment-settings", icon: Wallet },
+        { name: "مدیریت اشتراک‌ها", href: "/admin/subscriptions", icon: Crown },
+        { name: "کدهای تخفیف", href: "/admin/promos", icon: Tag },
     ];
 
     const sidebarContent = (
@@ -42,7 +46,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 >
                     <Sparkles className="w-5 h-5" />
                 </motion.div>
-                <span className="font-bold text-lg text-gray-900">پنل مدیریت</span>
+                <span className="font-bold text-lg text-foreground">پنل مدیریت</span>
             </div>
 
             <nav className="flex-1 p-4 space-y-2">
@@ -60,7 +64,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
                                         ? "bg-primary text-white shadow-lg shadow-primary/30"
-                                        : "text-gray-600 hover:bg-primary/10 hover:text-primary"
+                                        : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
                                         }`}
                                 >
                                     <item.icon className="h-5 w-5" />
@@ -72,9 +76,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 })}
             </nav>
 
-            <div className="p-4 border-t border-gray-100 space-y-2">
+            <div className="p-4 border-t border-border space-y-2">
                 <Link href="/profile">
-                    <a className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 text-sm font-medium transition-all">
+                    <a className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground text-sm font-medium transition-all">
                         <User className="h-5 w-5" />
                         بازگشت به پروفایل
                     </a>
@@ -92,13 +96,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex" dir="rtl">
+        <div className="min-h-screen bg-background flex" dir="rtl">
             {/* Desktop Sidebar */}
             <motion.div
                 initial={{ x: -100, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ duration: 0.4 }}
-                className="hidden md:flex flex-col w-72 bg-white/80 backdrop-blur-xl border-l border-gray-200/50 shadow-xl"
+                className="hidden md:flex flex-col w-72 bg-card/80 backdrop-blur-xl border-l border-border/50 shadow-xl"
             >
                 {sidebarContent}
             </motion.div>
@@ -108,7 +112,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-xl bg-white/80 backdrop-blur-xl shadow-lg"
+                    className="rounded-xl bg-card/80 backdrop-blur-xl shadow-lg"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 >
                     {isMobileMenuOpen ? (
@@ -135,7 +139,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                             animate={{ x: 0 }}
                             exit={{ x: "100%" }}
                             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="md:hidden fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 flex flex-col"
+                            className="md:hidden fixed top-0 right-0 h-full w-72 bg-card shadow-2xl z-50 flex flex-col"
                         >
                             {sidebarContent}
                         </motion.div>

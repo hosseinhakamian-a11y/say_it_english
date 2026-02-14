@@ -1036,6 +1036,110 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.redirect('/dashboard?payment=success&plan=' + planId);
     }
 
+    // ============ ADMIN ENDPOINTS ============
+    
+    // --- ADMIN: Analytics Stats ---
+    if (pathname === '/api/admin/stats' && method === 'GET') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      
+      const totalUsers = await db.select({ count: sql<number>`count(*)` }).from(users);
+      const totalContent = await db.select({ count: sql<number>`count(*)` }).from(content);
+      const totalPayments = await db.select({ count: sql<number>`count(*)` }).from(payments);
+      const totalRevenue = await db.select({ sum: sql<number>`COALESCE(sum(amount), 0)` }).from(payments).where(eq(payments.status, 'approved'));
+      const activeSubscriptions = await db.select({ count: sql<number>`count(*)` }).from(subscriptions).where(eq(subscriptions.status, 'active'));
+      const totalPromos = await db.select({ count: sql<number>`count(*)` }).from(promoCodes);
+      
+      // Last 7 days revenue
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekRevenue = await db.select({ sum: sql<number>`COALESCE(sum(amount), 0)` })
+        .from(payments)
+        .where(and(eq(payments.status, 'approved'), sql`${payments.createdAt} >= ${weekAgo}`));
+      
+      // Recent payments
+      const recentPayments = await db.select().from(payments)
+        .orderBy(desc(payments.createdAt)).limit(5);
+      
+      return res.status(200).json({
+        totalUsers: totalUsers[0]?.count || 0,
+        totalContent: totalContent[0]?.count || 0,
+        totalPayments: totalPayments[0]?.count || 0,
+        totalRevenue: totalRevenue[0]?.sum || 0,
+        activeSubscriptions: activeSubscriptions[0]?.count || 0,
+        totalPromos: totalPromos[0]?.count || 0,
+        weekRevenue: weekRevenue[0]?.sum || 0,
+        recentPayments,
+      });
+    }
+    
+    // --- ADMIN: List All Subscriptions ---
+    if (pathname === '/api/admin/subscriptions' && method === 'GET') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const allSubs = await db.select().from(subscriptions).orderBy(desc(subscriptions.createdAt));
+      
+      // Enrich with user info
+      const enriched = await Promise.all(allSubs.map(async (sub) => {
+        const user = await db.select({ id: users.id, username: users.username, phone: users.phone }).from(users).where(eq(users.id, sub.userId));
+        return { ...sub, user: user[0] || null };
+      }));
+      
+      return res.status(200).json(enriched);
+    }
+
+    // --- ADMIN: Cancel Subscription ---
+    if (pathname.match(/\/api\/admin\/subscriptions\/\d+\/cancel/) && method === 'POST') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const idMatch = pathname.match(/\/api\/admin\/subscriptions\/(\d+)\/cancel/);
+      const subId = parseInt(idMatch![1]);
+      await db.update(subscriptions).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(subscriptions.id, subId));
+      return res.status(200).json({ success: true });
+    }
+    
+    // --- ADMIN: List Promo Codes ---
+    if (pathname === '/api/admin/promos' && method === 'GET') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const allPromos = await db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+      return res.status(200).json(allPromos);
+    }
+    
+    // --- ADMIN: Create Promo Code ---
+    if (pathname === '/api/admin/promos' && method === 'POST') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const { code, discountPercent, maxUses, expiresAt } = body;
+      if (!code || !discountPercent) return res.status(400).json({ error: "code and discountPercent required" });
+      
+      const newPromo = await db.insert(promoCodes).values({
+        code: code.toUpperCase(),
+        discountPercent: parseInt(discountPercent),
+        maxUses: maxUses ? parseInt(maxUses) : null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        isActive: true,
+      }).returning();
+      
+      return res.status(201).json(newPromo[0]);
+    }
+    
+    // --- ADMIN: Toggle Promo Code ---
+    if (pathname.match(/\/api\/admin\/promos\/\d+\/toggle/) && method === 'POST') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const idMatch = pathname.match(/\/api\/admin\/promos\/(\d+)\/toggle/);
+      const promoId = parseInt(idMatch![1]);
+      const promo = await db.select().from(promoCodes).where(eq(promoCodes.id, promoId));
+      if (promo.length === 0) return res.status(404).json({ error: "Not found" });
+      
+      await db.update(promoCodes).set({ isActive: !promo[0].isActive }).where(eq(promoCodes.id, promoId));
+      return res.status(200).json({ success: true, isActive: !promo[0].isActive });
+    }
+    
+    // --- ADMIN: Delete Promo Code ---
+    if (pathname.match(/\/api\/admin\/promos\/\d+$/) && method === 'DELETE') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const idMatch = pathname.match(/\/api\/admin\/promos\/(\d+)/);
+      const promoId = parseInt(idMatch![1]);
+      await db.delete(promoCodes).where(eq(promoCodes.id, promoId));
+      return res.status(200).json({ success: true });
+    }
+
     // --- AUTH ROUTES ---
     if (pathname.includes('/otp/request') && method === 'POST') {
       const parsed = phoneSchema.safeParse(body);

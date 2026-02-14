@@ -43,6 +43,8 @@ const AdminUsers = lazy(() => import("@/pages/admin/users"));
 const AdminPayments = lazy(() => import("@/pages/admin/payments"));
 const AdminSlots = lazy(() => import("@/pages/admin/slots"));
 const AdminPaymentSettings = lazy(() => import("@/pages/admin/payment-settings"));
+const AdminSubscriptions = lazy(() => import("@/pages/admin/subscriptions"));
+const AdminPromos = lazy(() => import("@/pages/admin/promos"));
 
 // Premium Loading Fallback
 function PageLoader() {
@@ -71,6 +73,8 @@ function Router() {
           <ProtectedRoute path="/admin/payments" component={AdminPayments} shouldCheckAdmin={true} />
           <ProtectedRoute path="/admin/slots" component={AdminSlots} shouldCheckAdmin={true} />
           <ProtectedRoute path="/admin/payment-settings" component={AdminPaymentSettings} shouldCheckAdmin={true} />
+          <ProtectedRoute path="/admin/subscriptions" component={AdminSubscriptions} shouldCheckAdmin={true} />
+          <ProtectedRoute path="/admin/promos" component={AdminPromos} shouldCheckAdmin={true} />
         </Switch>
       </Suspense>
     );
