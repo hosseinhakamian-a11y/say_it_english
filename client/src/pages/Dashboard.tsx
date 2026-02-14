@@ -16,16 +16,41 @@ import {
     Target,
     ChevronLeft,
     Settings,
-    LogOut
+    LogOut,
+    Zap,
+    Star,
+    Award
 } from "lucide-react";
 import { api } from "@shared/routes";
 import { useContent } from "@/hooks/use-content";
 
 export default function Dashboard() {
     const { user, logout } = useAuth();
-    const { data: content, isLoading: contentLoading } = useContent(); // Fetch real content
+    const { data: content, isLoading: contentLoading } = useContent();
 
-    // Use first 3 items as "Recommended/Continue Watching" fallback
+    // Fetch user stats from new Phase 2 endpoint
+    const { data: stats } = useQuery<any>({
+        queryKey: ["/api/user/stats"],
+        queryFn: async () => {
+            const res = await fetch("/api/user/stats", { credentials: "include" });
+            if (!res.ok) return null;
+            return res.json();
+        },
+        enabled: !!user,
+    });
+
+    // Fetch badges data
+    const { data: badgesData } = useQuery<any>({
+        queryKey: ["/api/badges"],
+        queryFn: async () => {
+            const res = await fetch("/api/badges", { credentials: "include" });
+            if (!res.ok) return null;
+            return res.json();
+        },
+        enabled: !!user,
+    });
+
+    // Use first 3 items as "Continue Watching" fallback
     const recentActivities = content?.slice(0, 3) || [];
 
     if (!user) {
@@ -81,20 +106,20 @@ export default function Dashboard() {
                                 <div className="bg-orange-500/10 p-3 rounded-full mb-3">
                                     <Flame className="w-8 h-8 text-orange-600 fill-orange-600 animate-pulse" />
                                 </div>
-                                <span className="text-3xl font-black text-gray-900">{user.streak || 0}</span>
+                                <span className="text-3xl font-black text-gray-900">{stats?.streak || user.streak || 0}</span>
                                 <span className="text-sm font-medium text-gray-600 mt-1">روز پشت‌سرهم</span>
                             </CardContent>
                         </Card>
                     </motion.div>
 
                     <motion.div whileHover={{ y: -5 }} className="col-span-1">
-                        <Card className="rounded-2xl border-none shadow-md bg-gradient-to-br from-blue-50 to-blue-100/50 border-b-4 border-blue-400">
+                        <Card className="rounded-2xl border-none shadow-md bg-gradient-to-br from-amber-50 to-yellow-100/50 border-b-4 border-amber-400">
                             <CardContent className="p-6 flex flex-col items-center text-center">
-                                <div className="bg-blue-500/10 p-3 rounded-full mb-3">
-                                    <Trophy className="w-8 h-8 text-blue-600" />
+                                <div className="bg-amber-500/10 p-3 rounded-full mb-3">
+                                    <Zap className="w-8 h-8 text-amber-600" />
                                 </div>
-                                <span className="text-3xl font-black text-gray-900">{user.level === 'beginner' ? 'LVL 1' : user.level === 'intermediate' ? 'LVL 2' : 'LVL 3'}</span>
-                                <span className="text-sm font-medium text-gray-600 mt-1">سطح فعلی</span>
+                                <span className="text-3xl font-black text-gray-900">{stats?.xp || 0}</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">امتیاز (XP)</span>
                             </CardContent>
                         </Card>
                     </motion.div>
@@ -105,8 +130,8 @@ export default function Dashboard() {
                                 <div className="bg-green-500/10 p-3 rounded-full mb-3">
                                     <Target className="w-8 h-8 text-green-600" />
                                 </div>
-                                <span className="text-3xl font-black text-gray-900">{content?.length || 0}</span>
-                                <span className="text-sm font-medium text-gray-600 mt-1">درس موجود</span>
+                                <span className="text-3xl font-black text-gray-900">{stats?.completedLessons || 0}</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">درس کامل‌شده</span>
                             </CardContent>
                         </Card>
                     </motion.div>
@@ -115,10 +140,10 @@ export default function Dashboard() {
                         <Card className="rounded-2xl border-none shadow-md bg-gradient-to-br from-purple-50 to-purple-100/50 border-b-4 border-purple-400">
                             <CardContent className="p-6 flex flex-col items-center text-center">
                                 <div className="bg-purple-500/10 p-3 rounded-full mb-3">
-                                    <Clock className="w-8 h-8 text-purple-600" />
+                                    <BookOpen className="w-8 h-8 text-purple-600" />
                                 </div>
-                                <span className="text-3xl font-black text-gray-900">∞</span>
-                                <span className="text-sm font-medium text-gray-600 mt-1">زمان یادگیری</span>
+                                <span className="text-3xl font-black text-gray-900">{stats?.savedVocabCount || 0}</span>
+                                <span className="text-sm font-medium text-gray-600 mt-1">لغت ذخیره‌شده</span>
                             </CardContent>
                         </Card>
                     </motion.div>
@@ -217,9 +242,44 @@ export default function Dashboard() {
                     </div>
 
                     {/* Sidebar Area */}
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* Badges Showcase */}
+                        <Card className="rounded-2xl border-none shadow-sm">
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Award className="w-5 h-5 text-amber-500" />
+                                    نشان‌ها
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {badgesData?.badges?.length > 0 ? (
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {badgesData.badges.map((badge: any) => {
+                                            const isEarned = badgesData.earned?.some((e: any) => e.badgeId === badge.id);
+                                            return (
+                                                <motion.div
+                                                    key={badge.id}
+                                                    whileHover={{ scale: 1.1 }}
+                                                    className={`flex flex-col items-center p-2 rounded-xl transition-all ${isEarned
+                                                            ? 'bg-amber-50 shadow-sm'
+                                                            : 'opacity-30 grayscale'
+                                                        }`}
+                                                    title={badge.description}
+                                                >
+                                                    <span className="text-2xl mb-1">{badge.icon}</span>
+                                                    <span className="text-[10px] font-medium text-center leading-tight text-gray-700">{badge.name}</span>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-400 text-center py-4">نشان‌ها به زودی فعال می‌شوند!</p>
+                                )}
+                            </CardContent>
+                        </Card>
+
                         {/* Profile Completion */}
-                        <Card className="rounded-2xl border-none shadow-sm mb-6 sticky top-24">
+                        <Card className="rounded-2xl border-none shadow-sm sticky top-24">
                             <CardHeader>
                                 <CardTitle className="text-lg">وضعیت پروفایل</CardTitle>
                             </CardHeader>

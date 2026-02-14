@@ -5,7 +5,7 @@ import { promisify } from "util";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -115,6 +115,7 @@ const users = pgTable("users", {
   birthDate: text("birth_date"),
   level: text("level").default("beginner"),
   streak: integer("streak").default(0),
+  xp: integer("xp").default(0),
   lastSeenAt: timestamp("last_seen_at"),
   sessionToken: text("session_token"),
   otp: text("otp"),
@@ -153,6 +154,51 @@ const purchases = pgTable("purchases", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   contentId: integer("content_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ============ PHASE 2: PROGRESS SYSTEM TABLES ============
+const userProgress = pgTable("user_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  contentId: integer("content_id").notNull(),
+  watchedPercent: integer("watched_percent").default(0),
+  quizScore: integer("quiz_score").default(0),
+  vocabReviewed: integer("vocab_reviewed").default(0),
+  completedAt: timestamp("completed_at"),
+  xpEarned: integer("xp_earned").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+const badges = pgTable("badges", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  nameEn: text("name_en").notNull(),
+  icon: text("icon").notNull(),
+  description: text("description").notNull(),
+  condition: text("condition").notNull(),
+  xpReward: integer("xp_reward").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+const userBadges = pgTable("user_badges", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  badgeId: integer("badge_id").notNull(),
+  earnedAt: timestamp("earned_at").defaultNow(),
+});
+
+const savedVocabulary = pgTable("saved_vocabulary", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  contentId: integer("content_id").notNull(),
+  word: text("word").notNull(),
+  meaning: text("meaning").notNull(),
+  example: text("example"),
+  difficulty: integer("difficulty").default(1),
+  reviewCount: integer("review_count").default(0),
+  lastReviewedAt: timestamp("last_reviewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -429,7 +475,141 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(updatedPayment);
     }
 
-    // --- AUTH ROUTES ---
+    // ============ PHASE 2: PROGRESS & LEARNING ENDPOINTS ============
+
+    // --- USER PROGRESS: Update progress for a content item ---
+    if (pathname.match(/\/api\/progress$/) && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { contentId, watchedPercent, quizScore, vocabReviewed } = body;
+      if (!contentId) return res.status(400).json({ error: "contentId is required" });
+      
+      // Calculate XP based on activity
+      let xpEarned = 0;
+      if (watchedPercent >= 90) xpEarned += 10; // Video completion
+      if (quizScore) xpEarned += Math.round(quizScore * 0.2); // Quiz XP
+      if (vocabReviewed) xpEarned += vocabReviewed * 5; // Vocab XP
+
+      const isCompleted = watchedPercent >= 90 && (quizScore === undefined || quizScore >= 60);
+
+      // Upsert progress
+      const existingProgress = await db.select().from(userProgress)
+        .where(and(eq(userProgress.userId, currentUser.id), eq(userProgress.contentId, contentId)));
+
+      let progressResult;
+      if (existingProgress.length > 0) {
+        const prev = existingProgress[0];
+        const newXp = Math.max(prev.xpEarned || 0, xpEarned);
+        progressResult = await db.update(userProgress).set({
+          watchedPercent: Math.max(prev.watchedPercent || 0, watchedPercent || 0),
+          quizScore: Math.max(prev.quizScore || 0, quizScore || 0),
+          vocabReviewed: Math.max(prev.vocabReviewed || 0, vocabReviewed || 0),
+          xpEarned: newXp,
+          completedAt: isCompleted && !prev.completedAt ? new Date() : prev.completedAt,
+          updatedAt: new Date(),
+        }).where(eq(userProgress.id, prev.id)).returning();
+      } else {
+        progressResult = await db.insert(userProgress).values({
+          userId: currentUser.id,
+          contentId,
+          watchedPercent: watchedPercent || 0,
+          quizScore: quizScore || 0,
+          vocabReviewed: vocabReviewed || 0,
+          xpEarned,
+          completedAt: isCompleted ? new Date() : null,
+        }).returning();
+      }
+
+      // Update user total XP
+      if (xpEarned > 0) {
+        await db.update(users).set({
+          xp: (currentUser.xp || 0) + xpEarned,
+        }).where(eq(users.id, currentUser.id));
+      }
+
+      return res.status(200).json(progressResult[0]);
+    }
+
+    // --- USER PROGRESS: Get all progress for current user ---
+    if (pathname.match(/\/api\/progress$/) && method === 'GET') {
+      if (!currentUser) return res.status(401).json([]);
+      const results = await db.select().from(userProgress).where(eq(userProgress.userId, currentUser.id));
+      return res.status(200).json(results);
+    }
+
+    // --- BADGES: List all badges ---
+    if (pathname.match(/\/api\/badges$/) && method === 'GET') {
+      const allBadges = await db.select().from(badges);
+      if (!currentUser) return res.status(200).json({ badges: allBadges, earned: [] });
+      
+      const earned = await db.select().from(userBadges).where(eq(userBadges.userId, currentUser.id));
+      return res.status(200).json({ badges: allBadges, earned });
+    }
+
+    // --- SAVED VOCABULARY: Save a word ---
+    if (pathname.match(/\/api\/vocabulary$/) && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { contentId, word, meaning, example } = body;
+      if (!word || !meaning) return res.status(400).json({ error: "word and meaning are required" });
+      
+      try {
+        const result = await db.insert(savedVocabulary).values({
+          userId: currentUser.id,
+          contentId: contentId || 0,
+          word,
+          meaning,
+          example: example || null,
+        }).returning();
+        return res.status(201).json(result[0]);
+      } catch (err: any) {
+        if (err.code === '23505') return res.status(409).json({ error: "این لغت قبلاً ذخیره شده" });
+        throw err;
+      }
+    }
+
+    // --- SAVED VOCABULARY: Get user's vocabulary ---
+    if (pathname.match(/\/api\/vocabulary$/) && method === 'GET') {
+      if (!currentUser) return res.status(401).json([]);
+      const results = await db.select().from(savedVocabulary)
+        .where(eq(savedVocabulary.userId, currentUser.id))
+        .orderBy(desc(savedVocabulary.createdAt));
+      return res.status(200).json(results);
+    }
+
+    // --- SAVED VOCABULARY: Delete a saved word ---
+    if (pathname.match(/\/api\/vocabulary\/\d+/) && method === 'DELETE') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const idMatch = pathname.match(/\/api\/vocabulary\/(\d+)/);
+      const vocabId = parseInt(idMatch![1]);
+      await db.delete(savedVocabulary)
+        .where(eq(savedVocabulary.id, vocabId));
+      return res.status(200).json({ success: true });
+    }
+
+    // --- USER STATS: Combined dashboard data ---
+    if (pathname.match(/\/api\/user\/stats$/) && method === 'GET') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      
+      const progress = await db.select().from(userProgress).where(eq(userProgress.userId, currentUser.id));
+      const earnedBadges = await db.select().from(userBadges).where(eq(userBadges.userId, currentUser.id));
+      const vocabCount = await db.select().from(savedVocabulary).where(eq(savedVocabulary.userId, currentUser.id));
+      
+      const completedLessons = progress.filter(p => p.completedAt).length;
+      const totalXp = currentUser.xp || 0;
+      const avgQuizScore = progress.length > 0 
+        ? Math.round(progress.reduce((sum, p) => sum + (p.quizScore || 0), 0) / progress.length) 
+        : 0;
+
+      return res.status(200).json({
+        xp: totalXp,
+        streak: currentUser.streak || 0,
+        completedLessons,
+        totalLessonsStarted: progress.length,
+        avgQuizScore,
+        savedVocabCount: vocabCount.length,
+        badgesEarned: earnedBadges.length,
+        level: currentUser.level || 'beginner',
+      });
+    }
     if (pathname.includes('/otp/request') && method === 'POST') {
       const parsed = phoneSchema.safeParse(body);
       if (!parsed.success) return res.status(400).json({ error: "شماره موبایل نامعتبر است" });
