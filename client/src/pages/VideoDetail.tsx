@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { format } from "date-fns-jalali";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { generateLessonPDF } from "@/lib/pdf-generator";
 import { SEO } from "@/components/SEO";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { api } from "@shared/routes";
@@ -164,10 +165,22 @@ export default function VideoDetailPage() {
                                     </div>
                                 </div>
 
-                                <Button variant="outline" size="sm" className="rounded-xl gap-2 hover:bg-primary/5 hover:text-primary border-primary/20">
-                                    <Share2 className="w-4 h-4" />
-                                    اشتراک‌گذاری
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-xl gap-2 hover:bg-primary/5 hover:text-primary border-primary/20"
+                                        onClick={() => generateLessonPDF(video, metadata)}
+                                        disabled={!hasLearningMaterials}
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        دانلود جزوه
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="rounded-xl gap-2 hover:bg-primary/5 hover:text-primary border-primary/20">
+                                        <Share2 className="w-4 h-4" />
+                                        اشتراک‌گذاری
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
