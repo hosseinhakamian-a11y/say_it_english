@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Menu, X, User, LogOut, LayoutDashboard, Crown } from "lucide-react";
+import { Menu, X, User, LogOut, LayoutDashboard, Crown, Trophy, Target } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -132,45 +133,60 @@ export function Navbar() {
           </div>
 
           {/* Desktop User Menu */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-3">
             {isLoading ? (
               <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
             ) : user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm transition-transform group-hover:scale-105">
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold text-xs px-1">
-                        {getUserInitials()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 bg-white dark:bg-gray-900 shadow-xl border rounded-2xl" align="end" sideOffset={8}>
-                  <div dir="rtl">
-                    <div className="px-4 py-3 border-b mb-2 bg-muted/20">
-                      <p className="text-sm font-bold text-gray-900 truncate">{getDisplayName()}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.username}</p>
+              <>
+                <NotificationBell />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                      <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm transition-transform group-hover:scale-105">
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-cyan-700 text-white font-bold text-xs px-1">
+                          {getUserInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 bg-white dark:bg-gray-900 shadow-xl border rounded-2xl" align="end" sideOffset={8}>
+                    <div dir="rtl">
+                      <div className="px-4 py-3 border-b mb-2 bg-muted/20">
+                        <p className="text-sm font-bold text-gray-900 truncate">{getDisplayName()}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.username}</p>
+                      </div>
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                          <LayoutDashboard className="h-4 w-4" />
+                          <span>داشبورد من</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                          <User className="h-4 w-4" />
+                          <span>پروفایل کاربری</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/leaderboard" className="flex items-center gap-2 cursor-pointer">
+                          <Trophy className="h-4 w-4" />
+                          <span>جدول امتیازات</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/challenges" className="flex items-center gap-2 cursor-pointer">
+                          <Target className="h-4 w-4" />
+                          <span>چالش‌های هفتگی</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
+                        <LogOut className="h-4 w-4 ml-2" />
+                        <span>خروج از حساب</span>
+                      </DropdownMenuItem>
                     </div>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
-                        <LayoutDashboard className="h-4 w-4" />
-                        <span>داشبورد من</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-                        <User className="h-4 w-4" />
-                        <span>پروفایل کاربری</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
-                      <LogOut className="h-4 w-4 ml-2" />
-                      <span>خروج از حساب</span>
-                    </DropdownMenuItem>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             ) : (
               <Link href="/auth">
                 <div className="flex items-center gap-1 bg-gradient-to-r from-primary/10 to-primary/5 backdrop-blur-sm border border-primary/20 rounded-full p-1 hover:border-primary/40 transition-all">

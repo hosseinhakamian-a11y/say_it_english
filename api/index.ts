@@ -202,6 +202,41 @@ const savedVocabulary = pgTable("saved_vocabulary", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ============ PHASE 3: GAMIFICATION TABLES ============
+const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  type: text("type").default("info"),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false),
+  link: text("link"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+const weeklyChallenges = pgTable("weekly_challenges", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").default("🎯"),
+  challengeType: text("challenge_type").notNull(),
+  targetValue: integer("target_value").default(1),
+  xpReward: integer("xp_reward").default(50),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+const userChallenges = pgTable("user_challenges", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  challengeId: integer("challenge_id").notNull(),
+  currentValue: integer("current_value").default(0),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // ============ SMS HELPER (Async) ============
 async function sendSMS(phone: string, message: string) {
   const apiKey = process.env.SMS_IR_API_KEY;
@@ -610,6 +645,200 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         level: currentUser.level || 'beginner',
       });
     }
+
+    // ============ PHASE 3: GAMIFICATION ENDPOINTS ============
+
+    // --- LEADERBOARD: Top users by XP ---
+    if (pathname.match(/\/api\/leaderboard$/) && method === 'GET') {
+      const topUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        avatar: users.avatar,
+        xp: users.xp,
+        streak: users.streak,
+        level: users.level,
+      }).from(users).orderBy(desc(users.xp)).limit(50);
+
+      // Determine current user's rank
+      let myRank = null;
+      if (currentUser) {
+        const idx = topUsers.findIndex(u => u.id === currentUser.id);
+        myRank = idx >= 0 ? idx + 1 : null;
+      }
+
+      return res.status(200).json({
+        leaderboard: topUsers,
+        myRank,
+        myXp: currentUser?.xp || 0,
+      });
+    }
+
+    // --- NOTIFICATIONS: Get user's notifications ---
+    if (pathname.match(/\/api\/notifications$/) && method === 'GET') {
+      if (!currentUser) return res.status(401).json([]);
+      const results = await db.select().from(notifications)
+        .where(eq(notifications.userId, currentUser.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
+      const unreadCount = results.filter(n => !n.isRead).length;
+      return res.status(200).json({ notifications: results, unreadCount });
+    }
+
+    // --- NOTIFICATIONS: Mark single notification as read ---
+    if (pathname.match(/\/api\/notifications\/\d+\/read/) && method === 'PATCH') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const idMatch = pathname.match(/\/api\/notifications\/(\d+)\/read/);
+      const notifId = parseInt(idMatch![1]);
+      await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, notifId));
+      return res.status(200).json({ success: true });
+    }
+
+    // --- NOTIFICATIONS: Mark all as read ---
+    if (pathname.match(/\/api\/notifications\/read-all/) && method === 'PATCH') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, currentUser.id));
+      return res.status(200).json({ success: true });
+    }
+
+    // --- WEEKLY CHALLENGES: List active challenges with user progress ---
+    if (pathname.match(/\/api\/challenges$/) && method === 'GET') {
+      const now = new Date();
+      const activeChallenges = await db.select().from(weeklyChallenges)
+        .where(eq(weeklyChallenges.isActive, true));
+      
+      let userProgressMap: Record<number, any> = {};
+      if (currentUser) {
+        const joined = await db.select().from(userChallenges)
+          .where(eq(userChallenges.userId, currentUser.id));
+        for (const uc of joined) {
+          userProgressMap[uc.challengeId] = uc;
+        }
+      }
+
+      const result = activeChallenges.map(ch => ({
+        ...ch,
+        userProgress: userProgressMap[ch.id] || null,
+        isJoined: !!userProgressMap[ch.id],
+        isCompleted: !!userProgressMap[ch.id]?.completedAt,
+        percentDone: userProgressMap[ch.id] 
+          ? Math.min(100, Math.round(((userProgressMap[ch.id].currentValue || 0) / (ch.targetValue || 1)) * 100))
+          : 0,
+      }));
+
+      return res.status(200).json(result);
+    }
+
+    // --- WEEKLY CHALLENGES: Join a challenge ---
+    if (pathname.match(/\/api\/challenges\/\d+\/join/) && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const idMatch = pathname.match(/\/api\/challenges\/(\d+)\/join/);
+      const challengeId = parseInt(idMatch![1]);
+      
+      try {
+        const result = await db.insert(userChallenges).values({
+          userId: currentUser.id,
+          challengeId,
+          currentValue: 0,
+        }).returning();
+        return res.status(201).json(result[0]);
+      } catch (err: any) {
+        if (err.code === '23505') return res.status(409).json({ error: "قبلاً در این چالش شرکت کردید" });
+        throw err;
+      }
+    }
+
+    // --- WEEKLY CHALLENGES: Update challenge progress ---
+    if (pathname.match(/\/api\/challenges\/\d+\/progress/) && method === 'PATCH') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const idMatch = pathname.match(/\/api\/challenges\/(\d+)\/progress/);
+      const challengeId = parseInt(idMatch![1]);
+      const { increment } = body;
+
+      const existing = await db.select().from(userChallenges)
+        .where(and(eq(userChallenges.userId, currentUser.id), eq(userChallenges.challengeId, challengeId)));
+      
+      if (existing.length === 0) return res.status(404).json({ error: "ابتدا در چالش شرکت کنید" });
+      
+      const current = existing[0];
+      if (current.completedAt) return res.status(200).json({ ...current, alreadyCompleted: true });
+      
+      const newValue = (current.currentValue || 0) + (increment || 1);
+      
+      // Get challenge target
+      const challenge = await db.select().from(weeklyChallenges).where(eq(weeklyChallenges.id, challengeId));
+      const isCompleted = challenge.length > 0 && newValue >= (challenge[0].targetValue || 1);
+
+      const result = await db.update(userChallenges).set({
+        currentValue: newValue,
+        completedAt: isCompleted ? new Date() : null,
+      }).where(eq(userChallenges.id, current.id)).returning();
+
+      // If completed, grant XP reward
+      if (isCompleted && challenge.length > 0) {
+        const reward = challenge[0].xpReward || 0;
+        await db.update(users).set({ xp: (currentUser.xp || 0) + reward }).where(eq(users.id, currentUser.id));
+        
+        // Create notification for completion
+        await db.insert(notifications).values({
+          userId: currentUser.id,
+          type: 'achievement',
+          title: '🎉 چالش تکمیل شد!',
+          message: `تبریک! چالش «${challenge[0].title}» را تکمیل کردید و ${reward} XP دریافت کردید.`,
+        });
+      }
+
+      return res.status(200).json(result[0]);
+    }
+
+    // --- WEEKLY REPORT: Get user's weekly progress summary ---
+    if (pathname.match(/\/api\/user\/weekly-report$/) && method === 'GET') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      // Get all progress created/updated this week
+      const weekProgress = await db.select().from(userProgress)
+        .where(eq(userProgress.userId, currentUser.id));
+
+      // Filter by week (since we can't do date comparison easily without gte import)
+      const thisWeek = weekProgress.filter(p => p.updatedAt && new Date(p.updatedAt) >= oneWeekAgo);
+
+      const lessonsThisWeek = thisWeek.length;
+      const completedThisWeek = thisWeek.filter(p => p.completedAt && new Date(p.completedAt) >= oneWeekAgo).length;
+      const xpThisWeek = thisWeek.reduce((sum, p) => sum + (p.xpEarned || 0), 0);
+      const avgScore = thisWeek.length > 0
+        ? Math.round(thisWeek.reduce((sum, p) => sum + (p.quizScore || 0), 0) / thisWeek.length)
+        : 0;
+
+      // Get vocab saved this week
+      const weekVocab = await db.select().from(savedVocabulary)
+        .where(eq(savedVocabulary.userId, currentUser.id));
+      const vocabThisWeek = weekVocab.filter(v => v.createdAt && new Date(v.createdAt) >= oneWeekAgo).length;
+
+      // Get challenges completed this week
+      const weekChallenges = await db.select().from(userChallenges)
+        .where(eq(userChallenges.userId, currentUser.id));
+      const challengesCompleted = weekChallenges.filter(
+        c => c.completedAt && new Date(c.completedAt) >= oneWeekAgo
+      ).length;
+
+      return res.status(200).json({
+        period: { start: oneWeekAgo.toISOString(), end: new Date().toISOString() },
+        lessonsStarted: lessonsThisWeek,
+        lessonsCompleted: completedThisWeek,
+        xpEarned: xpThisWeek,
+        avgQuizScore: avgScore,
+        vocabSaved: vocabThisWeek,
+        challengesCompleted,
+        streak: currentUser.streak || 0,
+        totalXp: currentUser.xp || 0,
+      });
+    }
+
+    // --- AUTH ROUTES ---
     if (pathname.includes('/otp/request') && method === 'POST') {
       const parsed = phoneSchema.safeParse(body);
       if (!parsed.success) return res.status(400).json({ error: "شماره موبایل نامعتبر است" });
