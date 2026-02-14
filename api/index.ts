@@ -161,8 +161,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.warn("[SESSION CHECK ERROR] ignoring...", e);
     }
 
-    // --- CONTENT (UPDATED TO RAW SQL) ---
-    if (pathname.includes('/content') && method === 'GET') {
+    // --- SINGLE CONTENT ---
+    if (pathname.match(/\/api\/content\/\d+/) && method === 'GET') {
+      const idMatch = pathname.match(/\/api\/content\/(\d+)/);
+      const id = parseInt(idMatch![1]);
+      const results = await db.select().from(content).where(eq(content.id, id));
+      if (results.length === 0) return res.status(404).json({ error: "Content not found" });
+      return res.status(200).json(results[0]);
+    }
+
+    // --- CONTENT LIST ---
+    if (pathname === '/api/content' && method === 'GET') {
       try {
         console.log("Fetching content via Raw SQL...");
         const result = await pool.query(`
