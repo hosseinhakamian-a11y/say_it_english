@@ -18,6 +18,7 @@ import { api } from "@shared/routes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { InteractiveQuiz } from "@/components/InteractiveQuiz";
 
 interface VideoMetadata {
     vocabulary?: {
@@ -346,24 +347,10 @@ export default function VideoDetailPage() {
 
                                 <TabsContent value="quiz" className="p-6">
                                     <div className="relative">
-                                        <div className="space-y-6">
-                                            {metadata.quiz?.slice(0, hasFullAccess ? undefined : FREE_QUIZ_LIMIT).map((q, idx) => (
-                                                <div key={idx} className="space-y-3">
-                                                    <p className="font-medium flex gap-2">
-                                                        <span className="text-primary font-bold">{idx + 1}.</span>
-                                                        {q.question}
-                                                    </p>
-                                                    <div className="grid gap-2 pr-6">
-                                                        {q.options.map((opt, optIdx) => (
-                                                            <div key={optIdx} className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
-                                                                <div className="w-4 h-4 rounded-full border border-primary/50" />
-                                                                <span className="text-sm">{opt}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <InteractiveQuiz
+                                            questions={metadata.quiz?.slice(0, hasFullAccess ? undefined : FREE_QUIZ_LIMIT) || []}
+                                            hasFullAccess={hasFullAccess}
+                                        />
 
                                         {/* Locked Quiz Overlay */}
                                         {!hasFullAccess && metadata.quiz && metadata.quiz.length > FREE_QUIZ_LIMIT && (
