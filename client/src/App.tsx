@@ -33,6 +33,7 @@ const PaymentCheckout = lazy(() => import("@/pages/PaymentCheckout"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 const WeeklyChallenges = lazy(() => import("@/pages/WeeklyChallenges"));
+const Checkout = lazy(() => import("@/pages/Checkout"));
 
 // Lazy load admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/dashboard"));
@@ -94,11 +95,12 @@ function Router() {
             <Route path="/course/:id" component={CourseDetail} />
             <Route path="/article/:slug" component={ArticleDetail} />
             <Route path="/blog" component={Blog} />
-            <Route path="/pricing" component={Pricing} />
             <Route path="/payment/checkout" component={PaymentCheckout} />
             <Route path="/dashboard" component={Dashboard} />
             <Route path="/leaderboard" component={Leaderboard} />
             <Route path="/challenges" component={WeeklyChallenges} />
+            <Route path="/pricing" component={Pricing} />
+            <Route path="/checkout" component={Checkout} />
             <Route component={NotFound} />
           </Switch>
         </Suspense>
@@ -124,3 +126,4 @@ function App() {
 }
 
 export default App;
+

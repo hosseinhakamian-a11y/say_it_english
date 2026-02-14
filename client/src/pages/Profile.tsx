@@ -3,17 +3,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useBookings } from "@/hooks/use-bookings";
-import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles, Edit, Trophy, PlayCircle } from "lucide-react";
+import { Calendar, BookOpen, User as UserIcon, LogOut, Settings, Sparkles, Edit, Trophy, PlayCircle, Crown, Coins, Users, Copy } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { pageVariants, containerVariants, itemVariants } from "@/lib/animations";
 import { ProfileSkeleton, StatsSkeleton, ListItemSkeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Profile() {
   const { user, logout, isLoading } = useAuth();
   const { data: bookings, isLoading: isLoadingBookings } = useBookings();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  // Fetch subscription
+  const { data: subData } = useQuery<any>({
+    queryKey: ['/api/subscriptions'],
+  });
+
+  // Fetch referral
+  const { data: referralData } = useQuery<any>({
+    queryKey: ['/api/referral'],
+  });
 
   // Fetch purchased content
   const { data: purchases, isLoading: isLoadingPurchases } = useQuery<any[]>({
@@ -153,6 +165,35 @@ export default function Profile() {
                 )}
               </motion.div>
 
+              {/* Subscription Status */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl p-4 mb-6 border border-yellow-500/20"
+              >
+                <p className="text-xs text-muted-foreground uppercase mb-1 flex items-center justify-center gap-1">
+                  <Crown className="w-3 h-3 text-yellow-600" />
+                  اشتراک ویژه
+                </p>
+                <p className="font-bold text-lg text-yellow-700">
+                  {subData?.hasActiveSubscription ? (
+                    subData.subscription.planId === 'gold' ? 'طلایی' : subData.subscription.planId === 'silver' ? 'نقره‌ای' : 'برنزی'
+                  ) : 'غیرفعال'}
+                </p>
+                {subData?.hasActiveSubscription ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    تا {new Date(subData.subscription.endDate).toLocaleDateString('fa-IR')}
+                  </p>
+                ) : (
+                  <Link href="/pricing">
+                    <Button size="sm" variant="link" className="text-yellow-600 mt-1 p-0 h-auto text-xs font-bold">
+                      ارتقا به پریمیوم ←
+                    </Button>
+                  </Link>
+                )}
+              </motion.div>
+
               {user.role === 'admin' && (
                 <Button
                   className="w-full rounded-xl mb-3 bg-gradient-to-l from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 btn-press shadow-lg shadow-amber-500/20"
@@ -210,6 +251,50 @@ export default function Profile() {
                 </Card>
               </motion.div>
             ))}
+          </motion.div>
+
+          {/* Referral Card */}
+          <motion.div
+            variants={containerVariants}
+            initial="initial"
+            animate="animate"
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <Card className="rounded-2xl border border-border/50 shadow-sm p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">دوستان دعوت شده</p>
+                  <p className="text-2xl font-bold text-blue-700">{referralData?.referredCount || 0} نفر</p>
+                </div>
+              </div>
+              <div className="bg-white/50 backdrop-blur rounded p-2 flex items-center justify-between border border-blue-200/50">
+                <code className="text-sm font-mono font-bold text-blue-800 px-2">{referralData?.referralCode || '...'}</code>
+                <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => {
+                  navigator.clipboard.writeText(referralData?.referralLink || '');
+                  toast({ title: "لینک کپی شد", description: "لینک دعوت را با دوستان خود به اشتراک بگذارید." });
+                }}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+
+            <Card className="rounded-2xl border border-border/50 shadow-sm p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 bg-green-100 text-green-600 rounded-xl">
+                  <Coins className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">کیف پول</p>
+                  <p className="text-2xl font-bold text-green-700">{(referralData?.walletBalance || 0).toLocaleString()} تومان</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                با دعوت هر دوست، ۱۰٪ مبلغ خریدش به کیف پول شما اضافه می‌شود.
+              </p>
+            </Card>
           </motion.div>
 
           {/* Purchased Content Section */}

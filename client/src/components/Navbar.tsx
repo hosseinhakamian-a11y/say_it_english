@@ -138,6 +138,14 @@ export function Navbar() {
               <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
             ) : user ? (
               <>
+                <Link href="/pricing" className="hidden lg:block ml-2">
+                  <Button variant="ghost" size="sm" className="gap-2 text-primary font-bold hover:bg-primary/10 transition-colors">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-600 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
+                      <Crown className="h-4 w-4" />
+                    </div>
+                    <span>اشتراک ویژه</span>
+                  </Button>
+                </Link>
                 <NotificationBell />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

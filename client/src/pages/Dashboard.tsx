@@ -23,10 +23,28 @@ import {
 } from "lucide-react";
 import { api } from "@shared/routes";
 import { useContent } from "@/hooks/use-content";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 export default function Dashboard() {
     const { user, logout } = useAuth();
+    const { toast } = useToast();
     const { data: content, isLoading: contentLoading } = useContent();
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get("payment") === "success") {
+            const plan = searchParams.get("plan");
+            toast({
+                title: "پرداخت موفقیت‌آمیز بود! 🎉",
+                description: `اشتراک ${plan === 'gold' ? 'طلایی' : plan === 'silver' ? 'نقره‌ای' : 'برنزی'} شما فعال شد.`,
+                duration: 5000,
+                className: "bg-green-500 text-white border-green-600",
+            });
+            // Clear query param
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, [toast]);
 
     // Fetch user stats from new Phase 2 endpoint
     const { data: stats } = useQuery<any>({
@@ -261,8 +279,8 @@ export default function Dashboard() {
                                                     key={badge.id}
                                                     whileHover={{ scale: 1.1 }}
                                                     className={`flex flex-col items-center p-2 rounded-xl transition-all ${isEarned
-                                                            ? 'bg-amber-50 shadow-sm'
-                                                            : 'opacity-30 grayscale'
+                                                        ? 'bg-amber-50 shadow-sm'
+                                                        : 'opacity-30 grayscale'
                                                         }`}
                                                     title={badge.description}
                                                 >

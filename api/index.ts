@@ -4,8 +4,9 @@ import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
-import { eq, desc, and } from "drizzle-orm";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { eq, ilike, and, desc, sql } from "drizzle-orm";
+import "dotenv/config";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -120,6 +121,10 @@ const users = pgTable("users", {
   sessionToken: text("session_token"),
   otp: text("otp"),
   otpExpires: timestamp("otp_expires"),
+  referralCode: text("referral_code").unique(),
+  referredBy: integer("referred_by"),
+  walletBalance: integer("wallet_balance").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 const content = pgTable("content", {
@@ -143,9 +148,11 @@ const content = pgTable("content", {
 const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  contentId: integer("content_id").notNull(),
+  contentId: integer("content_id"),
   amount: integer("amount").notNull(),
   status: text("status").default("pending"),
+  gateway: text("gateway").default("zarinpal"),
+  referenceId: text("reference_id"),
   trackingCode: text("tracking_code"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -235,6 +242,30 @@ const userChallenges = pgTable("user_challenges", {
   currentValue: integer("current_value").default(0),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ============ PHASE 4: MONETIZATION TABLES ============
+const promoCodes = pgTable("promo_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  discountPercent: integer("discount_percent").notNull(),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").default(0),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  planId: text("plan_id").notNull(),
+  status: text("status").default("active"),
+  startDate: timestamp("start_date").defaultNow(),
+  endDate: timestamp("end_date").notNull(),
+  paymentId: integer("payment_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // ============ SMS HELPER (Async) ============
@@ -501,10 +532,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       if (updatedPayment && status === 'approved') {
           // Grant access!
-          await db.insert(purchases).values({
-              userId: updatedPayment.userId,
-              contentId: updatedPayment.contentId
-          });
+          if (updatedPayment.contentId) {
+            await db.insert(purchases).values({
+                userId: updatedPayment.userId,
+                contentId: updatedPayment.contentId
+            });
+          }
       }
       
       return res.status(200).json(updatedPayment);
@@ -836,6 +869,171 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         streak: currentUser.streak || 0,
         totalXp: currentUser.xp || 0,
       });
+    }
+
+    // ============ PHASE 4: MONETIZATION ENDPOINTS ============
+
+    // --- PLANS: Get available subscription plans ---
+    if (pathname.match(/\/api\/payment\/plans$/) && method === 'GET') {
+      return res.status(200).json([
+        { id: 'bronze', name: 'برنزی', price: 99000, durationDays: 30, features: ['دسترسی به تمام ویدیوها', 'آزمون‌های نامحدود'] },
+        { id: 'silver', name: 'نقره‌ای', price: 249000, durationDays: 90, features: ['تمام امکانات برنزی', 'پشتیبانی اختصاصی', 'نشان نقره‌ای'] },
+        { id: 'gold', name: 'طلایی', price: 890000, durationDays: 365, features: ['تمام امکانات نقره‌ای', 'مشاوره آنلاین', 'نشان طلایی'] },
+      ]);
+    }
+
+    // --- SUBSCRIPTION: Get current status ---
+    if (pathname.match(/\/api\/subscriptions$/) && method === 'GET') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      
+      const activeSub = await db.select().from(subscriptions)
+        .where(and(
+          eq(subscriptions.userId, currentUser.id),
+          eq(subscriptions.status, 'active')
+        ))
+        .orderBy(desc(subscriptions.endDate))
+        .limit(1);
+
+      return res.status(200).json({
+        hasActiveSubscription: activeSub.length > 0 && new Date(activeSub[0].endDate) > new Date(),
+        subscription: activeSub[0] || null,
+      });
+    }
+
+    // --- PROMO CODE: Validate ---
+    if (pathname.match(/\/api\/promo\/validate$/) && method === 'POST') {
+      const { code } = body;
+      const promo = await db.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase()));
+      
+      if (promo.length === 0 || !promo[0].isActive) 
+        return res.status(404).json({ error: "کد تخفیف نامعتبر است" });
+      
+      const p = promo[0];
+      if (p.expiresAt && new Date(p.expiresAt) < new Date())
+        return res.status(400).json({ error: "کد تخفیف منقضی شده است" });
+      
+      if (p.maxUses && (p.usedCount || 0) >= p.maxUses)
+        return res.status(400).json({ error: "ظرفیت استفاده از این کد پر شده است" });
+
+      return res.status(200).json(p);
+    }
+
+    // --- REFERRAL: Get stats and code ---
+    if (pathname.match(/\/api\/referral$/) && method === 'GET') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+
+      // Generate code if missing
+      if (!currentUser.referralCode) {
+        const newCode = `REF-${currentUser.id}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        await db.update(users).set({ referralCode: newCode }).where(eq(users.id, currentUser.id));
+        currentUser.referralCode = newCode;
+      }
+
+      const referredUsers = await db.select({ count: sql<number>`count(*)` })
+        .from(users).where(eq(users.referredBy, currentUser.id));
+
+      return res.status(200).json({
+        referralCode: currentUser.referralCode,
+        referredCount: referredUsers[0].count,
+        walletBalance: currentUser.walletBalance || 0,
+        referralLink: `${req.headers.origin}/auth?ref=${currentUser.referralCode}`,
+      });
+    }
+
+    // --- PAYMENT: Request (Mock ZarinPal) ---
+    if (pathname.match(/\/api\/payment\/request$/) && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { planId, promoCode } = body;
+
+      // Calculate price
+      const plans: Record<string, number> = { 'bronze': 99000, 'silver': 249000, 'gold': 890000 };
+      let amount = plans[planId];
+      if (!amount) return res.status(400).json({ error: "Plan invalid" });
+
+      // Apply promo
+      if (promoCode) {
+        const promo = await db.select().from(promoCodes).where(eq(promoCodes.code, promoCode));
+        if (promo.length > 0 && promo[0].isActive) {
+          amount = Math.round(amount * (1 - promo[0].discountPercent / 100));
+        }
+      }
+
+      // Create payment record (pending)
+      const payment = await db.insert(payments).values({
+        userId: currentUser.id,
+        amount,
+        status: 'pending',
+        gateway: 'zarinpal',
+        referenceId: `PLAN-${planId}-${Date.now()}`, // Temporary ref
+      }).returning();
+
+      // MOCK: Return a verification URL directly for testing
+      // In production, this would request ZarinPal and return their gateway URL
+      return res.status(200).json({
+        url: `${req.headers.origin}/api/payment/verify?Authority=${payment[0].id}&Status=OK&PlanId=${planId}`,
+        authority: payment[0].id.toString()
+      });
+    }
+
+    // --- PAYMENT: Verify (Mock) ---
+    if (pathname.match(/\/api\/payment\/verify$/) && method === 'GET') {
+      const url = new URL(req.url!, `http://${req.headers.host}`);
+      const authority = url.searchParams.get('Authority'); // Using payment ID as Authority for mock
+      const status = url.searchParams.get('Status');
+      const planId = url.searchParams.get('PlanId');
+
+      if (!authority || status !== 'OK' || !planId) {
+        return res.redirect('/payment/failed');
+      }
+
+      const paymentId = parseInt(authority);
+      const payment = await db.select().from(payments).where(eq(payments.id, paymentId));
+
+      if (payment.length === 0 || payment[0].status === 'approved') {
+         return res.redirect('/dashboard?payment=success');
+      }
+
+      // Approve payment
+      await db.update(payments).set({ status: 'approved', referenceId: `REF-${Date.now()}` })
+        .where(eq(payments.id, paymentId));
+
+      // Create Subscription
+      const durationDays = planId === 'gold' ? 365 : (planId === 'silver' ? 90 : 30);
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + durationDays);
+
+      await db.insert(subscriptions).values({
+        userId: payment[0].userId,
+        planId: planId,
+        status: 'active',
+        startDate,
+        endDate,
+        paymentId,
+      });
+
+      // Handle Referral Reward (if user was referred)
+      const user = await db.select().from(users).where(eq(users.id, payment[0].userId));
+      if (user[0].referredBy) {
+        // Give 10% to referrer
+        const reward = Math.round(payment[0].amount * 0.1);
+        const referrer = await db.select().from(users).where(eq(users.id, user[0].referredBy));
+        if (referrer.length > 0) {
+           await db.update(users)
+             .set({ walletBalance: (referrer[0].walletBalance || 0) + reward })
+             .where(eq(users.id, referrer[0].id));
+           
+           // Notify referrer
+           await db.insert(notifications).values({
+             userId: referrer[0].id,
+             type: 'achievement',
+             title: '💰 پاداش معرفی',
+             message: `یکی از دوستان شما خرید کرد! مبلغ ${reward} تومان به کیف پول شما اضافه شد.`,
+           });
+        }
+      }
+
+      return res.redirect('/dashboard?payment=success&plan=' + planId);
     }
 
     // --- AUTH ROUTES ---
