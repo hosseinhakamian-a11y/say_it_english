@@ -64,6 +64,23 @@ const content = pgTable("content", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  contentId: integer("content_id").notNull(),
+  amount: integer("amount").notNull(),
+  status: text("status").default("pending"),
+  trackingCode: text("tracking_code"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+const purchases = pgTable("purchases", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  contentId: integer("content_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // ============ SMS HELPER (Async) ============
 async function sendSMS(phone: string, message: string) {
   const apiKey = process.env.SMS_IR_API_KEY;
@@ -261,6 +278,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       await db.update(users).set({ password: hashedPassword }).where(eq(users.id, currentUser.id));
       return res.status(200).json({ success: true });
+    }
+
+    // --- PURCHASES ---
+    if (pathname.includes('/purchases') && method === 'GET') {
+      if (!currentUser) return res.status(401).json([]);
+      const results = await db.select().from(purchases).where(eq(purchases.userId, currentUser.id));
+      return res.status(200).json(results);
+    }
+
+    // --- SUBMIT PAYMENT ---
+    if (pathname.includes('/payments') && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const { contentId, amount, trackingCode, transactionHash } = body;
+      
+      const insertResults = await db.insert(payments).values({
+          userId: currentUser.id,
+          contentId: contentId || 0,
+          amount: amount || 0,
+          status: 'pending',
+          trackingCode: trackingCode || transactionHash || 'N/A',
+      }).returning();
+      
+      return res.status(200).json(insertResults[0]);
+    }
+
+    // --- ADMIN: LIST ALL PAYMENTS ---
+    if (pathname.includes('/payments') && method === 'GET') {
+      if (!currentUser || currentUser.role !== 'admin') {
+          // If not admin, maybe they meant user purchases? 
+          // But VideoDetail uses /api/purchases. Payment page uses /api/payments for submission.
+          // Let's keep this admin-only for GET /api/payments.
+          return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      // Join logic would be nice, but let's keep it simple for now (raw pool or drizzle)
+      const results = await db.select().from(payments).orderBy(desc(payments.createdAt));
+      return res.status(200).json(results);
+    }
+
+    // --- ADMIN: UPDATE PAYMENT STATUS ---
+    if (pathname.match(/\/payments\/\d+\/status/) && method === 'PATCH') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      
+      const idMatch = pathname.match(/\/payments\/(\d+)\/status/);
+      const paymentId = parseInt(idMatch![1]);
+      const { status } = body;
+      
+      const results = await db.update(payments).set({ status }).where(eq(payments.id, paymentId)).returning();
+      const updatedPayment = results[0];
+      
+      if (updatedPayment && status === 'approved') {
+          // Grant access!
+          await db.insert(purchases).values({
+              userId: updatedPayment.userId,
+              contentId: updatedPayment.contentId
+          });
+      }
+      
+      return res.status(200).json(updatedPayment);
     }
 
     // --- AUTH ROUTES ---
