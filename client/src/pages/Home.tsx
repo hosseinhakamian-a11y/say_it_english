@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Calendar, GraduationCap, Headphones, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { containerVariants, itemVariants, pageVariants } from "@/lib/animations";
@@ -89,16 +89,12 @@ export default function Home() {
                 transition={{ delay: 0.6, duration: 0.5 }}
                 className="flex flex-col sm:flex-row gap-4 justify-center"
               >
-                <Link href="/placement">
-                  <Button size="lg" className="text-lg px-8 h-14 rounded-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all btn-press">
-                    شروع تعیین سطح
-                    <ArrowLeft className="mr-2 h-5 w-5" />
-                  </Button>
+                <Link href="/placement" className={buttonVariants({ size: "lg", className: "text-lg px-8 h-14 rounded-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all btn-press flex items-center" })}>
+                  شروع تعیین سطح
+                  <ArrowLeft className="mr-2 h-5 w-5" />
                 </Link>
-                <Link href="/content">
-                  <Button size="lg" variant="outline" className="text-lg px-8 h-14 rounded-2xl glass hover:bg-white/80 border-2 btn-press">
-                    مشاهده دوره‌ها
-                  </Button>
+                <Link href="/content" className={buttonVariants({ size: "lg", variant: "outline", className: "text-lg px-8 h-14 rounded-2xl glass hover:bg-white/80 border-2 btn-press" })}>
+                  مشاهده دوره‌ها
                 </Link>
               </motion.div>
             </motion.div>
