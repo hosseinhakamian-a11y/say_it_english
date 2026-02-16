@@ -136,7 +136,6 @@ const users = pgTable("users", {
   sessionToken: text("session_token"),
   otp: text("otp"),
   otpExpires: timestamp("otp_expires"),
-  walletBalance: integer("wallet_balance").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1039,20 +1038,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     //   if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
 
     //   // Generate code if missing
-    //   if (!currentUser.referralCode) {
-    //     const newCode = `REF-${currentUser.id}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    //     await db.update(users).set({ referralCode: newCode }).where(eq(users.id, currentUser.id));
-    //     currentUser.referralCode = newCode;
-    //   }
+    //   // if (!currentUser.referralCode) {
+    //   //   const newCode = `REF-${currentUser.id}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    //   //   await db.update(users).set({ referralCode: newCode }).where(eq(users.id, currentUser.id));
+    //   //   currentUser.referralCode = newCode;
+    //   // }
 
-    //   const referredUsers = await db.select({ count: sql<number>`count(*)` })
-    //     .from(users).where(eq(users.referredBy, currentUser.id));
+    //   // const referredUsers = await db.select({ count: sql<number>`count(*)` })
+    //   //   .from(users).where(eq(users.referredBy, currentUser.id));
 
     //   return res.status(200).json({
-    //     referralCode: currentUser.referralCode,
-    //     referredCount: referredUsers[0].count,
-    //     walletBalance: currentUser.walletBalance || 0,
-    //     referralLink: `${req.headers.origin}/auth?ref=${currentUser.referralCode}`,
+    //     // referralCode: currentUser.referralCode,
+    //     // referredCount: referredUsers[0].count,
+    //     // walletBalance: currentUser.walletBalance || 0,
+    //     // referralLink: `${req.headers.origin}/auth?ref=${currentUser.referralCode}`,
     //   });
     // }
 
