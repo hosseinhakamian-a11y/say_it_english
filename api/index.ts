@@ -414,6 +414,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             price, 
             thumbnail_url as "thumbnailUrl", 
             metadata, 
+            body,
+            slug,
+            author,
+            tags,
             created_at as "createdAt"
           FROM content 
           ORDER BY created_at DESC
