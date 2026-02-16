@@ -192,7 +192,7 @@ export default function AuthPage() {
       className="min-h-[80vh] flex items-center justify-center py-12 px-4 bg-gradient-to-br from-primary/5 to-muted/20"
     >
       <motion.div variants={scaleUpVariants} initial="initial" animate="animate">
-        <Card className="w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0 bg-white/80 backdrop-blur-xl">
+        <Card className="w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden border-0 bg-card/80 backdrop-blur-xl">
           <div className="bg-gradient-to-br from-primary to-primary-600 p-8 text-center text-primary-foreground relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 to-transparent opacity-50" />
             <motion.div

@@ -136,8 +136,6 @@ const users = pgTable("users", {
   sessionToken: text("session_token"),
   otp: text("otp"),
   otpExpires: timestamp("otp_expires"),
-  referralCode: text("referral_code").unique(),
-  referredBy: integer("referred_by"),
   walletBalance: integer("wallet_balance").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -1037,26 +1035,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // --- REFERRAL: Get stats and code ---
-    if (pathname.match(/\/api\/referral$/) && method === 'GET') {
-      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+    // if (pathname.match(/\/api\/referral$/) && method === 'GET') {
+    //   if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
 
-      // Generate code if missing
-      if (!currentUser.referralCode) {
-        const newCode = `REF-${currentUser.id}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        await db.update(users).set({ referralCode: newCode }).where(eq(users.id, currentUser.id));
-        currentUser.referralCode = newCode;
-      }
+    //   // Generate code if missing
+    //   if (!currentUser.referralCode) {
+    //     const newCode = `REF-${currentUser.id}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    //     await db.update(users).set({ referralCode: newCode }).where(eq(users.id, currentUser.id));
+    //     currentUser.referralCode = newCode;
+    //   }
 
-      const referredUsers = await db.select({ count: sql<number>`count(*)` })
-        .from(users).where(eq(users.referredBy, currentUser.id));
+    //   const referredUsers = await db.select({ count: sql<number>`count(*)` })
+    //     .from(users).where(eq(users.referredBy, currentUser.id));
 
-      return res.status(200).json({
-        referralCode: currentUser.referralCode,
-        referredCount: referredUsers[0].count,
-        walletBalance: currentUser.walletBalance || 0,
-        referralLink: `${req.headers.origin}/auth?ref=${currentUser.referralCode}`,
-      });
-    }
+    //   return res.status(200).json({
+    //     referralCode: currentUser.referralCode,
+    //     referredCount: referredUsers[0].count,
+    //     walletBalance: currentUser.walletBalance || 0,
+    //     referralLink: `${req.headers.origin}/auth?ref=${currentUser.referralCode}`,
+    //   });
+    // }
 
     // --- PAYMENT: Request (Mock ZarinPal) ---
     if (pathname.match(/\/api\/payment\/request$/) && method === 'POST') {
@@ -1131,25 +1129,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       // Handle Referral Reward (if user was referred)
-      const user = await db.select().from(users).where(eq(users.id, payment[0].userId));
-      if (user[0].referredBy) {
-        // Give 10% to referrer
-        const reward = Math.round(payment[0].amount * 0.1);
-        const referrer = await db.select().from(users).where(eq(users.id, user[0].referredBy));
-        if (referrer.length > 0) {
-           await db.update(users)
-             .set({ walletBalance: (referrer[0].walletBalance || 0) + reward })
-             .where(eq(users.id, referrer[0].id));
-           
-           // Notify referrer
-           await db.insert(notifications).values({
-             userId: referrer[0].id,
-             type: 'achievement',
-             title: '💰 پاداش معرفی',
-             message: `یکی از دوستان شما خرید کرد! مبلغ ${reward} تومان به کیف پول شما اضافه شد.`,
-           });
-        }
-      }
+      // const user = await db.select().from(users).where(eq(users.id, payment[0].userId));
+      // if (user[0].referredBy) {
+      //   // Give 10% to referrer
+      //   const reward = Math.round(payment[0].amount * 0.1);
+      //   const referrer = await db.select().from(users).where(eq(users.id, user[0].referredBy));
+      //   if (referrer.length > 0) {
+      //      await db.update(users)
+      //        .set({ walletBalance: (referrer[0].walletBalance || 0) + reward })
+      //        .where(eq(users.id, referrer[0].id));
+      //      
+      //      // Notify referrer
+      //      await db.insert(notifications).values({
+      //        userId: referrer[0].id,
+      //        type: 'achievement',
+      //        title: '💰 پاداش معرفی',
+      //        message: `یکی از دوستان شما خرید کرد! مبلغ ${reward} تومان به کیف پول شما اضافه شد.`,
+      //      });
+      //   }
+      // }
 
       return res.redirect('/dashboard?payment=success&plan=' + planId);
     }
@@ -1209,7 +1207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
       const idMatch = pathname.match(/\/api\/admin\/subscriptions\/(\d+)\/cancel/);
       const subId = parseInt(idMatch![1]);
-      await db.update(subscriptions).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(subscriptions.id, subId));
+      await db.update(subscriptions).set({ status: 'cancelled' }).where(eq(subscriptions.id, subId));
       return res.status(200).json({ success: true });
     }
     
