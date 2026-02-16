@@ -5,7 +5,7 @@ import { promisify } from "util";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
-import { eq, ilike, and, desc, sql } from "drizzle-orm";
+import { eq, ilike, and, or, desc, sql } from "drizzle-orm";
 import "dotenv/config";
 import { z } from "zod";
 
@@ -1270,12 +1270,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000);
       
-      const results = await db.select().from(users).where(eq(users.phone, phone));
+      const results = await db.select().from(users).where(or(eq(users.phone, phone), eq(users.username, phone)));
       let user = results[0];
+      
+      // If multiple users found, try to pick the best match (e.g. username matches phone)
+      if (results.length > 1) {
+          const usernameMatch = results.find(u => u.username === phone);
+          const phoneMatch = results.find(u => u.phone === phone);
+          // Prefer username match if it exists and isn't just an auto-generated one (though auto-gen is usually user_phone)
+          // Actually, if username matches the phone exactly, that's likely the "intended" login.
+          user = usernameMatch || phoneMatch || results[0];
+      }
+
       const ADMIN_PHONES = ["09222453571", "09123104254"];
       const isAdmin = ADMIN_PHONES.includes(phone);
 
       if (!user) {
+        // Only create if NO user found matching phone OR username
         const insertResults = await db.insert(users).values({
           username: `user_${phone}`,
           phone,
@@ -1284,6 +1295,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user = insertResults[0];
       }
       
+      // Ensure we have a user from the list or created
       await db.update(users).set({ 
         otp, 
         otpExpires,
@@ -1305,9 +1317,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(429).json({ error: "تعداد تلاش‌ها بیش از حد مجاز. ۲ دقیقه صبر کنید." });
       }
       
-      const results = await db.select().from(users).where(eq(users.phone, phone));
-      const user = results[0];
-      if (!user || user.otp !== otp || !user.otpExpires || new Date(user.otpExpires) < new Date()) {
+      const results = await db.select().from(users).where(or(eq(users.phone, phone), eq(users.username, phone)));
+      
+      // Find the user with the correct OTP
+      const user = results.find(u => u.otp === otp && u.otpExpires && new Date(u.otpExpires) >= new Date());
+
+      if (!user) {
         return res.status(400).json({ error: "کد تایید نامعتبر یا منقضی شده است" });
       }
       const newToken = randomBytes(32).toString('hex');
