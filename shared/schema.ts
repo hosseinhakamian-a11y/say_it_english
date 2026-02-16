@@ -68,6 +68,10 @@ export const bookings = pgTable("bookings", {
   status: text("status").default("pending"), // 'pending', 'confirmed', 'cancelled'
   notes: text("notes"),
   phone: text("phone"), // User's phone for SMS reminder
+  paymentMethod: text("payment_method").default("card"), // 'card' or 'crypto'
+  trackingCode: text("tracking_code"),
+  transactionHash: text("transaction_hash"),
+  meetLink: text("meet_link"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

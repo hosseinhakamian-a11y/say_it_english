@@ -58,6 +58,21 @@ const paymentSubmitSchema = z.object({
 });
 
 // ============ RATE LIMITER ============
+const bookingSchema = z.object({
+  timeSlotId: z.number(),
+  phone: z.string().regex(/^09\d{9}$/, "شماره موبایل نامعتبر است"),
+  notes: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  trackingHash: z.string().optional(),
+});
+
+const slotSchema = z.object({
+  date: z.string().datetime(), // ISO 8601
+  duration: z.number().optional().default(30),
+  price: z.number().optional().default(0),
+});
+
+// ============ RATE LIMITER ============
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 function checkRateLimit(key: string, maxAttempts: number = 5, windowMs: number = 60000): boolean {
@@ -265,7 +280,32 @@ const subscriptions = pgTable("subscriptions", {
   endDate: timestamp("end_date").notNull(),
   paymentId: integer("payment_id"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+const timeSlots = pgTable("time_slots", {
+  id: serial("id").primaryKey(),
+  date: timestamp("date").notNull(),
+  duration: integer("duration").default(30),
+  isBooked: boolean("is_booked").default(false),
+  price: integer("price").default(0),
+  currency: text("currency").default("IRT"), // IRT or USDT
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+const bookings = pgTable("bookings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  timeSlotId: integer("time_slot_id"),
+  type: text("type").notNull().default("consultation"),
+  date: timestamp("date").notNull(),
+  status: text("status").default("pending"), // pending, confirmed, cancelled
+  notes: text("notes"),
+  phone: text("phone"),
+  meetLink: text("meet_link"),
+  paymentMethod: text("payment_method").default("card"),
+  trackingCode: text("tracking_code"),
+  transactionHash: text("transaction_hash"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // ============ SMS HELPER (Async) ============
@@ -541,6 +581,80 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       return res.status(200).json(updatedPayment);
+    }
+
+    // ============ BOOKING SYSTEM ENDPOINTS ============
+
+    // --- GET AVAILABLE SLOTS ---
+    if (pathname === '/api/slots' && method === 'GET') {
+      const allSlots = await db.select().from(timeSlots)
+        .where(eq(timeSlots.isBooked, false))
+        .orderBy(timeSlots.date);
+      return res.status(200).json(allSlots);
+    }
+
+    // --- ADMIN: ADD SLOT ---
+    if (pathname === '/api/slots' && method === 'POST') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const parsed = slotSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid data" });
+      
+      const { date, duration, price } = parsed.data;
+      const result = await db.insert(timeSlots).values({
+        date: new Date(date),
+        duration,
+        price,
+        isBooked: false
+      }).returning();
+      
+      return res.status(201).json(result[0]);
+    }
+
+    // --- ADMIN: DELETE SLOT ---
+    if (pathname === '/api/slots' && method === 'DELETE') {
+      if (!currentUser || currentUser.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+      const id = parseInt(url.searchParams.get('id') || '0');
+      if (!id) return res.status(400).json({ error: "Missing id" });
+      
+      await db.delete(timeSlots).where(eq(timeSlots.id, id));
+      return res.status(200).json({ success: true });
+    }
+
+    // --- BOOK A SLOT ---
+    if (pathname === '/api/book' && method === 'POST') {
+      if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
+      const parsed = bookingSchema.safeParse(body);
+      if (!parsed.success) return res.status(400).json({ error: "Input invalid" });
+      
+      const { timeSlotId, phone, notes, paymentMethod, trackingHash } = parsed.data;
+      
+      // 1. Check if slot exists and is free
+      const slot = await db.select().from(timeSlots).where(eq(timeSlots.id, timeSlotId));
+      if (slot.length === 0) return res.status(404).json({ error: "Slot not found" });
+      if (slot[0].isBooked) return res.status(409).json({ error: "این زمان قبلاً رزرو شده است" });
+      
+      // 2. Create Booking
+      const method = paymentMethod || 'card';
+      const bookResult = await db.insert(bookings).values({
+        userId: currentUser.id,
+        timeSlotId,
+        date: slot[0].date,
+        type: 'consultation',
+        status: 'pending',
+        phone,
+        notes,
+        paymentMethod: method,
+        trackingCode: method === 'card' ? trackingHash : null,
+        transactionHash: method === 'crypto' ? trackingHash : null,
+      }).returning();
+      
+      // 3. Mark Slot as Booked
+      await db.update(timeSlots).set({ isBooked: true }).where(eq(timeSlots.id, timeSlotId));
+      
+      // 4. Send SMS Notification (to Admin or User)
+      // await sendSMS(phone, "رزرو شما ثبت شد");
+      
+      return res.status(200).json(bookResult[0]);
     }
 
     // ============ PHASE 2: PROGRESS & LEARNING ENDPOINTS ============

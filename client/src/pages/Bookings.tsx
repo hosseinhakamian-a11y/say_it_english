@@ -7,34 +7,68 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, CheckCircle2, Loader2, Phone, Sparkles } from "lucide-react";
+import {
+  Calendar, Clock, CheckCircle2, Loader2, Phone,
+  Wallet, CreditCard, Copy, Check
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
-import { pageVariants, containerVariants, itemVariants, scaleUpVariants } from "@/lib/animations";
+import { motion, AnimatePresence } from "framer-motion";
+import { pageVariants, scaleUpVariants } from "@/lib/animations";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TimeSlot {
   id: number;
   date: string;
   duration: number;
   isBooked: boolean;
+  price?: number;
+  currency?: string;
 }
+
+// Persian date formatting helper
+const toPersianDate = (date: Date): string => {
+  return new Intl.DateTimeFormat('fa-IR', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  }).format(date);
+};
+
+const WALLET_ADDRESS = "0x2ca84105e9e3f3a91f0385acbd497923d743a342";
+// Placeholder for Bank Card - update with real one later
+const BANK_CARD = "6037-9973-0000-0000";
+const BANK_HOLDER = "حسین حکمیان";
 
 export default function Bookings() {
   const { toast } = useToast();
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("crypto");
+  const [trackingHash, setTrackingHash] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Fetch available slots
   const { data: slots, isLoading } = useQuery<TimeSlot[]>({
     queryKey: ["/api/slots"],
+    queryFn: async () => {
+      const res = await fetch("/api/slots");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
   });
 
   // Book mutation
   const bookMutation = useMutation({
-    mutationFn: async (data: { timeSlotId: number; phone: string; notes: string }) => {
+    mutationFn: async (data: {
+      timeSlotId: number;
+      phone: string;
+      notes: string;
+      paymentMethod: string;
+      trackingHash: string;
+    }) => {
       const res = await fetch("/api/book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -64,11 +98,28 @@ export default function Bookings() {
       toast({ title: "لطفاً شماره تماس معتبر وارد کنید", variant: "destructive" });
       return;
     }
+    if (!trackingHash) {
+      toast({
+        title: paymentMethod === 'crypto' ? "لطفاً هش تراکنش را وارد کنید" : "لطفاً کد پیگیری را وارد کنید",
+        variant: "destructive"
+      });
+      return;
+    }
+
     bookMutation.mutate({
       timeSlotId: selectedSlot.id,
       phone,
       notes,
+      paymentMethod,
+      trackingHash
     });
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast({ title: "کپی شد" });
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // Group slots by date
@@ -96,12 +147,18 @@ export default function Bookings() {
           >
             <CheckCircle2 className="w-10 h-10 text-white" />
           </motion.div>
-          <h2 className="text-3xl font-bold gradient-text mb-4">رزرو با موفقیت انجام شد!</h2>
+          <h2 className="text-3xl font-bold gradient-text mb-4">رزرو با موفقیت ثبت شد!</h2>
           <p className="text-muted-foreground mb-8 text-lg">
-            درخواست شما ثبت شد. استاد به زودی با شما تماس خواهد گرفت.
+            درخواست شما دریافت شد. ادمین پس از بررسی پرداخت، لینک گوگل میت را برای شما پیامک خواهد کرد.
           </p>
-          <Button onClick={() => { setIsSuccess(false); setSelectedSlot(null); }} className="rounded-xl btn-press">
-            رزرو جدید
+          <Button onClick={() => {
+            setIsSuccess(false);
+            setSelectedSlot(null);
+            setTrackingHash("");
+            setPhone("");
+            setNotes("");
+          }} className="rounded-xl btn-press">
+            بازگشت به تقویم
           </Button>
         </Card>
       </motion.div>
@@ -140,7 +197,7 @@ export default function Bookings() {
             transition={{ delay: 0.3 }}
             className="text-muted-foreground"
           >
-            یکی از زمان‌های خالی را برای کلاس ۳۰ دقیقه‌ای انتخاب کنید
+            انتخاب زمان، پرداخت، یادگیری!
           </motion.p>
         </div>
       </div>
@@ -184,7 +241,7 @@ export default function Bookings() {
                       .map(([dateKey, dateSlots]) => (
                         <div key={dateKey}>
                           <h3 className="font-bold mb-3 text-sm text-muted-foreground">
-                            {format(new Date(dateKey), "EEEE d MMMM yyyy", { locale: faIR })}
+                            {toPersianDate(new Date(dateKey))}
                           </h3>
                           <div className="flex flex-wrap gap-3">
                             {dateSlots
@@ -224,63 +281,132 @@ export default function Bookings() {
               <CardContent className="p-6 space-y-6">
                 <div>
                   <h2 className="font-bold text-lg mb-2">تکمیل رزرو</h2>
-                  {selectedSlot && (
-                    <div className="bg-primary/10 rounded-xl p-4 text-center">
-                      <p className="text-sm text-muted-foreground mb-1">زمان انتخابی:</p>
-                      <p className="font-bold text-primary">
-                        {format(new Date(selectedSlot.date), "EEEE d MMMM", { locale: faIR })}
-                      </p>
-                      <p className="font-bold text-primary text-lg">
-                        ساعت {format(new Date(selectedSlot.date), "HH:mm")}
-                      </p>
+                  <AnimatePresence mode="wait">
+                    {selectedSlot ? (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-primary/10 rounded-xl p-4 text-center"
+                      >
+                        <p className="text-sm text-muted-foreground mb-1">زمان انتخابی:</p>
+                        <p className="font-bold text-primary">
+                          {toPersianDate(new Date(selectedSlot.date))}
+                        </p>
+                        <p className="font-bold text-primary text-lg">
+                          ساعت {format(new Date(selectedSlot.date), "HH:mm")}
+                        </p>
+                      </motion.div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground text-center py-4 border-2 border-dashed rounded-xl">
+                        ابتدا یک زمان را انتخاب کنید
+                      </div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {selectedSlot && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">شماره تماس (جهت ارسال لینک)</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="09123456789"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="text-left dir-ltr rounded-xl"
+                      />
                     </div>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    شماره تماس
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="09123456789"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="text-left dir-ltr"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>روش پرداخت</Label>
+                      <Tabs value={paymentMethod} onValueChange={setPaymentMethod} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 rounded-xl h-12">
+                          <TabsTrigger value="crypto" className="rounded-lg">ارز دیجیتال (Tether)</TabsTrigger>
+                          <TabsTrigger value="card" className="rounded-lg">کارت به کارت</TabsTrigger>
+                        </TabsList>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">توضیحات (اختیاری)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="موضوع خاصی که می‌خواهید کار کنید..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                  />
-                </div>
+                        <div className="mt-4 p-4 border rounded-xl bg-muted/30">
+                          <TabsContent value="crypto" className="mt-0 space-y-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">آدرس کیف پول (Tether - BEP20)</Label>
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 bg-background p-2 rounded-lg text-xs break-all border font-mono">
+                                  {WALLET_ADDRESS}
+                                </code>
+                                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => copyToClipboard(WALLET_ADDRESS)}>
+                                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="hash">هش تراکنش (Transaction Hash)</Label>
+                              <Input
+                                id="hash"
+                                placeholder="0x..."
+                                value={trackingHash}
+                                onChange={(e) => setTrackingHash(e.target.value)}
+                                className="font-mono text-sm rounded-xl"
+                              />
+                            </div>
+                          </TabsContent>
 
-                <Button
-                  onClick={handleBook}
-                  disabled={!selectedSlot || bookMutation.isPending}
-                  className="w-full h-12 text-lg rounded-xl shadow-lg shadow-primary/20 btn-press"
-                >
-                  {bookMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin ml-2" />
-                      در حال ثبت...
-                    </>
-                  ) : (
-                    "تایید و رزرو"
-                  )}
-                </Button>
+                          <TabsContent value="card" className="mt-0 space-y-4">
+                            <div className="space-y-1 text-sm bg-background p-3 rounded-lg border">
+                              <div className="flex justify-between text-muted-foreground text-xs"><span>شماره کارت:</span></div>
+                              <div className="font-mono text-center text-lg tracking-wider font-bold dir-ltr select-all">
+                                {BANK_CARD}
+                              </div>
+                              <div className="text-center text-muted-foreground text-xs mt-1">{BANK_HOLDER}</div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="code">کد پیگیری / ۴ رقم آخر کارت</Label>
+                              <Input
+                                id="code"
+                                placeholder="مثلاً: ۱۲۳۴۵"
+                                value={trackingHash}
+                                onChange={(e) => setTrackingHash(e.target.value)}
+                                className="rounded-xl"
+                              />
+                            </div>
+                          </TabsContent>
+                        </div>
+                      </Tabs>
+                    </div>
 
-                <p className="text-xs text-muted-foreground text-center">
-                  هر جلسه ۳۰ دقیقه است. پس از رزرو، استاد با شما تماس خواهد گرفت.
-                </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">توضیحات (اختیاری)</Label>
+                      <Textarea
+                        id="notes"
+                        placeholder="سطح فعلی، موضوع مورد علاقه..."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="rounded-xl resize-none"
+                        rows={2}
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleBook}
+                      disabled={!selectedSlot || bookMutation.isPending}
+                      className="w-full h-12 text-lg rounded-xl shadow-lg shadow-primary/20 btn-press"
+                    >
+                      {bookMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin ml-2" />
+                          در حال ثبت...
+                        </>
+                      ) : (
+                        "تایید و پرداخت"
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
