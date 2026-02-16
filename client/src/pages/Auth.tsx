@@ -210,9 +210,9 @@ export default function AuthPage() {
           <CardContent className="p-8">
             <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
               <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 rounded-2xl p-1.5 h-14">
-                <TabsTrigger value="login" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">ورود</TabsTrigger>
-                <TabsTrigger value="register" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">عضویت</TabsTrigger>
-                <TabsTrigger value="otp" className="rounded-xl flex gap-2 items-center data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <TabsTrigger value="login" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">ورود</TabsTrigger>
+                <TabsTrigger value="register" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">عضویت</TabsTrigger>
+                <TabsTrigger value="otp" className="rounded-xl flex gap-2 items-center data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                   <Smartphone className="w-4 h-4 text-primary" />
                   پیامک
                 </TabsTrigger>
@@ -222,7 +222,7 @@ export default function AuthPage() {
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit((data) => login(data))} className="space-y-4">
                     {loginError && (
-                      <Alert variant="destructive" className="rounded-2xl border-0 bg-red-50 text-red-600">
+                      <Alert variant="destructive" className="rounded-2xl border-0 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="font-medium">{loginError.message}</AlertDescription>
                       </Alert>
@@ -233,7 +233,7 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-muted-foreground mr-1">نام کاربری</FormLabel>
-                          <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="نام کاربری یا موبایل" {...field} /></FormControl>
+                          <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg bg-background text-foreground" placeholder="نام کاربری یا موبایل" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -244,7 +244,7 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-muted-foreground mr-1">رمز عبور</FormLabel>
-                          <FormControl><Input type="password" className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="••••••••" {...field} /></FormControl>
+                          <FormControl><Input type="password" className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg bg-background text-foreground" placeholder="••••••••" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -259,7 +259,7 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 transition-all shadow-lg shadow-primary/20 mt-4" disabled={isLoggingIn}>
+                    <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-lg shadow-primary/20 mt-4" disabled={isLoggingIn}>
                       {isLoggingIn ? <Loader2 className="animate-spin" /> : "ورود به حساب"}
                     </Button>
                   </form>
@@ -270,7 +270,7 @@ export default function AuthPage() {
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit((data) => register(data))} className="space-y-4">
                     {registerError && (
-                      <Alert variant="destructive" className="rounded-2xl border-0 bg-red-50 text-red-600">
+                      <Alert variant="destructive" className="rounded-2xl border-0 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="font-medium">{registerError.message}</AlertDescription>
                       </Alert>
@@ -281,7 +281,7 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-muted-foreground mr-1">نام کاربری</FormLabel>
-                          <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="انتخاب نام آیدی" {...field} /></FormControl>
+                          <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg bg-background text-foreground" placeholder="انتخاب نام آیدی" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -292,12 +292,12 @@ export default function AuthPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-muted-foreground mr-1">رمز عبور</FormLabel>
-                          <FormControl><Input type="password" className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg" placeholder="حداقل ۶ کاراکتر" {...field} /></FormControl>
+                          <FormControl><Input type="password" className="h-14 rounded-2xl border-muted/30 focus:border-primary transition-all text-lg bg-background text-foreground" placeholder="حداقل ۶ کاراکتر" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 shadow-lg shadow-primary/20 mt-4" disabled={isRegistering}>
+                    <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 mt-4" disabled={isRegistering}>
                       {isRegistering ? <Loader2 className="animate-spin" /> : "عضویت سریع"}
                     </Button>
                   </form>
@@ -314,7 +314,7 @@ export default function AuthPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-muted-foreground mr-1">شماره موبایل</FormLabel>
-                            <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary text-center text-xl tracking-widest font-bold" placeholder="09123456789" {...field} dir="ltr" /></FormControl>
+                            <FormControl><Input className="h-14 rounded-2xl border-muted/30 focus:border-primary text-center text-xl tracking-widest font-bold bg-background text-foreground" placeholder="09123456789" {...field} dir="ltr" /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -329,7 +329,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 shadow-lg shadow-primary/20 mt-4" disabled={isSendingOtp}>
+                      <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 mt-4" disabled={isSendingOtp}>
                         {isSendingOtp ? <Loader2 className="animate-spin" /> : "ارسال کد ورود"}
                       </Button>
                     </form>
@@ -352,9 +352,9 @@ export default function AuthPage() {
                                   <input
                                     key={index}
                                     ref={otpRefs[index]}
-                                    className={`w-12 h-16 text-center text-4xl font-black font-[Vazirmatn] rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-black shadow-sm ${otpValues[index]
+                                    className={`w-12 h-16 text-center text-4xl font-black font-[Vazirmatn] rounded-2xl border-2 transition-all duration-200 outline-none p-0 text-foreground shadow-sm ${otpValues[index]
                                       ? "border-primary bg-primary/5 ring-2 ring-primary/10"
-                                      : "border-muted/30 bg-muted/20"
+                                      : "border-muted/30 bg-background"
                                       } focus:border-primary focus:ring-4 focus:ring-primary/20 focus:scale-105`}
                                     maxLength={1}
                                     type="text"
@@ -372,7 +372,7 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary-600 shadow-lg shadow-primary/20" disabled={isVerifyingOtp}>
+                      <Button type="submit" className="w-full h-14 rounded-2xl text-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" disabled={isVerifyingOtp}>
                         {isVerifyingOtp ? <Loader2 className="animate-spin" /> : "تایید کد و ورود"}
                       </Button>
                     </form>
@@ -383,7 +383,7 @@ export default function AuthPage() {
 
             <div className="relative my-10">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-muted" /></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-4 text-muted-foreground font-semibold">یا ادامه با</span></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-4 text-muted-foreground font-semibold">یا ادامه با</span></div>
             </div>
 
             <Button

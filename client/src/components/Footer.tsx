@@ -3,7 +3,7 @@ import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, Youtube } from "luci
 
 export function Footer() {
   return (
-    <footer className="bg-slate-50 border-t border-border mt-auto pt-16 pb-8">
+    <footer className="bg-background border-t border-border mt-auto pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
 
@@ -21,16 +21,16 @@ export function Footer() {
               ارتقای مهارت‌های زبانی شما با متدولوژی‌های نوین آموزشی و تمرکز بر لهجه آمریکایی. ما مسیر یادگیری را برای شما هدفمند و جذاب می‌کنیم.
             </p>
             <div className="flex gap-4">
-              <a href="https://www.youtube.com/@say.it.english" target="_blank" rel="noopener noreferrer" className="p-2 bg-white border border-border rounded-full hover:border-red-500 hover:text-red-500 transition-colors">
+              <a href="https://www.youtube.com/@say.it.english" target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-full hover:border-red-500 hover:text-red-500 transition-colors">
                 <Youtube className="h-5 w-5" />
               </a>
-              <a href="#" className="p-2 bg-white border border-border rounded-full hover:border-primary hover:text-primary transition-colors">
+              <a href="#" className="p-2 bg-background border border-border rounded-full hover:border-primary hover:text-primary transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="#" className="p-2 bg-white border border-border rounded-full hover:border-primary hover:text-primary transition-colors">
+              <a href="#" className="p-2 bg-background border border-border rounded-full hover:border-primary hover:text-primary transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="p-2 bg-white border border-border rounded-full hover:border-primary hover:text-primary transition-colors">
+              <a href="#" className="p-2 bg-background border border-border rounded-full hover:border-primary hover:text-primary transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
             </div>
