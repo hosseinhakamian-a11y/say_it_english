@@ -164,16 +164,16 @@ export default function PaymentPage() {
 
                         <TabsContent value="card" className="space-y-6">
                             {/* Bank Card Info */}
-                            <div className="p-4 bg-gray-50 rounded-xl border space-y-4">
-                                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                            <div className="p-4 bg-muted/40 rounded-xl border space-y-4">
+                                <h3 className="font-semibold text-foreground flex items-center gap-2">
                                     <CreditCard className="h-5 w-5" />
                                     اطلاعات کارت بانکی
                                 </h3>
 
-                                <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                                <div className="flex items-center justify-between p-3 bg-card rounded-lg border">
                                     <div>
-                                        <p className="text-sm text-gray-500">شماره کارت</p>
-                                        <p className="text-xl font-mono font-bold tracking-wider" dir="ltr">{BANK_CARD}</p>
+                                        <p className="text-sm text-muted-foreground">شماره کارت</p>
+                                        <p className="text-xl font-mono font-bold tracking-wider text-foreground" dir="ltr">{BANK_CARD}</p>
                                     </div>
                                     <Button variant="outline" size="sm" onClick={copyCardNumber}>
                                         {copied ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
@@ -181,13 +181,13 @@ export default function PaymentPage() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="p-3 bg-white rounded-lg border">
-                                        <p className="text-gray-500">نام بانک</p>
-                                        <p className="font-medium">{BANK_NAME}</p>
+                                    <div className="p-3 bg-card rounded-lg border">
+                                        <p className="text-muted-foreground">نام بانک</p>
+                                        <p className="font-medium text-foreground">{BANK_NAME}</p>
                                     </div>
-                                    <div className="p-3 bg-white rounded-lg border">
-                                        <p className="text-gray-500">نام صاحب حساب</p>
-                                        <p className="font-medium">{CARD_HOLDER}</p>
+                                    <div className="p-3 bg-card rounded-lg border">
+                                        <p className="text-muted-foreground">نام صاحب حساب</p>
+                                        <p className="font-medium text-foreground">{CARD_HOLDER}</p>
                                     </div>
                                 </div>
                             </div>
@@ -209,25 +209,25 @@ export default function PaymentPage() {
 
                         <TabsContent value="crypto" className="space-y-6">
                             {/* Crypto Info */}
-                            <div className="p-4 bg-gray-50 rounded-xl border space-y-4">
-                                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                            <div className="p-4 bg-muted/40 rounded-xl border space-y-4">
+                                <h3 className="font-semibold text-foreground flex items-center gap-2">
                                     <SiBinance className="h-5 w-5 text-yellow-500" />
                                     پرداخت USDT (شبکه BEP20)
                                 </h3>
 
-                                <div className="p-3 bg-white rounded-lg border">
+                                <div className="p-3 bg-card rounded-lg border">
                                     <div className="flex items-center justify-between mb-2">
-                                        <p className="text-sm text-gray-500">آدرس ولت (BEP20)</p>
+                                        <p className="text-sm text-muted-foreground">آدرس ولت (BEP20)</p>
                                         <Button variant="outline" size="sm" onClick={copyWalletAddress}>
                                             {copiedWallet ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                                         </Button>
                                     </div>
-                                    <p className="text-xs font-mono break-all font-bold tracking-tight bg-muted p-2 rounded" dir="ltr">
+                                    <p className="text-xs font-mono break-all font-bold tracking-tight bg-muted p-2 rounded text-foreground" dir="ltr">
                                         {CRYPTO_WALLET}
                                     </p>
                                 </div>
 
-                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 italic text-xs text-blue-700">
+                                <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-200 dark:border-blue-800 italic text-xs text-blue-700 dark:text-blue-300">
                                     ⚠️ لطفا فقط USDT روی شبکه {CRYPTO_NETWORK} ارسال کنید. ارسال روی سایر شبکه‌ها موجب از دست رفتن دارایی می‌شود.
                                 </div>
                             </div>
@@ -249,29 +249,14 @@ export default function PaymentPage() {
                     </Tabs>
 
                     {/* Instructions */}
-                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-blue-800 text-sm space-y-2">
+                    <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm space-y-2">
                         <p className="font-semibold">راهنمای پرداخت:</p>
                         <ol className="list-decimal list-inside space-y-1 mr-2">
                             <li>مبلغ فوق را به شماره کارت بالا واریز کنید.</li>
                             <li>کد رهگیری (پیگیری) را از رسید بانکی کپی کنید.</li>
-                            <li>کد رهگیری را در کادر زیر وارد و ثبت کنید.</li>
+                            <li>کد رهگیری را در کادر بالا وارد و ثبت کنید.</li>
                             <li>پس از تأیید توسط ادمین، دسترسی شما فعال می‌شود.</li>
                         </ol>
-                    </div>
-
-                    {/* Tracking Code Input */}
-                    <div className="space-y-2">
-                        <Label htmlFor="trackingCode" className="text-base font-medium">
-                            کد رهگیری / پیگیری بانکی
-                        </Label>
-                        <Input
-                            id="trackingCode"
-                            placeholder="کد رهگیری را وارد کنید..."
-                            value={trackingCode}
-                            onChange={(e) => setTrackingCode(e.target.value)}
-                            className="text-lg py-6"
-                            dir="ltr"
-                        />
                     </div>
 
                     {/* Submit Button */}
