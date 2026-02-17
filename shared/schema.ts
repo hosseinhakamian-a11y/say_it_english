@@ -98,7 +98,7 @@ export const enrollments = pgTable("enrollments", {
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  contentId: integer("content_id").notNull(), // Which content they're buying
+  contentId: integer("content_id"), // Optional: Null for subscription payments
   amount: integer("amount").notNull(), // Amount in Toman or equivalent
   paymentMethod: text("payment_method").default("card"), // 'card' or 'crypto'
   trackingCode: text("tracking_code"), // Bank transfer tracking code (for card)

@@ -158,7 +158,14 @@ export default function PaymentPage() {
                             </TabsTrigger>
                             <TabsTrigger value="crypto" className="rounded-lg gap-2">
                                 <Coins className="h-4 w-4" />
-                                رمز ارز (USDT)
+                                رمز ارز
+                            </TabsTrigger>
+                            <TabsTrigger value="gateway" disabled className="rounded-lg gap-2 relative opacity-80">
+                                <CreditCard className="h-4 w-4" />
+                                پرداخت آنلاین
+                                <span className="absolute -top-2 -left-2 bg-muted text-[10px] px-1.5 py-0.5 rounded-full border shadow-sm">
+                                    به‌زودی
+                                </span>
                             </TabsTrigger>
                         </TabsList>
 
