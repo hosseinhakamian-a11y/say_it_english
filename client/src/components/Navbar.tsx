@@ -1,9 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "react-i18next";
 import { Menu, X, User, LogOut, LayoutDashboard, Crown, Trophy, Target } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SmartSearch } from "@/components/SmartSearch";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +17,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Navbar() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
   const { user, logout, isLoading } = useAuth();
@@ -33,14 +36,14 @@ export function Navbar() {
   };
 
   const navItems = [
-    { label: "خانه", path: "/" },
-    { label: "تعیین سطح", path: "/placement" },
-    { label: "دوره‌های آموزشی", path: "/content" },
-    { label: "ویدیوهای آموزشی", path: "/videos" },
-    { label: "رزرو وقت", path: "/bookings" },
-    { label: "کلاس‌های گروهی", path: "/classes" },
-    { label: "وبلاگ", path: "/blog" },
-    { label: "قیمت‌ها", path: "/pricing", highlight: true },
+    { label: t("navItems.home"), path: "/" },
+    { label: t("navItems.placement"), path: "/placement" },
+    { label: t("navItems.content"), path: "/content" },
+    { label: t("navItems.videos"), path: "/videos" },
+    { label: t("navItems.bookings"), path: "/bookings" },
+    { label: t("navItems.classes"), path: "/classes" },
+    { label: t("navItems.blog"), path: "/blog" },
+    { label: t("navItems.pricing"), path: "/pricing", highlight: true },
   ];
 
   const isActive = (path: string) => location === path;
@@ -81,18 +84,18 @@ export function Navbar() {
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
                         <LayoutDashboard className="h-4 w-4" />
-                        <span>داشبورد من</span>
+                        <span>{t("userMenu.dashboard")}</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
                         <User className="h-4 w-4" />
-                        <span>پروفایل کاربری</span>
+                        <span>{t("userMenu.profile")}</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
                       <LogOut className="h-4 w-4 ml-2" />
-                      <span>خروج از حساب</span>
+                      <span>{t("userMenu.logout")}</span>
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>
@@ -100,8 +103,8 @@ export function Navbar() {
             ) : (
               <Link href="/auth">
                 <div className="flex items-center gap-1 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-full p-0.5">
-                  <span className="px-2 py-1 text-xs font-medium text-primary">ورود</span>
-                  <span className="px-2 py-1 text-xs font-medium bg-primary text-white rounded-full">ثبت نام</span>
+                  <span className="px-2 py-1 text-xs font-medium text-primary">{t("auth.login")}</span>
+                  <span className="px-2 py-1 text-xs font-medium bg-primary text-white rounded-full">{t("auth.register")}</span>
                 </div>
               </Link>
             )}
@@ -113,8 +116,8 @@ export function Navbar() {
               S
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-xl text-foreground tracking-tight">Say It English</span>
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest -mt-1">American English Tutor</span>
+              <span className="font-bold text-xl text-foreground tracking-tight">{t("brand.title")}</span>
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest -mt-1">{t("brand.subtitle")}</span>
             </div>
           </Link>
 
@@ -138,6 +141,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-2">
             <SmartSearch />
             <ThemeToggle />
+            <LanguageSwitcher />
             {isLoading ? (
               <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
             ) : user ? (
@@ -147,7 +151,7 @@ export function Navbar() {
                     <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-yellow-400 to-yellow-600 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
                       <Crown className="h-4 w-4" />
                     </div>
-                    <span>اشتراک ویژه</span>
+                    <span>{t("userMenu.premium")}</span>
                   </Button>
                 </Link>
                 <NotificationBell />
@@ -170,30 +174,30 @@ export function Navbar() {
                       <DropdownMenuItem asChild>
                         <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
                           <LayoutDashboard className="h-4 w-4" />
-                          <span>داشبورد من</span>
+                          <span>{t("userMenu.dashboard")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
                           <User className="h-4 w-4" />
-                          <span>پروفایل کاربری</span>
+                          <span>{t("userMenu.profile")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href="/leaderboard" className="flex items-center gap-2 cursor-pointer">
                           <Trophy className="h-4 w-4" />
-                          <span>جدول امتیازات</span>
+                          <span>{t("userMenu.leaderboard")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href="/challenges" className="flex items-center gap-2 cursor-pointer">
                           <Target className="h-4 w-4" />
-                          <span>چالش‌های هفتگی</span>
+                          <span>{t("userMenu.challenges")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => logout()} className="text-destructive cursor-pointer">
                         <LogOut className="h-4 w-4 ml-2" />
-                        <span>خروج از حساب</span>
+                        <span>{t("userMenu.logout")}</span>
                       </DropdownMenuItem>
                     </div>
                   </DropdownMenuContent>
@@ -202,8 +206,8 @@ export function Navbar() {
             ) : (
               <Link href="/auth">
                 <div className="flex items-center gap-1 bg-gradient-to-r from-primary/10 to-primary/5 backdrop-blur-sm border border-primary/20 rounded-full p-1 hover:border-primary/40 transition-all">
-                  <span className="px-3 py-1.5 text-sm font-medium text-primary hover:bg-white/80 rounded-full transition-colors">ورود</span>
-                  <span className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-full shadow-sm">ثبت نام</span>
+                  <span className="px-3 py-1.5 text-sm font-medium text-primary hover:bg-white/80 rounded-full transition-colors">{t("auth.login")}</span>
+                  <span className="px-3 py-1.5 text-sm font-medium bg-primary text-white rounded-full shadow-sm">{t("auth.register")}</span>
                 </div>
               </Link>
             )}

@@ -1,0 +1,28 @@
+{
+    "navItems": {
+        "home": "خانه",
+        "placement": "تعیین سطح",
+        "content": "دوره‌های آموزشی",
+        "videos": "ویدیوهای آموزشی",
+        "bookings": "رزرو وقت",
+        "classes": "کلاس‌های گروهی",
+        "blog": "وبلاگ",
+        "pricing": "قیمت‌ها"
+    },
+    "userMenu": {
+        "dashboard": "داشبورد من",
+        "profile": "پروفایل کاربری",
+        "leaderboard": "جدول امتیازات",
+        "challenges": "چالش‌های هفتگی",
+        "logout": "خروج از حساب",
+        "premium": "اشتراک ویژه"
+    },
+    "auth": {
+        "login": "ورود",
+        "register": "ثبت نام"
+    },
+    "brand": {
+        "title": "Say It English",
+        "subtitle": "American English Tutor"
+    }
+}

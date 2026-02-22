@@ -1,0 +1,28 @@
+{
+    "navItems": {
+        "home": "Home",
+        "placement": "Placement Test",
+        "content": "Courses",
+        "videos": "Video Tutorials",
+        "bookings": "Bookings",
+        "classes": "Group Classes",
+        "blog": "Blog",
+        "pricing": "Pricing"
+    },
+    "userMenu": {
+        "dashboard": "Dashboard",
+        "profile": "Profile",
+        "leaderboard": "Leaderboard",
+        "challenges": "Weekly Challenges",
+        "logout": "Logout",
+        "premium": "Premium"
+    },
+    "auth": {
+        "login": "Login",
+        "register": "Register"
+    },
+    "brand": {
+        "title": "Say It English",
+        "subtitle": "American English Tutor"
+    }
+}

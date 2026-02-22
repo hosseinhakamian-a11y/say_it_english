@@ -4,12 +4,12 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User, InsertUser } from "../shared/schema";
+import { User } from "../shared/schema";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { sendOTP } from "./sms";
-
-// Admin phone numbers - these users get admin role automatically
-const ADMIN_PHONES = ["09222453571", "09123104254"];
+import { getAdminPhones } from "./utils/auth";
+import { Express, Request, Response, NextFunction } from "express";
+import { authRateLimiter } from "./rate-limit";
 
 const scryptAsync = promisify(scrypt);
 
@@ -26,11 +26,13 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-import { Express, Request, Response, NextFunction } from "express";
-
 export function setupAuth(app: Express) {
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET must be set in environment variables");
+  }
+
   const sessionSettings = {
-    secret: process.env.SESSION_SECRET || "secret",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
@@ -87,7 +89,7 @@ export function setupAuth(app: Express) {
     done(null, user);
   });
 
-  app.post("/api/register", async (req: Request, res: Response, next: NextFunction) => {
+  app.post("/api/register", authRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
@@ -112,14 +114,15 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", async (req, res, next) => {
+  app.post("/api/login", authRateLimiter, async (req, res, next) => {
     passport.authenticate("local", async (err: any, user: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).send("Invalid username or password");
       
+      const adminPhones = getAdminPhones();
       // Check if username OR phone is an admin phone number and update role if needed
-      const isAdminPhone = ADMIN_PHONES.includes(user.username) || 
-                          (user.phone && ADMIN_PHONES.includes(user.phone));
+      const isAdminPhone = adminPhones.includes(user.username) || 
+                          (user.phone && adminPhones.includes(user.phone));
       if (isAdminPhone && user.role !== "admin") {
         await storage.updateUser(user.id, { role: "admin" });
         user.role = "admin";
@@ -161,14 +164,14 @@ export function setupAuth(app: Express) {
   );
 
   // OTP Routes
-  // ADMIN_PHONES is defined at the top of the file
-
-  app.post("/api/auth/otp/request", async (req, res) => {
+  app.post("/api/auth/otp/request", authRateLimiter, async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).send("Phone number is required");
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    
+    const adminPhones = getAdminPhones();
 
     try {
       let user = await storage.getUserByPhone(phone);
@@ -178,11 +181,11 @@ export function setupAuth(app: Express) {
           phone,
           otp,
           otpExpires,
-          role: ADMIN_PHONES.includes(phone) ? "admin" : "student",
+          role: adminPhones.includes(phone) ? "admin" : "student",
         });
       } else {
         // If user exists, also update role if they are in the admin list
-        if (ADMIN_PHONES.includes(phone) && user.role !== "admin") {
+        if (adminPhones.includes(phone) && user.role !== "admin") {
           await storage.updateUser(user.id, { role: "admin", otp, otpExpires });
         } else {
           await storage.updateUser(user.id, { otp, otpExpires });
@@ -197,7 +200,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/otp/verify", async (req, res, next) => {
+  app.post("/api/auth/otp/verify", authRateLimiter, async (req, res, next) => {
     const { phone, otp } = req.body;
     const user = await storage.getUserByPhone(phone);
 
