@@ -62,7 +62,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await client.query(`
       INSERT INTO content (
         title, content_url, video_id, video_provider, description, is_premium, thumbnail_url, type, level, created_at, metadata
-      ) VALUES (
+      ) VALUES 
+      (
         'I can''t be bothered - اصطلاح کاربردی',
         'https://youtube.com/shorts/tpzkWe3rEow',
         'tpzkWe3rEow',
@@ -86,7 +87,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           ]
         }'
+      ),
+      (
+        'It''s a rip-off - چطور بگیم سرم کلاه رفت؟',
+        'https://youtube.com/shorts/e_zB0XfX058',
+        'e_zB0XfX058',
+        'youtube',
+        'اصطلاح کاربردی It''s a rip-off برای زمانی استفاده می‌شود که چیزی بسیار گران‌تر از ارزش واقعی‌اش فروخته می‌شود یا به عبارتی سر آدم کلاه می‌رود.',
+        false,
+        'https://img.youtube.com/vi/e_zB0XfX058/hqdefault.jpg',
+        'video',
+        'beginner',
+        NOW(),
+        '{
+          "words": [
+            {"word": "rip-off", "meaning": "کلاهبرداری / گرانفروشی", "pronunciation": "/ˈrɪp.ɒf/"}
+          ],
+          "quiz": [
+            {
+              "question": "If something is a ''rip-off'', it is...",
+              "options": ["Too cheap", "Too expensive", "A good deal", "Broken"],
+              "correctAnswer": 1
+            }
+          ]
+        }'
+      ),
+      (
+        'تفاوت Listen و Hear در انگلیسی - اشتباه رایج',
+        'https://youtube.com/watch?v=H28kK_R2-Wk',
+        'H28kK_R2-Wk',
+        'youtube',
+        'دو فعل Listen و Hear در فارسی هر دو «شنیدن» ترجمه می‌شوند اما کاربردشان در مکالمه کاملاً متفاوت است. در این ویدیو به صورت دقیق تفاوت این دو را بررسی می‌کنیم.',
+        false,
+        'https://img.youtube.com/vi/H28kK_R2-Wk/hqdefault.jpg',
+        'video',
+        'beginner',
+        NOW(),
+        '{
+          "words": [
+            {"word": "Listen", "meaning": "گوش دادن (با دقت)", "pronunciation": "/ˈlɪs.ən/"},
+            {"word": "Hear", "meaning": "شنیدن (اغلب غیرارادی)", "pronunciation": "/hɪər/"}
+          ],
+          "quiz": [
+            {
+              "question": "I ____ a loud noise outside last night.",
+              "options": ["Listened", "Heard", "Listening", "Hearing"],
+              "correctAnswer": 1
+            }
+          ]
+        }'
       )
+      ON CONFLICT DO NOTHING;
     `);
     console.log("Data inserted.");
 
