@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log("Table 'content' ensured.");
 
     // 2. Check overlap
-    const check = await client.query("SELECT count(*) FROM content WHERE video_id = $1", ['tpzkWe3rEow']);
+    const check = await client.query("SELECT count(*) FROM content WHERE video_id = $1", ['OOkKNt71Rpc']);
     if (parseInt(check.rows[0].count) > 0) {
       console.log("Content already exists.");
       return res.status(200).json({ message: "Content already exists, skipping insert." });
@@ -64,26 +64,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title, content_url, video_id, video_provider, description, is_premium, thumbnail_url, type, level, created_at, metadata
       ) VALUES 
       (
-        'I can''t be bothered - اصطلاح کاربردی',
-        'https://youtube.com/shorts/tpzkWe3rEow',
-        'tpzkWe3rEow',
+        'مشاور املاک نیویورکی: لهجه اسپانیش و چالش‌های مهاجرت',
+        'https://youtube.com/watch?v=OOkKNt71Rpc',
+        'OOkKNt71Rpc',
         'youtube',
-        'در این ویدیو اصطلاح I can''t be bothered را یاد می‌گیریم که یعنی حال و حوصله کاری را ندارم.',
+        'در این ویدیو با یک مشاور املاک در نیویورک همراه می‌شویم تا تفاوت‌های لهجه اسپانیش-آمریکایی و مفهوم ''آمریکایی شدن'' را در محیط واقعی یاد بگیریم.',
         false,
-        'https://img.youtube.com/vi/tpzkWe3rEow/hqdefault.jpg',
+        'https://img.youtube.com/vi/OOkKNt71Rpc/hqdefault.jpg',
         'video',
-        'beginner',
+        'intermediate',
         NOW(),
         '{
           "words": [
-            {"word": "bothered", "meaning": "اذیت شدن / زحمت کشیدن", "pronunciation": "/ˈbɒðəd/"},
-            {"word": "mood", "meaning": "حال و حوصله", "pronunciation": "/muːd/"}
+            {"word": "I have no clue", "meaning": "اصلاً ایده ای ندارم / نمیدونم", "pronunciation": "/aɪ hæv noʊ kluː/"},
+            {"word": "Born and raised", "meaning": "متولد و بزرگ شده", "pronunciation": "/bɔːrn ænd reɪzd/"},
+            {"word": "Americanized", "meaning": "آمریکایی شده / غرق در فرهنگ آمریکا", "pronunciation": "/əˈmer.ɪ.kən.aɪzd/"},
+            {"word": "Something wrong with...", "meaning": "مشکلی وجود دارد / یک جای کار می‌لنگد", "pronunciation": "/ˈsʌm.θɪŋ rɔːŋ wɪð/"},
+            {"word": "Skip", "meaning": "نادیده گرفتن / پریدن از روی چیزی", "pronunciation": "/skɪp/"}
           ],
           "quiz": [
             {
-              "question": "What does ''I can''t be bothered'' mean?",
-              "options": ["I cannot do it", "I am busy", "I don''t feel like doing it", "It is impossible"],
+              "question": "What does ''I have no clue'' mean?",
+              "options": ["I know it well", "I have some idea", "I don''t know at all", "I am thinking"],
               "correctAnswer": 2
+            },
+            {
+              "question": "If someone is ''born and raised'' in a city, they...",
+              "options": ["Just moved there", "Were born there and grew up there", "Only visit on holidays", "Work there but live elsewhere"],
+              "correctAnswer": 1
             }
           ]
         }'
