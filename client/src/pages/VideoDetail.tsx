@@ -34,6 +34,55 @@ interface VideoMetadata {
     phrases?: { phrase: string; meaning: string }[];
 }
 
+const formatTextContent = (text: string) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, lineIdx) => {
+        if (!line.trim()) return <div key={lineIdx} className="h-4" />;
+
+        const isListItem = line.trim().startsWith('-');
+        const cleanLine = isListItem ? line.replace(/^-/, '').trim() : line;
+
+        const parts = cleanLine.split(/(\*\*.*?\*\*|`.*?`)/g);
+
+        const formattedParts = parts.map((part, partIdx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={partIdx} className="text-foreground font-bold px-1"><bdi>{part.slice(2, -2)}</bdi></strong>;
+            }
+            if (part.startsWith('`') && part.endsWith('`')) {
+                return <code key={partIdx} className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-mono text-sm mx-1" dir="ltr"><bdi>{part.slice(1, -1)}</bdi></code>;
+            }
+            // Isolate English text to fix RTL structure breaking
+            const subParts = part.split(/([a-zA-Z0-9]+(?:[\s\-'][a-zA-Z0-9]+)*)/g);
+            return (
+                <span key={partIdx}>
+                    {subParts.map((sp, spIdx) => {
+                        if (/[a-zA-Z]/.test(sp)) {
+                            return <bdi key={spIdx} dir="ltr" className="px-1 font-sans">{sp}</bdi>;
+                        }
+                        return sp;
+                    })}
+                </span>
+            );
+        });
+
+        if (isListItem) {
+            return (
+                <div key={lineIdx} className="flex items-start gap-3 mt-3 px-2" dir="rtl">
+                    <span className="text-primary mt-2.5 h-2 w-2 rounded-full bg-primary flex-shrink-0 shadow-sm" />
+                    <div className="flex-1 leading-loose text-muted-foreground/90 text-[1.05rem]">{formattedParts}</div>
+                </div>
+            );
+        }
+
+        return (
+            <div key={lineIdx} className="leading-loose text-muted-foreground/90 mt-3 text-justify text-[1.05rem]" dir="rtl">
+                {formattedParts}
+            </div>
+        );
+    });
+};
+
 export default function VideoDetailPage() {
     const [, params] = useRoute("/videos/:videoId");
     const videoId = params?.videoId ? parseInt(params.videoId) : 0;
@@ -217,7 +266,7 @@ export default function VideoDetailPage() {
                                                                 {title}
                                                             </h3>
                                                         )}
-                                                        <div className="whitespace-pre-wrap leading-relaxed text-muted-foreground text-base">
+                                                        <div className="text-base text-foreground">
                                                             {(idx === 0 ? section.trim() : content).split(/(!\[.*?\]\(.*?\))/g).map((part, i) => {
                                                                 const match = part.trim().match(/!\[(.*?)\]\((.*?)\)/);
                                                                 if (match) {
@@ -256,7 +305,7 @@ export default function VideoDetailPage() {
                                                                         </div>
                                                                     );
                                                                 }
-                                                                return <span key={i}>{part}</span>;
+                                                                return <div key={i}>{formatTextContent(part)}</div>;
                                                             })}
                                                         </div>
                                                     </div>
