@@ -1,7 +1,11 @@
 import { Link } from "wouter";
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, Youtube } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function Footer() {
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.dir() === 'rtl';
+
   return (
     <footer className="bg-background border-t border-border mt-auto pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -13,12 +17,12 @@ export function Footer() {
                 S
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-xl text-foreground tracking-tight">Say It English</span>
-                <span className="text-xs text-muted-foreground font-medium -mt-1">آموزش تخصصی مکالمه</span>
+                <span className="font-bold text-xl text-foreground tracking-tight">{t('footer.title')}</span>
+                <span className="text-xs text-muted-foreground font-medium -mt-1">{t('footer.subtitle')}</span>
               </div>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-sm">
-              ارتقای مهارت‌های زبانی شما با متدولوژی‌های نوین آموزشی و تمرکز بر لهجه آمریکایی. ما مسیر یادگیری را برای شما هدفمند و جذاب می‌کنیم.
+              {t('footer.description')}
             </p>
             <div className="flex gap-4">
               <a href="https://www.youtube.com/@say.it.english" target="_blank" rel="noopener noreferrer" className="p-2 bg-background border border-border rounded-full hover:border-red-500 hover:text-red-500 transition-colors">
@@ -37,14 +41,14 @@ export function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-bold text-lg">دسترسی سریع</h3>
+            <h3 className="font-bold text-lg">{t('footer.quickLinks')}</h3>
             <ul className="space-y-3">
               {[
-                { label: "خانه", path: "/" },
-                { label: "تعیین سطح", path: "/placement" },
-                { label: "ویدیوهای آموزشی", path: "/videos" },
-                { label: "پادکست‌ها", path: "/content" },
-                { label: "رزرو وقت", path: "/bookings" },
+                { label: t('footer.links.home'), path: "/" },
+                { label: t('footer.links.placement'), path: "/placement" },
+                { label: t('footer.links.videos'), path: "/videos" },
+                { label: t('footer.links.podcasts'), path: "/content" },
+                { label: t('footer.links.bookings'), path: "/bookings" },
               ].map((item) => (
                 <li key={item.path}>
                   <Link href={item.path} className="text-muted-foreground hover:text-primary transition-colors text-sm">
@@ -56,28 +60,29 @@ export function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-bold text-lg">تماس با ما</h3>
+            <h3 className="font-bold text-lg">{t('footer.contactUs')}</h3>
             <ul className="space-y-3">
               <li className="flex items-center gap-3 text-muted-foreground text-sm">
-                <Mail className="h-5 w-5 text-primary" />
-                <span>info@language-teacher.com</span>
+                <Mail className="h-5 w-5 text-primary shrink-0" />
+                <span dir="ltr">info@language-teacher.com</span>
               </li>
               <li className="flex items-center gap-3 text-muted-foreground text-sm">
-                <Phone className="h-5 w-5 text-primary" />
-                <span>+98 21 1234 5678</span>
+                <Phone className="h-5 w-5 text-primary shrink-0" />
+                <span dir="ltr">+98 21 1234 5678</span>
               </li>
               <li className="flex items-center gap-3 text-muted-foreground text-sm">
-                <MapPin className="h-5 w-5 text-primary" />
-                <span>تهران، میدان انقلاب</span>
+                <MapPin className="h-5 w-5 text-primary shrink-0" />
+                <span>{t('footer.address')}</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-border mt-12 pt-8 text-center text-sm text-muted-foreground">
-          <p>© ۱۴۰۳ تمامی حقوق محفوظ است.</p>
+          <p>{t('footer.copyright')}</p>
         </div>
       </div>
     </footer>
   );
 }
+

@@ -99,5 +99,21 @@
             "retryBtn": "Test Again",
             "coursesBtn": "View Educational Materials"
         }
+    },
+    "footer": {
+        "title": "Say It English",
+        "subtitle": "Specialized Conversation Training",
+        "description": "Enhance your language skills with modern teaching methodologies focusing on the American accent. We make your learning journey purposeful and engaging.",
+        "quickLinks": "Quick Links",
+        "contactUs": "Contact Us",
+        "address": "Enghelab Square, Tehran",
+        "copyright": "© 2024 All rights reserved.",
+        "links": {
+            "home": "Home",
+            "placement": "Placement Test",
+            "videos": "Video Tutorials",
+            "podcasts": "Podcasts",
+            "bookings": "Bookings"
+        }
     }
 }
