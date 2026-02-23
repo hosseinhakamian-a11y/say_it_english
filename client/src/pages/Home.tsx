@@ -5,34 +5,37 @@ import { motion } from "framer-motion";
 import { containerVariants, itemVariants, pageVariants } from "@/lib/animations";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { SEO } from "@/components/SEO";
+import { useTranslation } from "react-i18next";
 
 export default function Home() {
+  const { t } = useTranslation();
+
   const features = [
     {
       icon: GraduationCap,
-      title: "تعیین سطح هوشمند",
-      desc: "سطح واقعی خود را با آزمون استاندارد ما بسنجید",
+      title: t("home.features.placement.title"),
+      desc: t("home.features.placement.desc"),
       color: "bg-blue-50 text-blue-600",
       href: "/placement"
     },
     {
       icon: Headphones,
-      title: "پادکست‌های آموزشی",
-      desc: "تقویت مهارت شنیداری با مطالب به‌روز و جذاب",
+      title: t("home.features.podcasts.title"),
+      desc: t("home.features.podcasts.desc"),
       color: "bg-amber-50 text-amber-600",
       href: "/content"
     },
     {
       icon: Calendar,
-      title: "رزرو مشاوره",
-      desc: "وقت مشاوره خصوصی با استاد رزرو کنید",
+      title: t("home.features.bookings.title"),
+      desc: t("home.features.bookings.desc"),
       color: "bg-green-50 text-green-600",
       href: "/bookings"
     },
     {
       icon: BookOpen,
-      title: "کلاس‌های گروهی",
-      desc: "یادگیری تعاملی در کنار سایر زبان‌آموزان",
+      title: t("home.features.classes.title"),
+      desc: t("home.features.classes.desc"),
       color: "bg-purple-50 text-purple-600",
       href: "/classes"
     }
@@ -66,12 +69,12 @@ export default function Home() {
                 className="inline-flex items-center gap-2 py-2 px-4 rounded-full bg-secondary/10 text-secondary-foreground text-sm font-bold mb-6 border border-secondary/20 glass"
               >
                 <Sparkles className="w-4 h-4" />
-                آموزش تخصصی زبان انگلیسی
+                {t("home.hero.badge")}
               </motion.span>
 
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 text-foreground leading-tight">
-                زبان را <span className="gradient-text">ساده</span> و{" "}
-                <span className="text-secondary-foreground bg-secondary/30 px-3 rounded-xl">لذت‌بخش</span> بیاموزید
+                {t("home.hero.title1")} <span className="gradient-text">{t("home.hero.titleHigh1")}</span> {t("home.hero.title2")}{" "}
+                <span className="text-secondary-foreground bg-secondary/30 px-3 rounded-xl">{t("home.hero.titleHigh2")}</span> {t("home.hero.title3")}
               </h1>
 
               <motion.p
@@ -80,7 +83,7 @@ export default function Home() {
                 transition={{ delay: 0.4, duration: 0.6 }}
                 className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
               >
-                با متدهای جدید آموزشی، پادکست‌های جذاب و کلاس‌های تعاملی، مسیر یادگیری خود را هموار کنید.
+                {t("home.hero.subtitle")}
               </motion.p>
 
               <motion.div
@@ -90,11 +93,11 @@ export default function Home() {
                 className="flex flex-col sm:flex-row gap-4 justify-center"
               >
                 <Link href="/placement" className={buttonVariants({ size: "lg", className: "text-lg px-8 h-14 rounded-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all btn-press flex items-center" })}>
-                  شروع تعیین سطح
+                  {t("home.hero.ctaPrimary")}
                   <ArrowLeft className="mr-2 h-5 w-5" />
                 </Link>
                 <Link href="/content" className={buttonVariants({ size: "lg", variant: "outline", className: "text-lg px-8 h-14 rounded-2xl glass hover:bg-white/80 border-2 btn-press" })}>
-                  مشاهده دوره‌ها
+                  {t("home.hero.ctaSecondary")}
                 </Link>
               </motion.div>
             </motion.div>
@@ -140,9 +143,9 @@ export default function Home() {
           >
             <div className="flex flex-col md:flex-row items-center gap-12">
               <div className="flex-1 space-y-6">
-                <h2 className="text-3xl md:text-4xl font-bold gradient-text">درباره مدرس</h2>
+                <h2 className="text-3xl md:text-4xl font-bold gradient-text">{t("home.about.title")}</h2>
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  من مدرس زبان با بیش از ۱۰ سال سابقه تدریس هستم. هدف من کمک به شما برای یادگیری زبان انگلیسی به روشی کاربردی و موثر است. با استفاده از تکنیک‌های روز دنیا، مسیر یادگیری را برای شما کوتاه و لذت‌بخش می‌کنم.
+                  {t("home.about.desc")}
                 </p>
                 <motion.ul
                   variants={containerVariants}
@@ -152,9 +155,9 @@ export default function Home() {
                   className="space-y-3"
                 >
                   {[
-                    "مدرک بین‌المللی TESOL",
-                    "مدرک تخصصی آیلتس (IELTS)",
-                    "بیش از ۱۰ سال سابقه تدریس تخصصی"
+                    t("home.about.items.tesol"),
+                    t("home.about.items.ielts"),
+                    t("home.about.items.exp")
                   ].map((item, i) => (
                     <motion.li key={i} variants={itemVariants} className="flex items-center gap-3">
                       <div className="w-2 h-2 rounded-full bg-secondary" />

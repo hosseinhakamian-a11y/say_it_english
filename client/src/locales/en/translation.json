@@ -24,5 +24,80 @@
     "brand": {
         "title": "Say It English",
         "subtitle": "American English Tutor"
+    },
+    "home": {
+        "features": {
+            "placement": {
+                "title": "Smart Placement",
+                "desc": "Assess your real level with our standard test"
+            },
+            "podcasts": {
+                "title": "Educational Podcasts",
+                "desc": "Improve your listening with modern and engaging content"
+            },
+            "bookings": {
+                "title": "Book Consultation",
+                "desc": "Book a private consultation with a tutor"
+            },
+            "classes": {
+                "title": "Group Classes",
+                "desc": "Interactive learning alongside other students"
+            }
+        },
+        "hero": {
+            "badge": "Specialized English Training",
+            "title1": "Learn language",
+            "titleHigh1": "simply",
+            "title2": "and",
+            "titleHigh2": "enjoyably",
+            "title3": "",
+            "subtitle": "Smooth your learning path with new educational methods, engaging podcasts, and interactive classes.",
+            "ctaPrimary": "Start Placement Test",
+            "ctaSecondary": "View Courses"
+        },
+        "about": {
+            "title": "About the Tutor",
+            "desc": "I am an English tutor with over 10 years of experience. My goal is to help you learn English in a practical and effective way. Using modern techniques, I make your learning journey shorter and more enjoyable.",
+            "items": {
+                "tesol": "International TESOL Certification",
+                "ielts": "Specialized IELTS Certification",
+                "exp": "Over 10 years of specialized teaching experience"
+            }
+        }
+    },
+    "placement": {
+        "title": "Placement Test",
+        "section": "Section",
+        "of": "of",
+        "question": "Question",
+        "grammar": "Grammar",
+        "vocabulary": "Vocabulary",
+        "reading": "Reading Comprehension",
+        "next": "Next",
+        "prev": "Previous",
+        "showResult": "Show Results",
+        "loginRequired": {
+            "title": "Login Required",
+            "desc": "To take the placement test, please log in to your account first.",
+            "btn": "Login / Register"
+        },
+        "results": {
+            "title": "Congratulations!",
+            "levelLabel": "Determined Level",
+            "beginner": "Beginner",
+            "intermediate": "Intermediate",
+            "advanced": "Advanced",
+            "desc": "Based on your answers in this comprehensive test, your level has been determined. You can now use the appropriate educational content.",
+            "performance": "Your Performance",
+            "tipsTitle": "Tips for Improvement:",
+            "tips": [
+                "Study English for at least 30 minutes daily",
+                "Use educational content relevant to your level",
+                "Participate in group or private classes",
+                "Regularly watch educational podcasts and videos"
+            ],
+            "retryBtn": "Test Again",
+            "coursesBtn": "View Educational Materials"
+        }
     }
 }

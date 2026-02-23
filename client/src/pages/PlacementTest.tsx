@@ -8,11 +8,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, ChevronLeft, ChevronRight, AlertCircle, BookOpen, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 
 const sections = [
   {
     id: "grammar",
-    title: "دستور زبان",
+    titleKey: "placement.grammar",
     icon: BookOpen,
     questions: [
       {
@@ -61,7 +62,7 @@ const sections = [
   },
   {
     id: "vocabulary",
-    title: "واژگان",
+    titleKey: "placement.vocabulary",
     icon: Zap,
     questions: [
       {
@@ -104,7 +105,7 @@ const sections = [
   },
   {
     id: "reading",
-    title: "درک مطلب",
+    titleKey: "placement.reading",
     icon: BookOpen,
     questions: [
       {
@@ -156,6 +157,7 @@ const sections = [
 type SectionKey = "grammar" | "vocabulary" | "reading";
 
 export default function PlacementTest() {
+  const { t } = useTranslation();
   const [sectionIndex, setSectionIndex] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<number, string>>>({});
@@ -169,10 +171,10 @@ export default function PlacementTest() {
       <div className="container mx-auto px-4 py-20 text-center max-w-lg">
         <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-3xl p-10">
           <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-amber-900 dark:text-amber-50 mb-4">نیاز به ورود</h2>
-          <p className="text-amber-800 dark:text-amber-200 mb-8">برای شرکت در آزمون تعیین سطح، لطفاً ابتدا وارد حساب کاربری خود شوید.</p>
+          <h2 className="text-2xl font-bold text-amber-900 dark:text-amber-50 mb-4">{t("placement.loginRequired.title")}</h2>
+          <p className="text-amber-800 dark:text-amber-200 mb-8">{t("placement.loginRequired.desc")}</p>
           <Button onClick={() => setLocation("/auth")} size="lg" className="w-full rounded-xl">
-            ورود / ثبت نام
+            {t("placement.loginRequired.btn")}
           </Button>
         </div>
       </div>
@@ -245,9 +247,9 @@ export default function PlacementTest() {
     const rawAvg = Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length;
     const avgScore = Math.round(rawAvg);
 
-    if (avgScore <= 40) return { level: "مبتدی", text: "Beginner", color: "from-blue-500 to-blue-600" };
-    if (avgScore <= 70) return { level: "متوسط", text: "Intermediate", color: "from-amber-500 to-amber-600" };
-    return { level: "پیشرفته", text: "Advanced", color: "from-emerald-500 to-emerald-600" };
+    if (avgScore <= 40) return { level: t("placement.results.beginner"), text: "Beginner", color: "from-blue-500 to-blue-600" };
+    if (avgScore <= 70) return { level: t("placement.results.intermediate"), text: "Intermediate", color: "from-amber-500 to-amber-600" };
+    return { level: t("placement.results.advanced"), text: "Advanced", color: "from-emerald-500 to-emerald-600" };
   };
 
   const totalQuestions = sections.reduce((sum, s) => sum + s.questions.length, 0);
@@ -259,11 +261,11 @@ export default function PlacementTest() {
       {!showResult ? (
         <>
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">آزمون تعیین سطح</h1>
-            <p className="text-muted-foreground">بخش {sectionIndex + 1} از {sections.length}: {currentSection.title}</p>
+            <h1 className="text-3xl font-bold mb-2">{t("placement.title")}</h1>
+            <p className="text-muted-foreground">{t("placement.section")} {sectionIndex + 1} {t("placement.of")} {sections.length}: {t(currentSection.titleKey)}</p>
             <div className="mt-6">
               <Progress value={progress} className="h-2" />
-              <p className="text-xs text-muted-foreground mt-2">{answeredQuestions} از {totalQuestions} سوال</p>
+              <p className="text-xs text-muted-foreground mt-2">{answeredQuestions} {t("placement.of")} {totalQuestions} {t("placement.question")}</p>
             </div>
           </div>
 
@@ -285,7 +287,7 @@ export default function PlacementTest() {
                 <CardContent className="p-8 md:p-12">
                   <div className="mb-8">
                     <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                      سوال {currentQuestion + 1} از {currentSection.questions.length}
+                      {t("placement.question")} {currentQuestion + 1} {t("placement.of")} {currentSection.questions.length}
                     </span>
                     <h3 className="text-xl font-bold mt-6 leading-relaxed" style={{ direction: "ltr", textAlign: "left" }}>
                       {currentQ.question}
@@ -319,10 +321,10 @@ export default function PlacementTest() {
                       onClick={handleNext}
                       disabled={!answers[currentSection.id as SectionKey]?.[currentQuestion]}
                       size="lg"
-                      className="rounded-lg px-8 bg-primary hover:bg-primary/90 text-white"
+                      className="rounded-lg px-8 bg-primary hover:bg-primary/90 text-white flex-row-reverse"
                     >
-                      {sectionIndex === sections.length - 1 && currentQuestion === currentSection.questions.length - 1 ? "مشاهده نتیجه" : "بعدی"}
-                      <ChevronRight className="mr-2 h-4 w-4" />
+                      <ChevronRight className="ml-2 h-4 w-4 rtl:rotate-180" />
+                      {sectionIndex === sections.length - 1 && currentQuestion === currentSection.questions.length - 1 ? t("placement.showResult") : t("placement.next")}
                     </Button>
 
                     <Button
@@ -337,10 +339,10 @@ export default function PlacementTest() {
                         }
                       }}
                       disabled={sectionIndex === 0 && currentQuestion === 0}
-                      className="rounded-lg"
+                      className="rounded-lg flex-row-reverse"
                     >
-                      <ChevronLeft className="ml-2 h-4 w-4" />
-                      قبلی
+                      <ChevronLeft className="mr-2 h-4 w-4 rtl:rotate-180" />
+                      {t("placement.prev")}
                     </Button>
                   </div>
                 </CardContent>
@@ -359,14 +361,14 @@ export default function PlacementTest() {
                 <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-8 backdrop-blur-sm">
                   <CheckCircle2 className="w-12 h-12 text-white" />
                 </div>
-                <h2 className="text-4xl font-bold mb-6">تبریک!</h2>
+                <h2 className="text-4xl font-bold mb-6">{t("placement.results.title")}</h2>
                 <div className="inline-block bg-white/20 backdrop-blur-md rounded-2xl p-8 mb-10 border border-white/30">
-                  <p className="text-sm uppercase tracking-wider opacity-80 mb-2">سطح تشخیص شده</p>
+                  <p className="text-sm uppercase tracking-wider opacity-80 mb-2">{t("placement.results.levelLabel")}</p>
                   <p className="text-3xl font-bold mb-2">{getOverallLevel().level}</p>
                   <p className="text-sm opacity-80">{getOverallLevel().text}</p>
                 </div>
                 <p className="opacity-90 max-w-md mx-auto mb-6 leading-relaxed text-sm">
-                  بر اساس پاسخ‌های شما در این آزمون جامع، سطح بالا تعیین شده است. شما می‌توانید از محتوای آموزشی مناسب استفاده کنید.
+                  {t("placement.results.desc")}
                 </p>
               </CardContent>
             </Card>
@@ -377,14 +379,14 @@ export default function PlacementTest() {
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-4">
                       <section.icon className="w-6 h-6 text-primary" />
-                      <h3 className="font-bold text-lg">{section.title}</h3>
+                      <h3 className="font-bold text-lg">{t(section.titleKey)}</h3>
                     </div>
                     <div className="text-center">
                       <div className="text-3xl font-bold text-primary mb-2">
                         {Math.round(scores[section.id] || 0)}%
                       </div>
                       <Progress value={scores[section.id] || 0} className="h-2 mb-2" />
-                      <p className="text-xs text-muted-foreground">عملکرد شما</p>
+                      <p className="text-xs text-muted-foreground">{t("placement.results.performance")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -392,24 +394,14 @@ export default function PlacementTest() {
             </div>
 
             <Card className="rounded-2xl border-0 shadow-md p-6 md:p-8 bg-muted/50">
-              <h3 className="font-bold text-lg mb-4">نکات برای پیشرفت:</h3>
+              <h3 className="font-bold text-lg mb-4">{t("placement.results.tipsTitle")}</h3>
               <ul className="space-y-2 text-sm">
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">•</span>
-                  <span>روزانه حداقل 30 دقیقه زبان انگلیسی مطالعه کنید</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">•</span>
-                  <span>از محتوای آموزشی مرتبط با سطح خود استفاده کنید</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">•</span>
-                  <span>در کلاس‌های گروهی یا خصوصی شرکت کنید</span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-primary font-bold">•</span>
-                  <span>پادکست‌ها و فیلم‌های آموزشی را منظم تماشا کنید</span>
-                </li>
+                {(t("placement.results.tips", { returnObjects: true }) as string[]).map((tip, idx) => (
+                  <li key={idx} className="flex gap-2">
+                    <span className="text-primary font-bold">•</span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
               </ul>
             </Card>
 
@@ -425,14 +417,14 @@ export default function PlacementTest() {
                   setShowResult(false);
                 }}
               >
-                آزمون دوباره
+                {t("placement.results.retryBtn")}
               </Button>
               <Button
                 size="lg"
                 className="rounded-lg"
                 onClick={() => setLocation("/content")}
               >
-                مشاهده مطالب آموزشی
+                {t("placement.results.coursesBtn")}
               </Button>
             </div>
           </div>
