@@ -394,6 +394,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(results[0]);
     }
 
+    // --- UPDATE CONTENT (ADMIN) ---
+    if (pathname.match(/\/api\/content\/\d+/) && method === 'PATCH') {
+      if (!currentUser || currentUser.role !== 'admin') {
+         return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      const idMatch = pathname.match(/\/api\/content\/(\d+)/);
+      const id = parseInt(idMatch![1]);
+      
+      // Update the fields dynamically passed in the body
+      const results = await db.update(content).set({
+          ...body,
+      }).where(eq(content.id, id)).returning();
+      
+      if (results.length === 0) return res.status(404).json({ error: "Content not found" });
+      return res.status(200).json(results[0]);
+    }
+
     // --- CONTENT LIST ---
     if (pathname === '/api/content' && method === 'GET') {
       try {
@@ -424,6 +442,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error("Error fetching content:", err);
         return res.status(500).json({ error: "Failed to fetch content", details: err.message });
       }
+    }
+
+    // --- USERS LIST (ADMIN) ---
+    if (pathname === '/api/users' && method === 'GET') {
+      if (!currentUser || currentUser.role !== 'admin') {
+         return res.status(403).json({ error: "Forbidden" });
+      }
+      const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+      const safeUsers = allUsers.map(({ password, otp, sessionToken, ...rest }) => rest);
+      return res.status(200).json(safeUsers);
+    }
+
+    // --- USER ROLE UPDATE (ADMIN) ---
+    if (pathname.match(/\/api\/users\/\d+\/role/) && method === 'PATCH') {
+      if (!currentUser || currentUser.role !== 'admin') {
+         return res.status(403).json({ error: "Forbidden" });
+      }
+      const idMatch = pathname.match(/\/api\/users\/(\d+)\/role/);
+      const userId = parseInt(idMatch![1]);
+      const { role } = body;
+      
+      const results = await db.update(users).set({ role }).where(eq(users.id, userId)).returning();
+      if (results.length === 0) return res.status(404).json({ error: "User not found" });
+      const { password, otp, sessionToken, ...safeUser } = results[0];
+      return res.status(200).json(safeUser);
     }
 
     // --- USER PROFILE & STREAK LOGIC ---
