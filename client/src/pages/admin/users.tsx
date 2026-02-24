@@ -74,7 +74,7 @@ export default function AdminUsers() {
     });
 
     const filteredUsers = users?.filter((user) =>
-        user.username.toLowerCase().includes(searchQuery.toLowerCase())
+        (user?.username || "").toLowerCase().includes((searchQuery || "").toLowerCase())
     );
 
     return (
@@ -153,49 +153,49 @@ export default function AdminUsers() {
                                     ) : (
                                         filteredUsers?.map((user, idx) => (
                                             <motion.tr
-                                                key={user.id}
+                                                key={user?.id || idx}
                                                 initial={{ opacity: 0, x: -20 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: idx * 0.05 }}
                                                 className="hover:bg-muted/50 transition-colors"
                                             >
                                                 <TableCell className="font-mono text-gray-500">
-                                                    #{user.id}
+                                                    #{user?.id}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center font-bold text-primary">
-                                                            {user.username.slice(0, 2).toUpperCase()}
+                                                            {(user?.username || "؟").slice(0, 2).toUpperCase()}
                                                         </div>
-                                                        <span className="font-medium">{user.username}</span>
+                                                        <span className="font-medium">{user?.username || "بدون نام"}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge
                                                         variant="outline"
-                                                        className={`rounded-lg ${user.level === "beginner"
-                                                                ? "bg-green-50 text-green-700 border-green-200"
-                                                                : user.level === "intermediate"
-                                                                    ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                                                                    : user.level === "advanced"
-                                                                        ? "bg-purple-50 text-purple-700 border-purple-200"
-                                                                        : "bg-gray-50 text-gray-500"
+                                                        className={`rounded-lg ${user?.level === "beginner"
+                                                            ? "bg-green-50 text-green-700 border-green-200"
+                                                            : user?.level === "intermediate"
+                                                                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                                                : user?.level === "advanced"
+                                                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                                                    : "bg-gray-50 text-gray-500"
                                                             }`}
                                                     >
-                                                        {user.level === "beginner"
+                                                        {user?.level === "beginner"
                                                             ? "مبتدی"
-                                                            : user.level === "intermediate"
+                                                            : user?.level === "intermediate"
                                                                 ? "متوسط"
-                                                                : user.level === "advanced"
+                                                                : user?.level === "advanced"
                                                                     ? "پیشرفته"
                                                                     : "نامشخص"}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Select
-                                                        defaultValue={user.role}
+                                                        defaultValue={user?.role || "student"}
                                                         onValueChange={(role) =>
-                                                            updateRoleMutation.mutate({ id: user.id, role })
+                                                            user?.id && updateRoleMutation.mutate({ id: user.id, role })
                                                         }
                                                     >
                                                         <SelectTrigger className="w-28 rounded-lg">
@@ -208,7 +208,7 @@ export default function AdminUsers() {
                                                     </Select>
                                                 </TableCell>
                                                 <TableCell className="text-gray-500 text-sm">
-                                                    {new Date(user.createdAt).toLocaleDateString("fa-IR")}
+                                                    {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("fa-IR") : "-"}
                                                 </TableCell>
                                             </motion.tr>
                                         ))

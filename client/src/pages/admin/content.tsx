@@ -54,6 +54,10 @@ interface Content {
     level: string;
     videoId: string | null;
     videoProvider: string | null;
+    arvanVideoProvider: string | null;
+    arvanVideoId: string | null;
+    contentUrl: string | null;
+    thumbnailUrl: string | null;
     fileKey: string | null;
     isPremium: boolean;
     price: number | null;
@@ -124,7 +128,10 @@ export default function AdminContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
             });
-            if (!res.ok) throw new Error("Failed to update");
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || "Failed to update");
+            }
             return await res.json();
         },
         onSuccess: () => {
@@ -133,6 +140,9 @@ export default function AdminContent() {
             form.reset();
             setUploadProgress(0);
             queryClient.invalidateQueries({ queryKey: [api.content.list.path] });
+        },
+        onError: (error) => {
+            toast({ title: "خطا در ویرایش محتوا ❌", description: error.message, variant: "destructive" });
         },
     });
 
@@ -221,6 +231,10 @@ export default function AdminContent() {
             videoId: content.videoId || "",
             fileKey: content.fileKey || "",
             videoProvider: content.videoProvider || "aparat",
+            arvanVideoProvider: content.arvanVideoProvider || "none",
+            arvanVideoId: content.arvanVideoId || "",
+            contentUrl: content.contentUrl || "",
+            thumbnailUrl: content.thumbnailUrl || "",
             isPremium: content.isPremium,
             price: content.price || 0,
             metadata: content.metadata || {},
