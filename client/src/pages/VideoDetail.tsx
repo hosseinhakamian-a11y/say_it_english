@@ -53,7 +53,7 @@ const formatTextContent = (text: string) => {
                 return <code key={partIdx} className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-mono text-sm mx-1" dir="ltr"><bdi>{part.slice(1, -1)}</bdi></code>;
             }
             // Isolate English text to fix RTL structure breaking
-            const subParts = part.split(/([a-zA-Z0-9]+(?:[\s\-'][a-zA-Z0-9]+)*)/g);
+            const subParts = part.split(/([\.,?!'"()\-]*[a-zA-Z0-9]+(?:[\s.,?!'"()\-]+[a-zA-Z0-9]+)*[\.,?!'"()\-]*)/g);
             return (
                 <span key={partIdx}>
                     {subParts.map((sp, spIdx) => {
@@ -354,7 +354,7 @@ export default function VideoDetailPage() {
                                                                     )}
                                                                 </div>
                                                                 {vocab.definition && (
-                                                                    <p className="text-sm text-gray-600 dark:text-gray-400 dir-ltr text-left italic">
+                                                                    <p className="text-sm text-gray-600 dark:text-gray-400 text-left italic" dir="ltr">
                                                                         "{vocab.definition}"
                                                                     </p>
                                                                 )}

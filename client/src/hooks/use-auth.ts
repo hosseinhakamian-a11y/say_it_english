@@ -21,6 +21,10 @@ export function useAuth() {
       return await res.json();
     },
     retry: false,
+    staleTime: 1000 * 60 * 60, // 1 hour
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   const loginMutation = useMutation({

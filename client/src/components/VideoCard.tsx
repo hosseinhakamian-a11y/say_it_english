@@ -9,6 +9,19 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+const stripMarkdown = (text: string | null) => {
+    if (!text) return "بدون توضیحات";
+    return text
+        .replace(/!\[.*?\]\(.*?\)/g, '') // images
+        .replace(/\[(.*?)\]\(.*?\)/g, '$1') // links
+        .replace(/#{1,6}\s?/g, '') // headings
+        .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
+        .replace(/(\*|_)(.*?)\1/g, '$2') // italic
+        .replace(/`(.*?)`/g, '$1') // inline code
+        .replace(/\n+/g, ' ') // newlines
+        .trim();
+};
+
 interface Content {
     id: number;
     title: string;
@@ -92,7 +105,7 @@ export function VideoCard({ video }: VideoCardProps) {
                             {video.title}
                         </h3>
                         <p className="text-sm text-muted-foreground line-clamp-2 text-right dir-rtl leading-relaxed">
-                            {video.description || "بدون توضیحات"}
+                            {stripMarkdown(video.description)}
                         </p>
                     </CardContent>
 
