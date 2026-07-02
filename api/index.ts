@@ -77,23 +77,62 @@ const slotSchema = z.object({
 });
 
 // ============ RATE LIMITER ============
+// In-memory fallback: only correct within a single warm Vercel instance, NOT across
+// concurrent/cold invocations. Used automatically when Upstash isn't configured.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
-function checkRateLimit(key: string, maxAttempts: number = 5, windowMs: number = 60000): boolean {
+function checkRateLimitInMemory(key: string, maxAttempts: number, windowMs: number): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(key);
-  
+
   if (!entry || now > entry.resetAt) {
     rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
     return true;
   }
-  
+
   if (entry.count >= maxAttempts) {
     return false;
   }
-  
+
   entry.count++;
   return true;
+}
+
+// Real distributed rate limiting via Upstash Redis REST API (INCR + EXPIRE NX in one pipeline
+// call). Falls back to the in-memory limiter above if UPSTASH_REDIS_REST_URL/TOKEN aren't set,
+// or if the Upstash request itself fails (fail-open so a Redis outage doesn't lock out users).
+async function checkRateLimit(key: string, maxAttempts: number = 5, windowMs: number = 60000): Promise<boolean> {
+  const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+  const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    return checkRateLimitInMemory(key, maxAttempts, windowMs);
+  }
+
+  const windowSeconds = Math.ceil(windowMs / 1000);
+  try {
+    const res = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${UPSTASH_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([
+        ['INCR', `ratelimit:${key}`],
+        ['EXPIRE', `ratelimit:${key}`, windowSeconds.toString(), 'NX'],
+      ]),
+    });
+    const [incrResult] = await res.json();
+    const count = incrResult?.result;
+    if (typeof count !== 'number') {
+      console.warn('[RATE LIMIT] Unexpected Upstash response, failing open', incrResult);
+      return true;
+    }
+    return count <= maxAttempts;
+  } catch (err) {
+    console.warn('[RATE LIMIT] Upstash request failed, falling back to in-memory', err);
+    return checkRateLimitInMemory(key, maxAttempts, windowMs);
+  }
 }
 
 // Cleanup old entries every 5 minutes
@@ -1102,12 +1141,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     //   });
     // }
 
-    // --- PAYMENT: Request (Mock ZarinPal) ---
+    // --- PAYMENT: Request (Real ZarinPal) ---
     if (pathname.match(/\/api\/payment\/request$/) && method === 'POST') {
       if (!currentUser) return res.status(401).json({ error: "Unauthorized" });
       const { planId, promoCode } = body;
 
-      // Calculate price
+      // Calculate price (in Toman)
       const plans: Record<string, number> = { 'bronze': 99000, 'silver': 249000, 'gold': 890000 };
       let amount = plans[planId];
       if (!amount) return res.status(400).json({ error: "Plan invalid" });
@@ -1120,43 +1159,112 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      // Create payment record (pending)
+      const ZARINPAL_MERCHANT_ID = process.env.ZARINPAL_MERCHANT_ID;
+      if (!ZARINPAL_MERCHANT_ID) {
+        return res.status(500).json({ error: "Payment gateway not configured. Set ZARINPAL_MERCHANT_ID in env." });
+      }
+      const ZARINPAL_SANDBOX = process.env.ZARINPAL_SANDBOX === 'true';
+      const ZARINPAL_API_BASE = ZARINPAL_SANDBOX ? 'https://sandbox.zarinpal.com' : 'https://api.zarinpal.com';
+      const ZARINPAL_STARTPAY_BASE = ZARINPAL_SANDBOX ? 'https://sandbox.zarinpal.com' : 'https://www.zarinpal.com';
+
+      // Create payment record (pending) first so we have an id for the callback_url
       const payment = await db.insert(payments).values({
         userId: currentUser.id,
         amount,
         status: 'pending',
         gateway: 'zarinpal',
-        referenceId: `PLAN-${planId}-${Date.now()}`, // Temporary ref
+        referenceId: `PLAN-${planId}-${Date.now()}`, // Temporary ref, overwritten below/after verify
       }).returning();
 
-      // MOCK: Return a verification URL directly for testing
-      // In production, this would request ZarinPal and return their gateway URL
-      return res.status(200).json({
-        url: `${req.headers.origin}/api/payment/verify?Authority=${payment[0].id}&Status=OK&PlanId=${planId}`,
-        authority: payment[0].id.toString()
-      });
+      const origin = req.headers.origin || `https://${req.headers.host}`;
+      const callbackUrl = `${origin}/api/payment/verify?planId=${planId}&paymentId=${payment[0].id}`;
+
+      try {
+        const zpRes = await fetch(`${ZARINPAL_API_BASE}/pg/v4/payment/request.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            merchant_id: ZARINPAL_MERCHANT_ID,
+            amount,
+            currency: 'IRT', // amounts in this app are in Toman
+            callback_url: callbackUrl,
+            description: `خرید پلن ${planId} - Say It English`,
+            metadata: currentUser.phone ? { mobile: currentUser.phone } : undefined,
+          }),
+        });
+        const zpData = await zpRes.json();
+
+        if (zpData?.data?.code === 100 && zpData?.data?.authority) {
+          await db.update(payments).set({ referenceId: zpData.data.authority }).where(eq(payments.id, payment[0].id));
+          return res.status(200).json({
+            url: `${ZARINPAL_STARTPAY_BASE}/pg/StartPay/${zpData.data.authority}`,
+            authority: zpData.data.authority,
+          });
+        }
+
+        await db.update(payments).set({ status: 'failed' }).where(eq(payments.id, payment[0].id));
+        console.error("[ZARINPAL REQUEST ERROR]", zpData?.errors);
+        return res.status(502).json({ error: "درخواست پرداخت ناموفق بود", details: zpData?.errors });
+      } catch (err: any) {
+        await db.update(payments).set({ status: 'failed' }).where(eq(payments.id, payment[0].id));
+        console.error("[ZARINPAL REQUEST ERROR]", err);
+        return res.status(502).json({ error: "ارتباط با درگاه پرداخت برقرار نشد", details: err.message });
+      }
     }
 
-    // --- PAYMENT: Verify (Mock) ---
+    // --- PAYMENT: Verify (Real ZarinPal) ---
     if (pathname.match(/\/api\/payment\/verify$/) && method === 'GET') {
       const url = new URL(req.url!, `http://${req.headers.host}`);
-      const authority = url.searchParams.get('Authority'); // Using payment ID as Authority for mock
+      const authority = url.searchParams.get('Authority');
       const status = url.searchParams.get('Status');
-      const planId = url.searchParams.get('PlanId');
+      const planId = url.searchParams.get('planId');
+      const paymentIdParam = url.searchParams.get('paymentId');
 
-      if (!authority || status !== 'OK' || !planId) {
+      if (!authority || status !== 'OK' || !planId || !paymentIdParam) {
         return res.redirect('/payment/failed');
       }
 
-      const paymentId = parseInt(authority);
-      const payment = await db.select().from(payments).where(eq(payments.id, paymentId));
+      const paymentId = parseInt(paymentIdParam);
+      const paymentRows = await db.select().from(payments).where(eq(payments.id, paymentId));
+      if (paymentRows.length === 0) return res.redirect('/payment/failed');
+      const payment = paymentRows;
 
-      if (payment.length === 0 || payment[0].status === 'approved') {
+      if (payment[0].status === 'approved') {
          return res.redirect('/dashboard?payment=success');
       }
 
+      const ZARINPAL_MERCHANT_ID = process.env.ZARINPAL_MERCHANT_ID;
+      if (!ZARINPAL_MERCHANT_ID) return res.redirect('/payment/failed');
+      const ZARINPAL_SANDBOX = process.env.ZARINPAL_SANDBOX === 'true';
+      const ZARINPAL_API_BASE = ZARINPAL_SANDBOX ? 'https://sandbox.zarinpal.com' : 'https://api.zarinpal.com';
+
+      let zpData: any;
+      try {
+        const zpRes = await fetch(`${ZARINPAL_API_BASE}/pg/v4/payment/verify.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            merchant_id: ZARINPAL_MERCHANT_ID,
+            authority,
+            amount: payment[0].amount,
+            currency: 'IRT',
+          }),
+        });
+        zpData = await zpRes.json();
+      } catch (err) {
+        console.error("[ZARINPAL VERIFY ERROR]", err);
+        return res.redirect('/payment/failed');
+      }
+
+      // 100 = verified now, 101 = already verified previously (treat both as success)
+      if (zpData?.data?.code !== 100 && zpData?.data?.code !== 101) {
+        await db.update(payments).set({ status: 'failed' }).where(eq(payments.id, paymentId));
+        console.error("[ZARINPAL VERIFY FAILED]", zpData?.errors);
+        return res.redirect('/payment/failed');
+      }
+
       // Approve payment
-      await db.update(payments).set({ status: 'approved', referenceId: `REF-${Date.now()}` })
+      await db.update(payments).set({ status: 'approved', referenceId: zpData.data.ref_id?.toString() || authority })
         .where(eq(payments.id, paymentId));
 
       // Create Subscription
@@ -1310,7 +1418,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Rate limit OTP requests
       const ip = (req.headers['x-forwarded-for'] as string || 'unknown').split(',')[0].trim();
-      if (!checkRateLimit(`otp:${ip}`, 5, 120000)) {
+      if (!(await checkRateLimit(`otp:${ip}`, 5, 120000))) {
         return res.status(429).json({ error: "تعداد درخواست‌ها بیش از حد مجاز. ۲ دقیقه صبر کنید." });
       }
       
@@ -1360,7 +1468,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Rate limit OTP verification
       const ip = (req.headers['x-forwarded-for'] as string || 'unknown').split(',')[0].trim();
-      if (!checkRateLimit(`verify:${ip}`, 10, 120000)) {
+      if (!(await checkRateLimit(`verify:${ip}`, 10, 120000))) {
         return res.status(429).json({ error: "تعداد تلاش‌ها بیش از حد مجاز. ۲ دقیقه صبر کنید." });
       }
       
@@ -1427,7 +1535,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Rate limit login attempts
       const ip = (req.headers['x-forwarded-for'] as string || 'unknown').split(',')[0].trim();
-      if (!checkRateLimit(`login:${ip}`, 10, 120000)) {
+      if (!(await checkRateLimit(`login:${ip}`, 10, 120000))) {
         return res.status(429).json({ error: "تعداد تلاش‌ها بیش از حد مجاز. ۲ دقیقه صبر کنید." });
       }
       
@@ -1535,7 +1643,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Rate limit AI calls: max 10 per minute per user
-      if (!checkRateLimit(`ai:${currentUser.id}`, 10, 60000)) {
+      if (!(await checkRateLimit(`ai:${currentUser.id}`, 10, 60000))) {
         return res.status(429).json({ error: "Too many requests. Please wait a moment." });
       }
 
@@ -1613,7 +1721,7 @@ Respond ONLY with valid JSON in this exact structure:
       const { message } = parsed.data;
 
       const ip = (req.headers['x-forwarded-for'] as string || 'unknown').split(',')[0].trim();
-      if (!checkRateLimit(`chat:${ip}`, 15, 60000)) {
+      if (!(await checkRateLimit(`chat:${ip}`, 15, 60000))) {
         return res.status(429).json({ error: "تعداد پیام‌ها بیش از حد مجاز. کمی صبر کنید." });
       }
 
@@ -1627,10 +1735,31 @@ Respond ONLY with valid JSON in this exact structure:
       // go through this same endpoint) — set AVALAI_MODEL to override the default.
       const AVALAI_MODEL = process.env.AVALAI_MODEL || 'gpt-4o-mini';
 
-      // Placeholder persona: real FAQ knowledge base isn't ready yet, so the assistant
-      // is instructed to admit that instead of guessing at answers.
-      const systemPrompt = `تو دستیار پشتیبانی سایت آموزش زبان انگلیسی "Say It English" هستی.
-پایگاه دانش سوالات متداول سایت هنوز کامل نشده. به هر سوالی که کاربر می‌پرسد، مودبانه و به فارسی بگو که در حال حاضر داری اطلاعات کامل رو یاد می‌گیری و به‌زودی می‌تونی کامل‌تر کمک کنی. حدس نزن و اطلاعات نادرست یا ساختگی درباره دوره‌ها، قیمت‌ها یا محتوای سایت ارائه نده.`;
+      // Grounded in real facts already in this codebase (pricing endpoint, site routes) so the
+      // bot can actually answer common questions instead of refusing everything. Explicitly
+      // told not to invent anything beyond this list — see audit_report.md's critique of the
+      // old "still learning" placeholder persona.
+      const systemPrompt = `تو دستیار پشتیبانی سایت آموزش زبان انگلیسی "Say It English" هستی. همیشه به فارسی و مودبانه پاسخ بده.
+
+اطلاعات واقعی سایت که می‌تونی برای پاسخ به سوالات ازشون استفاده کنی:
+
+**پلن‌های اشتراک (صفحه /pricing):**
+- برنزی: ۹۹,۰۰۰ تومان / ۳۰ روز — دسترسی به تمام ویدیوها، آزمون‌های نامحدود
+- نقره‌ای: ۲۴۹,۰۰۰ تومان / ۹۰ روز — تمام امکانات برنزی + پشتیبانی اختصاصی + نشان نقره‌ای
+- طلایی: ۸۹۰,۰۰۰ تومان / ۳۶۵ روز — تمام امکانات نقره‌ای + مشاوره آنلاین + نشان طلایی
+- پرداخت آنلاین از طریق درگاه زرین‌پال انجام می‌شود.
+
+**بخش‌های اصلی سایت:**
+- /placement — تست تعیین سطح رایگان
+- /videos و /content — ویدیوها و محتوای آموزشی (بخشی رایگان، بخشی نیازمند خرید/اشتراک)
+- /blog — مقالات آموزشی
+- /bookings — رزرو وقت مشاوره یا کلاس خصوصی (زمان‌های خالی را کاربر انتخاب و رزرو می‌کند)
+- /dashboard — پیشرفت یادگیری، XP، و لغات ذخیره‌شده کاربر
+- /leaderboard و /challenges — رتبه‌بندی و چالش‌های هفتگی
+
+**ورود به سایت:** با شماره موبایل (کد تایید پیامکی) یا نام کاربری/رمز عبور.
+
+اگر سوالی خارج از این اطلاعات پرسیده شد (مثلاً جزئیات خیلی خاص که اینجا نیامده)، صادقانه بگو که مطمئن نیستی و پیشنهاد بده کاربر بخش مربوطه در سایت را ببیند یا از پشتیبانی بپرسد. هرگز قیمت، تاریخ، یا امکاناتی که در بالا نیامده را حدس نزن یا از خودت نساز.`;
 
       try {
         const avalRes = await fetch(`${AVALAI_BASE_URL}/chat/completions`, {
