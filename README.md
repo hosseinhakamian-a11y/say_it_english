@@ -2,11 +2,11 @@
 
 یک پلتفرم آموزش زبان انگلیسی
 
-## 🚀 دیپلوی در Netlify
+## 🚀 دیپلوی در Vercel
 
-برای راهنمای کامل دیپلوی، فایل زیر را مطالعه کنید:
+نسخه زنده این پروژه فقط روی **Vercel** دیپلوی می‌شود (پروژه `say-it-english`). با هر push به برنچ `main`، Vercel به‌صورت خودکار بیلد و دیپلوی می‌کند؛ نیازی به مرحله دستی نیست. بک‌اند production یک تابع سرورلس یکپارچه در `api/index.ts` است (تمام مسیرهای `/api/*` طبق `vercel.json` به همین فایل هدایت می‌شوند).
 
-📖 [راهنمای دیپلوی](.agent/workflows/deploy-to-netlify.md)
+متغیرهای محیطی لازم (`DATABASE_URL`, `AVALAI_API_KEY`, و مشابه) باید در تنظیمات پروژه روی Vercel (Project Settings → Environment Variables) ست شوند، نه در فایل‌های `.env*`.
 
 ## 🛠️ توسعه محلی
 
@@ -65,15 +65,18 @@ npm run build
 ```
 .
 ├── client/          # فایل‌های React (Frontend)
-├── server/          # فایل‌های Express (Backend)
+├── api/
+│   └── index.ts     # بک‌اند واقعی Production — تابع سرورلس یکپارچه روی Vercel
+├── server/          # Express — فقط برای development محلی (npm run dev)
 │   ├── index.ts     # Entry point برای development
-│   ├── netlify.ts   # Entry point برای Netlify Functions
-│   ├── routes.ts    # API routes
+│   ├── routes.ts    # API routes (نسخه ساده‌تر و ناقص‌تر نسبت به api/index.ts)
 │   └── db.ts        # تنظیمات دیتابیس
 ├── shared/          # کدهای مشترک بین client و server
 │   └── schema.ts    # Schema دیتابیس
 └── dist/            # فایل‌های build شده
 ```
+
+> ⚠️ `server/routes.ts` هنوز از نظر قابلیت‌ها عقب‌تر از `api/index.ts` است (مثلاً گیمیفیکیشن، اشتراک‌ها، آپلود S3 و `/api/chat` را ندارد)، پس رفتار `npm run dev` لزوماً همان رفتار production نیست.
 
 ## 📝 لایسنس
 
