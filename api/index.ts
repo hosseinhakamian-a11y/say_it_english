@@ -696,12 +696,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const fileKey = item.fileKey || item.videoId || item.contentUrl;
       if (!fileKey) return res.status(400).json({ error: "این محتوا فایل قابل پخش/دانلود ندارد" });
 
-      const AWS_ENDPOINT = process.env.ARVAN_S3_ENDPOINT || 'https://s3.ir-thr-at1.arvanstorage.ir';
-      const AWS_BUCKET   = process.env.ARVAN_S3_BUCKET || '';
-      const AWS_KEY      = process.env.ARVAN_S3_ACCESS_KEY || '';
-      const AWS_SECRET   = process.env.ARVAN_S3_SECRET_KEY || '';
+      // ARVAN_* are the names actually set in Vercel (and in .env); the ARVAN_S3_* names this
+      // code was written against were never set there, so storage 500'd on production.
+      const AWS_ENDPOINT = process.env.ARVAN_S3_ENDPOINT || process.env.ARVAN_ENDPOINT || 'https://s3.ir-thr-at1.arvanstorage.ir';
+      const AWS_BUCKET   = process.env.ARVAN_S3_BUCKET || process.env.ARVAN_BUCKET_NAME || '';
+      const AWS_KEY      = process.env.ARVAN_S3_ACCESS_KEY || process.env.ARVAN_ACCESS_KEY || '';
+      const AWS_SECRET   = process.env.ARVAN_S3_SECRET_KEY || process.env.ARVAN_SECRET_KEY || '';
       if (!AWS_BUCKET || !AWS_KEY || !AWS_SECRET) {
-        return res.status(500).json({ error: "Storage credentials not configured. Set ARVAN_S3_ENDPOINT, ARVAN_S3_BUCKET, ARVAN_S3_ACCESS_KEY, ARVAN_S3_SECRET_KEY in env." });
+        return res.status(500).json({ error: "Storage credentials not configured. Set ARVAN_BUCKET_NAME, ARVAN_ACCESS_KEY, ARVAN_SECRET_KEY (or the ARVAN_S3_* aliases) in env." });
       }
 
       try {
@@ -2080,13 +2082,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: "fileName and fileType are required" });
       }
 
-      const AWS_ENDPOINT = process.env.ARVAN_S3_ENDPOINT || 'https://s3.ir-thr-at1.arvanstorage.ir';
-      const AWS_BUCKET   = process.env.ARVAN_S3_BUCKET || '';
-      const AWS_KEY      = process.env.ARVAN_S3_ACCESS_KEY || '';
-      const AWS_SECRET   = process.env.ARVAN_S3_SECRET_KEY || '';
+      // ARVAN_* are the names actually set in Vercel (and in .env); the ARVAN_S3_* names this
+      // code was written against were never set there, so storage 500'd on production.
+      const AWS_ENDPOINT = process.env.ARVAN_S3_ENDPOINT || process.env.ARVAN_ENDPOINT || 'https://s3.ir-thr-at1.arvanstorage.ir';
+      const AWS_BUCKET   = process.env.ARVAN_S3_BUCKET || process.env.ARVAN_BUCKET_NAME || '';
+      const AWS_KEY      = process.env.ARVAN_S3_ACCESS_KEY || process.env.ARVAN_ACCESS_KEY || '';
+      const AWS_SECRET   = process.env.ARVAN_S3_SECRET_KEY || process.env.ARVAN_SECRET_KEY || '';
 
       if (!AWS_BUCKET || !AWS_KEY || !AWS_SECRET) {
-        return res.status(500).json({ error: "Storage credentials not configured. Set ARVAN_S3_ENDPOINT, ARVAN_S3_BUCKET, ARVAN_S3_ACCESS_KEY, ARVAN_S3_SECRET_KEY in env." });
+        return res.status(500).json({ error: "Storage credentials not configured. Set ARVAN_BUCKET_NAME, ARVAN_ACCESS_KEY, ARVAN_SECRET_KEY (or the ARVAN_S3_* aliases) in env." });
       }
 
       try {
